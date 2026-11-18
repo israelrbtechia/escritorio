@@ -88,7 +88,7 @@ function rotaDaRodovia(dados) {
 export function criarTransito({ cena, dados }) {
   const rota = rotaDaRodovia(dados);
   if (!rota || rota.total < 120) return null;
-  const CORES = [0xd23a2a, 0xf2f2f2, 0x1c1c1c, 0x3b6fd6, 0x9a9a9a, 0x2fa86b, 0xe8b13a, 0x6a4cc0];
+  const CORES = [0xff4fa0, 0xf6f2ea, 0x18d1e0, 0x1c1c1c, 0xff9f43, 0x8b5cf6, 0xd7263d, 0x3dd598]; // cores de carro de cidade tropical
   const carros = [];
   const N = 8;
   for (let i = 0; i < N; i++) {

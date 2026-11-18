@@ -2,6 +2,10 @@
 // Cada personagem existe uma vez só: para trocar de andar, entra na fila do elevador.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AMARELO, PI, caixa, grupo, suave, anguloAlvo, aleatorio, sortear } from './blocos.js';
 import {
   ALT, ELEVADOR, montarLoja, montarAgencia, montarVendas, montarTerraco, montarRua, montarElevador,
@@ -97,6 +101,9 @@ export function criarEscritorio(container, camada) {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  // clima de cidade tropical no fim de tarde: tons de filme (ACES) e brilho nos neons e no sol
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
   container.appendChild(renderer.domElement);
 
   const cena = new THREE.Scene();
@@ -168,9 +175,13 @@ export function criarEscritorio(container, camada) {
     el.addEventListener('pointercancel', soltar);
   }
 
-  cena.add(new THREE.HemisphereLight(0xfff6e5, 0x3a3226, 1.35));
-  const sol = new THREE.DirectionalLight(0xfff1d6, 1.8);
-  sol.position.set(16, 34, 18);
+  // luz de pôr do sol: céu quente, chão arroxeado, sol baixo e alaranjado (vindo do oeste) e um contraluz azul-piscina
+  cena.add(new THREE.HemisphereLight(0xffc9a8, 0x3b2350, 1.25));
+  const contraluz = new THREE.DirectionalLight(0x5ad8ff, 0.55);
+  contraluz.position.set(24, 12, -26);
+  cena.add(contraluz);
+  const sol = new THREE.DirectionalLight(0xffa766, 2.3);
+  sol.position.set(-30, 18, 22);
   sol.target.position.set(0, 6, 0);
   cena.add(sol.target);
   sol.castShadow = true;
@@ -200,6 +211,21 @@ export function criarEscritorio(container, camada) {
   montarVendas(andares[2], telas);
   montarTerraco(andares[3], telas);
   const cabine = montarElevador(predio);
+  // neon nas bordas de cada andar (rosa e azul-piscina, alternando) e nas quinas da fachada
+  {
+    const neon = (cor, w, h, d, x, y, z, pai) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: new THREE.Color(cor).multiplyScalar(1.7), fog: false }));
+      m.position.set(x, y, z); pai.add(m); return m;
+    };
+    andares.forEach((g, i) => {
+      const cor = i % 2 ? 0x2ee6ff : 0xff3ea5, y = i === 3 ? 0.06 : ALT - 0.12;
+      neon(cor, 25, 0.1, 0.1, 0, y, 8.62, g);
+      for (const l of [-1, 1]) {
+        neon(cor, 0.1, 0.1, 17, l * 12.55, y, 0, g);
+        if (i < 3) neon(i % 2 ? 0xff3ea5 : 0x2ee6ff, 0.1, ALT, 0.1, l * 12.55, ALT / 2, 8.62, g);
+      }
+    });
+  }
   let limite = 3;
 
   const relogio = new THREE.Clock();
@@ -911,9 +937,18 @@ export function criarEscritorio(container, camada) {
     else transicao = { t: 0, de: camera.position.clone(), deAlvo: controles.target.clone(), para: pos, paraAlvo: alvo };
     return cam;
   }
+  // brilho (bloom) só no que é muito claro: neons, sol e luzes
+  let composer = null;
+  try {
+    composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(cena, camera));
+    composer.addPass(new UnrealBloomPass(new THREE.Vector2(256, 256), celular ? 0.5 : 0.6, 0.55, 0.92));
+    composer.addPass(new OutputPass());
+  } catch (e) { console.warn('sem brilho:', e); composer = null; }
   function redimensionar() {
     const w = container.clientWidth || 1, h = container.clientHeight || 1;
     renderer.setSize(w, h, false);
+    if (composer) { composer.setPixelRatio(renderer.getPixelRatio() * (celular ? 0.75 : 1)); composer.setSize(w, h); }
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (mosaico) renderer.setViewport(0, 0, w, h);
@@ -1139,7 +1174,7 @@ export function criarEscritorio(container, camada) {
       }
     }
     if (mosaico) renderizarMosaico();
-    else { renderer.render(cena, camera); posicionarBaloes(); }
+    else { if (composer) composer.render(); else renderer.render(cena, camera); posicionarBaloes(); }
     requestAnimationFrame(quadro);
   }
   const v = new THREE.Vector3();

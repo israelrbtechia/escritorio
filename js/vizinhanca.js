@@ -2,22 +2,106 @@
 // rios, 670 casas nos lugares reais e a mata. Tudo em blocos, no estilo do prédio. 1 unidade = 1 metro.
 // Dados em js/vizinhanca-dados.js (gerado por scripts/gerar-vizinhanca.py): © OpenStreetMap, Microsoft Building Footprints, SRTM.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-const COR = { asfalto: 0x3b3e43, terra: 0xa3825a, rio: 0x4a8cc0, faixa: 0xffd60a, lote: 0x8d8d88, vagas: 0x6f6f6b };
+const COR = { asfalto: 0x34313b, terra: 0xb38a5e, rio: 0x2fb8c4, faixa: 0xffd60a, lote: 0x8e8790, vagas: 0x6f6f6b };
 
-/** Céu de dia: degradê no fundo e neblina na mesma cor do horizonte (os morros somem ao longe). */
+/** Céu de fim de tarde em cidade tropical: índigo no alto, roxo, rosa e laranja no horizonte; neblina quente. */
 function ceu(cena) {
   const c = document.createElement('canvas');
-  c.width = 4; c.height = 256;
+  c.width = 4; c.height = 512;
   const g = c.getContext('2d');
-  const grad = g.createLinearGradient(0, 0, 0, 256);
-  grad.addColorStop(0, '#5f9fd6'); grad.addColorStop(0.55, '#a9cfe8'); grad.addColorStop(1, '#dce9ee');
-  g.fillStyle = grad; g.fillRect(0, 0, 4, 256);
+  const grad = g.createLinearGradient(0, 0, 0, 512);
+  // o chão cobre a metade de baixo da tela: o rosa e o laranja ficam na parte de cima, que aparece
+  grad.addColorStop(0, '#3b2a7e'); grad.addColorStop(0.18, '#8a3a92'); grad.addColorStop(0.34, '#e2508a');
+  grad.addColorStop(0.48, '#ff7a5c'); grad.addColorStop(0.62, '#ffab6e'); grad.addColorStop(0.8, '#ffd49a'); grad.addColorStop(1, '#ffe8bd');
+  g.fillStyle = grad; g.fillRect(0, 0, 4, 512);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   cena.background = t;
-  cena.fog = new THREE.Fog(0xd3e4ec, 420, 2700);
+  cena.fog = new THREE.Fog(0xf39a86, 380, 2600);
+  // o sol baixo no horizonte (oeste), com halo
+  const brilho = (tam, cores) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+    const gg = cv.getContext('2d'), r = gg.createRadialGradient(128, 128, 0, 128, 128, 128);
+    cores.forEach(([k, cor]) => r.addColorStop(k, cor));
+    gg.fillStyle = r; gg.fillRect(0, 0, 256, 256);
+    const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, fog: false, depthWrite: false, transparent: true, blending: THREE.AdditiveBlending }));
+    s.scale.set(tam, tam, 1);
+    s.position.set(-2300, 150, 800);
+    s.renderOrder = -1;
+    cena.add(s);
+    return s;
+  };
+  brilho(2600, [[0, 'rgba(255,170,110,.55)'], [0.4, 'rgba(255,100,120,.18)'], [1, 'rgba(255,90,120,0)']]);
+  const sol = brilho(520, [[0, 'rgba(255,250,225,1)'], [0.45, 'rgba(255,215,140,1)'], [0.62, 'rgba(255,150,90,.6)'], [1, 'rgba(255,120,80,0)']]);
+  sol.material.color.setScalar(2.2); // passa do branco: o brilho (bloom) acende o sol
 }
+
+/** Palmeira em blocos (tronco curvo, folhas caídas e cocos), numa geometria só para instanciar. */
+function geometriaPalmeira() {
+  const partes = [], cor = (geo, hex) => {
+    const c = new THREE.Color(hex), n = geo.attributes.position.count, a = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+    geo.setAttribute('color', new THREE.BufferAttribute(a, 3));
+    return geo;
+  };
+  let x = 0, y = 0;
+  for (let k = 0; k < 8; k++) {
+    const s = 0.62 - k * 0.04, geo = new THREE.BoxGeometry(s, 1.25, s);
+    geo.rotateZ(-0.05 - k * 0.025);
+    geo.translate(x, y + 0.62, 0);
+    partes.push(cor(geo, k % 2 ? 0x8a6a4a : 0x7a5b3d));
+    x += 0.06 + k * 0.035; y += 1.2;
+  }
+  for (let k = 0; k < 9; k++) {
+    const geo = new THREE.BoxGeometry(0.5, 0.08, 3.6);
+    geo.translate(0, 0, 1.8);
+    geo.rotateX(0.35 + (k % 3) * 0.18);
+    geo.rotateY((k / 9) * Math.PI * 2);
+    geo.translate(x, y + 0.1, 0);
+    partes.push(cor(geo, [0x3f9a3c, 0x4fb348, 0x2f7f35][k % 3]));
+  }
+  for (let k = 0; k < 3; k++) {
+    const geo = new THREE.BoxGeometry(0.34, 0.34, 0.34);
+    geo.translate(x + Math.cos(k * 2.1) * 0.35, y - 0.25, Math.sin(k * 2.1) * 0.35);
+    partes.push(cor(geo, 0x6b4a22));
+  }
+  return mergeGeometries(partes);
+}
+/** Palmeiras ao longo da SC-281 (dos dois lados) e em volta do pátio da loja. */
+function palmeiras(v) {
+  const lugares = [];
+  const livre = (x, z) => !(Math.abs(x) < 24 && z > -16 && z < 24) && !v.casas.some(c => Math.hypot(c[0] - x, c[1] - z) < Math.max(c[3], c[4]) * 0.7 + 3);
+  for (const via of v.vias.filter(x => x.faixa)) {
+    const p = via.p;
+    let andado = 0;
+    for (let i = 3; i < p.length; i += 3) {
+      const dx = p[i] - p[i - 3], dz = p[i + 2] - p[i - 1], l = Math.hypot(dx, dz) || 1;
+      andado += l;
+      if (andado < 26) continue;
+      andado = 0;
+      if (Math.hypot(p[i], p[i + 2]) > 520) continue;
+      for (const lado of [-1, 1]) {
+        const x = p[i] - (dz / l) * 9 * lado, z = p[i + 2] + (dx / l) * 9 * lado;
+        if (livre(x, z)) lugares.push([x, p[i + 1] - 0.4, z]);
+      }
+    }
+  }
+  for (const [x, z] of [[-19.5, -11], [-19.5, -2], [-19.5, 7], [19.5, -11], [19.5, -2], [19.5, 7], [-9, -13], [9, -13]]) lugares.push([x, -0.55, z]);
+  const geo = geometriaPalmeira();
+  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }), lugares.length);
+  const o = new THREE.Object3D();
+  lugares.forEach(([x, y, z], i) => {
+    const s = 0.85 + ((Math.abs(Math.round(x * 7 + z * 3)) % 40) / 100);
+    o.position.set(x, y, z); o.rotation.set(0, (x * 13.7 + z * 5.3) % (Math.PI * 2), 0); o.scale.set(s, s, s); o.updateMatrix();
+    mesh.setMatrixAt(i, o.matrix);
+  });
+  mesh.castShadow = true;
+  return mesh;
+}
+const PASTEL = [0xffc4d6, 0xa8e6cf, 0xffd3a5, 0xd7c4f2, 0xfff1c9, 0x9fe3ec, 0xffffff];
 
 function terreno(v) {
   const n = v.n, pos = new Float32Array(v.p);
@@ -35,7 +119,7 @@ function terreno(v) {
   const cores = new Float32Array(pos.length), c = new THREE.Color();
   for (let k = 0; k < pos.length; k += 3) {
     const h = pos[k + 1];
-    c.set(h < 4 ? 0x86b45e : h < 25 ? 0x6ea150 : h < 80 ? 0x4f8a3f : 0x3f7536);
+    c.set(h < 4 ? 0x9cb45a : h < 25 ? 0x7f9f4c : h < 80 ? 0x5e8a42 : 0x4b743a);
     cores[k] = c.r; cores[k + 1] = c.g; cores[k + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(cores, 3));
@@ -100,7 +184,8 @@ function casas(lista) {
   lista.forEach(([x, z, ang, w, d, h, base, parede, telhado, tipo], i) => {
     const alto = h + 0.4; // um pouco enterrada, para não flutuar no morro
     o.position.set(x, base - 0.4, z); o.rotation.set(0, ang, 0); o.scale.set(w, alto, d); o.updateMatrix();
-    paredes.setMatrixAt(i, o.matrix); paredes.setColorAt(i, c.set('#' + parede));
+    // fachadas em tons pastel (rosa, menta, pêssego, lavanda), como numa cidade de praia
+    paredes.setMatrixAt(i, o.matrix); paredes.setColorAt(i, c.set('#' + parede).lerp(new THREE.Color(PASTEL[(Math.abs(Math.round(x * 3 + z * 7))) % PASTEL.length]), 0.6));
     if (tipo === 2) {
       o.position.set(x, base + h, z); o.scale.set(w + 0.4, 0.35, d + 0.4); o.updateMatrix();
       lajes.setMatrixAt(il, o.matrix); lajes.setColorAt(il++, c.set('#' + telhado));
@@ -158,6 +243,7 @@ export async function montarVizinhanca(cena) {
   g.add(faixaCentral(v.vias));
   g.add(casas(v.casas));
   g.add(arvores(v.arvores));
+  try { g.add(palmeiras(v)); } catch (e) { console.warn('palmeiras:', e); }
   // pátio da loja (estacionamento na frente e nos lados)
   const lote = new THREE.Mesh(new THREE.BoxGeometry(40, 0.2, 26), new THREE.MeshLambertMaterial({ color: COR.lote }));
   lote.position.set(0, -0.62, -0.5); lote.receiveShadow = true;
