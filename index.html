@@ -68,6 +68,7 @@
         <button role="tab" class="aba-bt" data-aba="instagram" type="button">Insta <span id="numInsta" class="contador">0</span></button>
         <button role="tab" class="aba-bt" data-aba="entregas" type="button">Entregas <span id="numEntregas" class="contador">0</span></button>
         <button role="tab" class="aba-bt" data-aba="placar" type="button">Placar</button>
+        <button role="tab" class="aba-bt" data-aba="saas" type="button">SaaS <span id="numSaas" class="contador">0</span></button>
         <button role="tab" class="aba-bt" data-aba="ajustes" type="button">Ajustes</button>
       </div>
 
@@ -101,6 +102,21 @@
       <section class="aba" id="aba-entregas">
         <p class="dica">Tudo que a equipe produziu, com o código que o chefe cita no relatório.</p>
         <div id="listaEntregas"></div>
+      </section>
+
+      <section class="aba" id="aba-saas">
+        <p class="dica"><strong>ReparoSimples</strong>, o SaaS principal da RBTech (3º andar). Números calculados como no painel admin. Com o app aberto, atualiza a cada 5 min e avisa quando entra loja nova. Os servidores são revisados 2 vezes por dia (8h41 e 20h41), sem gastar créditos de IA.</p>
+        <small id="statusSaas" class="dica">…</small>
+        <div class="kpis-saas" id="kpisSaas"></div>
+        <div class="linha-saas" id="detalheSaas"></div>
+        <h3 class="titulo-secao">🏪 Lojas mais novas</h3>
+        <div id="listaLojasSaas"></div>
+        <h3 class="titulo-secao">🖥️ Revisão dos servidores</h3>
+        <div id="revisoesSaas"></div>
+        <div class="entrega-acoes">
+          <button type="button" class="bt-sec" id="btRevisar">Revisar agora</button>
+          <button type="button" class="bt-sec" id="btAvisosSaas">🔔 Ativar avisos do navegador</button>
+        </div>
       </section>
 
       <section class="aba" id="aba-placar">

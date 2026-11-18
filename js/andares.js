@@ -425,6 +425,15 @@ export function montarAgencia(g, telas) {
     caixa(0.7, 0.03, 0.22, 0x2b2b2b, x, 0.855, 3.25, g);
     caneca(g, x + 0.85, 3.25);
   }
+  // estrategista do ReparoSimples (time da Pamella), na frente à esquerda
+  mesa(g, -4.4, 6.4, 2.4, 1.2, 0xf2f2f2, 0x2b2b2b);
+  cadeira(g, -4.4, 7.6, PI);
+  telas.estrategista_saas = monitor(g, -4.4, 6.15, 0);
+  caixa(0.7, 0.03, 0.22, 0x2b2b2b, -4.4, 0.855, 6.65, g);
+  caneca(g, -3.55, 6.65);
+  const rs = letreiro({ w: 512, h: 128, fundo: '#0f0f0f', titulo: 'REPARO SIMPLES', cor: '#ffd60a', tamanho: 58 });
+  caixa(2.0, 0.5, 0.04, 0x0f0f0f, -4.4, 0.5, 5.8, g);
+  placa(1.95, 0.46, rs.t, -4.4, 0.5, 5.77, PI, g);
   caixa(0.05, 1.3, 0.05, 0x222222, -2.6, 0.65, 1.6, g); // tripé do roteirista
   caixa(0.4, 0.4, 0.02, 0xfff3c4, -2.6, 1.45, 1.55, g, { emissive: 0xffe680, emissiveIntensity: 0.6 });
   // especialista de crescimento e o contador de seguidores
@@ -486,8 +495,9 @@ export function montarVendas(g, telas) {
   monitorEnfeite(g, 7.0, -4.3, PI + 0.35, 'codigo');
   caixa(1.0, 2.3, 1.0, 0x1a1a1a, 11.0, 1.15, -6.6, g);
   telas.leds = [];
+  const matLed = new THREE.MeshLambertMaterial({ color: 0x2fd17a, emissive: 0x2fd17a, emissiveIntensity: 1 }); // próprio: a cor muda com a revisão dos servidores
   for (let i = 0; i < 10; i++) {
-    telas.leds.push(caixa(0.08, 0.05, 0.02, 0x2fd17a, 10.7 + (i % 2) * 0.5, 0.5 + Math.floor(i / 2) * 0.4, -6.08, g, { emissive: 0x2fd17a, emissiveIntensity: 1 }));
+    telas.leds.push(caixa(0.08, 0.05, 0.02, matLed, 10.7 + (i % 2) * 0.5, 0.5 + Math.floor(i / 2) * 0.4, -6.08, g));
   }
   // sino das vendas
   caixa(0.1, 1.5, 0.1, 0x333333, 3.6, 0.75, -1.8, g);
@@ -631,6 +641,8 @@ export const PESSOAS_3D = {
     posto: { assento: [-8.2, -6.2], olhar: 0, rota: [[-8.2, -6.2], [-10.4, -6.2], [-10.4, -3.1], [-9.0, -3.1], [-9.0, 0]] } },
   especialista: { andar: 1, ap: ap(0x6e4430, 0x111111, 'topete', 0xff8a3d, 0x2f3b55, 0xffffff, { fone: true }),
     posto: { assento: [4.6, 7.6], olhar: PI, rota: [[4.6, 7.6], [6.4, 7.6], [6.4, 0]] }, visita: [[-7.6, 0], [-7.6, -3.6]], olharVisita: PI },
+  estrategista_saas: { andar: 1, ap: ap(0xe0ac85, 0x2b1d14, 'coque', 0x1f2a44, 0x2d3446, 0xffffff, { oculos: true }),
+    posto: { assento: [-4.4, 7.6], olhar: PI, rota: [[-4.4, 7.6], [-6.0, 7.6], [-6.0, 0]] }, visita: [[9.6, 0], [9.6, -3.6]], olharVisita: PI },
   estagiario: { andar: 1, ap: ap(0xd9a27a, 0x3a2618, 'topete', AMARELO, 0x2f3b55, 0xffffff),
     posto: { assento: [-0.3, 7.2], olhar: PI, rota: [[-0.3, 7.2], [1.0, 7.2], [1.0, 0]] } },
   // 3º andar
@@ -670,7 +682,7 @@ export const PAUSAS = {
 /** Lugares por onde Peter e Bibi passeiam. */
 export const LUGARES_CAES = {
   0: [[-1, 5.6], [3, 5.6], [0, -0.9], [-5.5, 5.2], [6.5, 4.0], [9.6, 3.2], [-6.5, 0.8]],
-  1: [[-3.2, -1.6], [0.5, 1.6], [-6, 6.8], [10.8, 1.5], [2.5, -1.3], [-2.0, 5.6], [10.0, 6.6]],
+  1: [[-3.2, -1.6], [0.5, 1.6], [-8.6, 5.6], [10.8, 1.5], [2.5, -1.3], [-2.0, 5.6], [10.0, 6.6]],
   2: [[-1, -2.5], [4, 6.4], [10.5, -3.0], [-10.7, 6.0], [8.6, 5.6]],
   3: [[-8, 6.0], [8.6, 2.8], [-1, 6.0], [-6.2, 3.0], [-5, -2.0], [9.4, 1.0]],
 };

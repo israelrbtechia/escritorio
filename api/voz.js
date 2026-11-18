@@ -21,6 +21,7 @@ export const VOZES = {
   roteirista: 'mQTtm28IjDcoO2sbXmov',          // Filipe
   revisor: 'dxIMMSJYSsbUSMhioLNb',             // Juliana Moreira
   especialista: 'urYO2UqU0Q6zAxYEYEYV',        // Gabriel
+  estrategista_saas: 'GnqzyReddm0LsE9vIeJ5',   // Francisca (mesma voz da copywriter)
   atendimento: 'RPK3rjRcGgrmLKag7pHZ',         // Viviane
   tecnico: 'EyPnkQPpWceKpqcMOSpZ',             // Leandro
   sdr: '8KoOqokYEtaOaWYjC7vp',                 // Dhieider

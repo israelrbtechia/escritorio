@@ -147,6 +147,122 @@ async function sincronizarOs() {
   }
 }
 
+// ---------- ReparoSimples como SaaS (3º andar): lojas, pagantes, receita, lojas novas e servidores ----------
+const CHAVE_SAAS_VISTO = 'saas.vistoAte';
+const CHAVE_REVISAO_VISTA = 'saas.revisaoVista';
+const SIT_SAAS = { ativa: ['ativa', 'verde'], teste: ['em teste', 'amarelo'], inadimplente: ['inadimplente', 'laranja'], expirada: ['expirada', 'cinza'], somente_leitura: ['só leitura', 'cinza'], bloqueada: ['bloqueada', 'vermelho'] };
+const NIVEL = { ok: ['🟢', 'tudo certo'], atencao: ['🟡', 'atenção'], falha: ['🔴', 'falha'] };
+const reais = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+let saas = null;
+function saasDeExemplo() {
+  const h = Date.now();
+  return {
+    exemplo: true,
+    numeros: { lojas: 64, ativas: 31, emTeste: 18, inadimplentes: 2, expiradas: 12, bloqueadas: 1, pagantes: 27, pagantesPorPlano: { Essencial: 15, Pro: 11, 'Pro Max': 1 }, porOrigem: { kiwify: 24, hotmart: 3 },
+      receitaMensal: { reais: 1456.75, hotmart: null }, novasNoMes: 9, novas7dias: 3,
+      recentes: [{ nome: 'Assistência Exemplo', criada: new Date(h - 3 * 36e5).toISOString(), plano: 'Pro', situacao: 'teste' }, { nome: 'Cell Fix Exemplo', criada: new Date(h - 30 * 36e5).toISOString(), plano: 'Essencial', situacao: 'ativa' }] },
+    revisao: { quando: h - 2 * 36e5, status: 'ok', origem: 'automatica', checagens: [{ nome: 'Banco de dados (Supabase)', nivel: 'ok', ms: 180, detalhe: '' }, { nome: 'Login das lojas (Supabase Auth)', nivel: 'ok', ms: 120, detalhe: '' }] },
+  };
+}
+function desenharSaasPainel() {
+  const n = saas?.numeros;
+  $('kpisSaas').innerHTML = !n ? '' : [
+    ['Lojas ativas', n.ativas], ['Pagantes', n.pagantes], ['Receita mensal', reais(n.receitaMensal?.reais)],
+    ['Em teste', n.emTeste], ['Inadimplentes', n.inadimplentes], ['Novas no mês', n.novasNoMes],
+  ].map(([r, v]) => `<div class="kpi-saas"><b>${esc(v)}</b><small>${r}</small></div>`).join('');
+  const planos = Object.entries(n?.pagantesPorPlano || {}).map(([p, q]) => `${esc(p)} ${q}`).join(' · ');
+  const hot = n?.receitaMensal?.hotmart ? ` · Hotmart: ${esc(n.receitaMensal.hotmart.moeda)} ${Number(n.receitaMensal.hotmart.valor).toLocaleString('pt-BR')}/mês` : '';
+  $('detalheSaas').innerHTML = !n ? '' : `${n.lojas} lojas cadastradas · ${n.expiradas} expiradas · ${n.bloqueadas} bloqueadas · ${n.novas7dias} novas em 7 dias<br>Pagantes por plano: ${planos || '—'}${hot}${n.pagamentosPendentes ? `<br>⚠️ ${n.pagamentosPendentes} pagamento(s) esperando revisão no painel admin` : ''}`;
+  $('listaLojasSaas').innerHTML = (n?.recentes || []).map(l => {
+    const [rot, cor] = SIT_SAAS[l.situacao] || [l.situacao, 'cinza'];
+    return `<div class="loja-saas"><div><b>${esc(l.nome)}</b><small>${hora(l.criada)} · ${esc(l.plano)}</small></div><span class="pill-saas ${cor}">${esc(rot)}</span></div>`;
+  }).join('') || '<p class="vazio-lista">Nenhuma loja ainda.</p>';
+  const revs = saas?.revisoes?.length ? saas.revisoes : saas?.revisao ? [saas.revisao] : [];
+  $('revisoesSaas').innerHTML = revs.map((r, i) => {
+    const [bola, texto] = NIVEL[r.status] || ['⚪', r.status];
+    const itens = (r.checagens || []).map(c => `<li>${(NIVEL[c.nivel] || ['⚪'])[0]} ${esc(c.nome)}${c.ms ? ` <small>${c.ms} ms</small>` : ''}${c.detalhe ? ` · <small>${esc(c.detalhe)}</small>` : ''}</li>`).join('');
+    const novas = r.novas?.length ? `<p>🏪 Lojas novas desde a revisão anterior: ${r.novas.map(l => esc(l.nome)).join(', ')}</p>` : '';
+    return `<details class="entrega" ${i === 0 ? 'open' : ''}><summary>${bola} <b>${texto}</b> · ${hora(r.quando)} · ${r.origem === 'automatica' ? 'automática' : 'manual'}</summary><ul class="checagens">${itens}</ul>${novas}</details>`;
+  }).join('') || '<p class="vazio-lista">Nenhuma revisão ainda. A primeira roda às 8h41 ou 20h41, ou toque em "Revisar agora".</p>';
+  $('btAvisosSaas').hidden = !('Notification' in window) || Notification.permission !== 'default';
+}
+function notificar(titulo, corpo) {
+  try { if ('Notification' in window && Notification.permission === 'granted') new Notification(titulo, { body: corpo, tag: titulo + corpo }); } catch { /* sem aviso */ }
+}
+function avisosDoSaas(novas, revisao) {
+  for (const l of novas) {
+    const [rot] = SIT_SAAS[l.situacao] || [l.situacao];
+    adicionarChat('head_vendas', { quem: 'evento', html: true, texto: `🔔 <b>Loja nova no ReparoSimples:</b> ${esc(l.nome)} (${esc(l.plano)}, ${esc(rot)})` });
+    notificar('🔔 Loja nova no ReparoSimples', `${l.nome} · ${l.plano}`);
+  }
+  if (novas.length) { $('numSaas').textContent = String(Number($('numSaas').textContent || 0) + novas.length); focarAuto('saas'); }
+  if (revisao && revisao.id && revisao.id !== ler(CHAVE_REVISAO_VISTA, '')) {
+    gravar(CHAVE_REVISAO_VISTA, revisao.id);
+    if (revisao.status !== 'ok') {
+      const ruins = revisao.checagens.filter(c => c.nivel !== 'ok').map(c => `${c.nome}: ${c.detalhe || c.nivel}`).join('; ');
+      adicionarChat('head_vendas', { quem: 'aviso', texto: `Revisão dos servidores do ReparoSimples (${hora(revisao.quando)}): ${revisao.status === 'falha' ? 'FALHA' : 'atenção'}. ${ruins}` });
+      notificar(revisao.status === 'falha' ? '🔴 ReparoSimples com falha' : '🟡 ReparoSimples pede atenção', ruins);
+    }
+  }
+}
+async function sincronizarSaas() {
+  if (semServidor || chkEnsaio.checked) {
+    saas = saasDeExemplo();
+    $('statusSaas').textContent = semServidor ? 'Prévia sem servidor: números de EXEMPLO.' : 'Modo ensaio: números de EXEMPLO. Desligue o modo ensaio para ver os reais.';
+    cena.definirSaas(saas);
+    return desenharSaasPainel();
+  }
+  try {
+    const r = await chamarApi('/api/saas', null, 'GET');
+    if (!r.configurado) {
+      $('statusSaas').textContent = 'Não ligado: o ReparoSimples usa as mesmas variáveis do laboratório (REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY).';
+      return;
+    }
+    saas = { numeros: r.numeros || saas?.numeros || null, revisao: r.revisoes?.[0] || null, revisoes: r.revisoes || [] };
+    $('statusSaas').textContent = r.erro ? `ReparoSimples: ${r.erro}` : `✅ Atualizado ${hora(Date.now())}.`;
+    let novas = [];
+    const recentes = r.numeros?.recentes || [];
+    if (recentes.length) {
+      const maisNova = Math.max(...recentes.map(l => Date.parse(l.criada) || 0));
+      const visto = ler(CHAVE_SAAS_VISTO, 0);
+      if (!visto) gravar(CHAVE_SAAS_VISTO, maisNova); // primeira vez: só marca, sem aviso
+      else {
+        novas = recentes.filter(l => (Date.parse(l.criada) || 0) > visto);
+        if (novas.length) gravar(CHAVE_SAAS_VISTO, maisNova);
+      }
+    }
+    cena.definirSaas(saas, novas);
+    avisosDoSaas(novas, saas.revisao);
+    desenharSaasPainel();
+  } catch (e) {
+    $('statusSaas').textContent = `ReparoSimples: ${e.message}`;
+  }
+}
+$('btRevisar').addEventListener('click', async () => {
+  if (semServidor || chkEnsaio.checked) { $('statusSaas').textContent = 'A revisão real só roda fora do modo ensaio, no site publicado.'; return; }
+  $('btRevisar').disabled = true;
+  $('statusSaas').textContent = 'Revisando os servidores do ReparoSimples…';
+  try {
+    const r = await chamarApi('/api/saas?revisar=1', {});
+    if (!r.configurado) $('statusSaas').textContent = 'O ReparoSimples ainda não está ligado.';
+    else await sincronizarSaas();
+    if (r.revisao && !r.salvo) {
+      saas = { ...(saas || {}), revisao: r.revisao, revisoes: [r.revisao, ...(saas?.revisoes || [])].slice(0, 6) };
+      cena.definirSaas(saas);
+      desenharSaasPainel();
+      $('statusSaas').textContent = 'Revisão feita. Para guardar o histórico das revisões, ligue o Redis (Upstash) na Vercel.';
+    }
+  } catch (e) {
+    $('statusSaas').textContent = `Revisão: ${e.message}`;
+  } finally {
+    $('btRevisar').disabled = false;
+  }
+});
+$('btAvisosSaas').addEventListener('click', async () => {
+  try { await Notification.requestPermission(); } catch { /* navegador sem aviso */ }
+  desenharSaasPainel();
+});
+
 // ---------- câmeras ----------
 const autoCam = $('autoCam');
 let timerCam = null;
@@ -304,6 +420,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.b
 
 // ---------- abas ----------
 function abrirAba(nomeAba) {
+  if (nomeAba === 'saas') $('numSaas').textContent = '0';
   for (const b of document.querySelectorAll('.aba-bt')) b.classList.toggle('ativa', b.dataset.aba === nomeAba);
   for (const s of document.querySelectorAll('.aba')) s.classList.toggle('ativa', s.id === 'aba-' + nomeAba);
 }
@@ -828,6 +945,7 @@ chkEnsaio.addEventListener('change', () => {
   }
   verificarMeta();
   sincronizarOs();
+  sincronizarSaas();
 });
 $('btZerarGasto').addEventListener('click', () => agencia.zerarGasto());
 $('btNova').addEventListener('click', () => {
@@ -856,5 +974,7 @@ desenharEntregas();
 desenharDiretoria();
 desenharInstagram();
 if (!semServidor) { verificarMeta(); sincronizar(true); sincronizarOs(); }
+sincronizarSaas();
+setInterval(() => { if (!document.hidden) sincronizarSaas(); }, 5 * 60 * 1000); // só leitura do banco, sem IA
 setInterval(() => { if (!document.hidden) sincronizarOs(); }, 60000); // economia: 1 consulta por minuto
 setInterval(() => { if (!document.hidden) sincronizar(); }, 5 * 60 * 1000);

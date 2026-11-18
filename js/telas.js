@@ -116,18 +116,41 @@ export function desenharSeguidores(tela, info) {
   tela.t.needsUpdate = true;
 }
 
-export function desenharSaas(tela, sinos = 0) {
+const COR_SERVIDOR = { ok: '#2fd17a', atencao: '#ffb020', falha: '#ff4d4d' };
+/** Painel do 3º andar: o ReparoSimples (SaaS principal) com os números do admin e a saúde dos servidores. */
+export function desenharSaas(tela, sinos = 0, saas = null) {
   const g = tela.ctx;
   g.fillStyle = '#0d1117'; g.fillRect(0, 0, 640, 360);
-  g.fillStyle = '#ffd60a'; g.font = `800 28px ${FONTE}`; g.fillText('SISTEMAS SAAS RBTECH', 28, 50);
-  const sistemas = [['Sorteia Aí', 'sorteios de comentários do Instagram'], ['Agência RBTech', 'este prédio com equipes de IA'], ['Próximo sistema', 'em ideação pelo time de produto']];
-  sistemas.forEach(([nome, desc], i) => {
-    const y = 110 + i * 70;
-    g.fillStyle = i < 2 ? '#2fd17a' : '#555'; g.beginPath(); g.arc(44, y - 8, 9, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#fff'; g.font = `700 26px ${FONTE}`; g.fillText(nome, 66, y);
-    g.fillStyle = '#9aa4b2'; g.font = `500 18px ${FONTE}`; g.fillText(desc, 66, y + 26);
+  g.fillStyle = '#ffd60a'; g.font = `800 28px ${FONTE}`; g.fillText('REPARO SIMPLES', 28, 48);
+  g.fillStyle = '#9aa4b2'; g.font = `600 16px ${FONTE}`; g.fillText(saas?.exemplo ? 'SaaS principal · EXEMPLO' : 'SaaS principal da RBTech', 300, 46);
+  const n = saas?.numeros;
+  const reais = v => 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  const kpis = n ? [['lojas ativas', n.ativas], ['pagantes', n.pagantes], ['em teste', n.emTeste], ['receita/mês', reais(n.receitaMensal?.reais)]]
+    : [['lojas ativas', '–'], ['pagantes', '–'], ['em teste', '–'], ['receita/mês', '–']];
+  kpis.forEach(([rotulo, valor], i) => {
+    const x = 28 + i * 150;
+    g.fillStyle = '#161b22'; g.fillRect(x, 70, 138, 104);
+    g.fillStyle = i === 3 ? '#ffd60a' : '#fff'; g.font = `800 ${String(valor).length > 7 ? 26 : 40}px ${FONTE}`; g.fillText(String(valor), x + 12, 128);
+    g.fillStyle = '#9aa4b2'; g.font = `600 16px ${FONTE}`; g.fillText(rotulo, x + 12, 158);
   });
-  g.fillStyle = '#ffd60a'; g.font = `700 20px ${FONTE}`; g.fillText(`🔔 sinos do time hoje: ${sinos}`, 28, 336);
+  const ultima = saas?.revisao;
+  const st = ultima?.status || null;
+  g.fillStyle = st ? COR_SERVIDOR[st] : '#555'; g.beginPath(); g.arc(44, 214, 9, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#fff'; g.font = `700 20px ${FONTE}`;
+  g.fillText(!ultima ? 'Servidores: aguardando a 1ª revisão' : st === 'ok' ? 'Servidores: tudo no ar' : st === 'atencao' ? 'Servidores: pedem atenção' : 'Servidores: FALHA', 64, 221);
+  if (ultima) {
+    g.fillStyle = '#9aa4b2'; g.font = `500 15px ${FONTE}`;
+    g.fillText(`revisado ${new Date(ultima.quando).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · revisão 2x por dia`, 64, 244);
+  }
+  const nova = n?.recentes?.[0];
+  if (nova) {
+    g.fillStyle = '#fff'; g.font = `600 17px ${FONTE}`;
+    const nome = nova.nome.length > 30 ? nova.nome.slice(0, 29) + '…' : nova.nome;
+    g.fillText(`🏪 loja mais nova: ${nome}`, 28, 286);
+    g.fillStyle = '#9aa4b2'; g.font = `500 15px ${FONTE}`; g.fillText(`${n.novasNoMes} novas no mês · ${n.lojas} cadastradas no total`, 28, 308);
+  }
+  g.fillStyle = '#ffd60a'; g.font = `700 18px ${FONTE}`; g.fillText(`🔔 sinos hoje: ${sinos}`, 28, 342);
+  g.fillStyle = '#9aa4b2'; g.font = `500 15px ${FONTE}`; g.fillText('também: Sorteia Aí · Agência RBTech', 330, 342);
   tela.t.needsUpdate = true;
 }
 
@@ -146,7 +169,7 @@ const NOME_TELA = {
   chefe: 'Tráfego', analista: 'Analista', copywriter: 'Copy', roteirista: 'Roteiro', revisor: 'Revisão',
   gerente_crescimento: 'Crescimento', especialista: 'Instagram', estagiario: 'Estagiário',
   gerente_loja: 'Loja', atendimento: 'Atendimento', tecnico: 'Reparo', head_vendas: 'Vendas', sdr: 'Prospecção', closer: 'Propostas',
-  sucesso: 'Clientes', produto: 'Produto', israel: 'Diretoria',
+  sucesso: 'Clientes', produto: 'Produto', israel: 'Diretoria', estrategista_saas: 'Reparo Simples',
 };
 export function desenharMonitor(tela, papel, modo, tempo) {
   const g = tela.ctx;
@@ -172,7 +195,7 @@ export function desenharMonitor(tela, papel, modo, tempo) {
   const tipo = {
     copywriter: 'texto', chefe: 'texto', gerente_loja: 'texto', head_vendas: 'texto', sdr: 'lista', closer: 'texto', sucesso: 'lista',
     roteirista: 'story', analista: 'grafico', gerente_crescimento: 'grafico', especialista: 'insta', estoque: 'lista',
-    revisor: 'check', israel: 'check', tecnico: 'check', atendimento: 'lista', produto: 'codigo', estagiario: 'texto',
+    revisor: 'check', israel: 'check', tecnico: 'check', atendimento: 'lista', produto: 'codigo', estagiario: 'texto', estrategista_saas: 'insta',
   }[papel] || 'texto';
   if (tipo === 'texto' || tipo === 'lista') {
     g.fillStyle = '#fbfbf7'; g.fillRect(0, 0, W, H);

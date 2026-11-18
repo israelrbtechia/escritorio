@@ -12,13 +12,13 @@ import { desenharPlacar, desenharMonitor, desenharSeguidores, desenharSaas, dese
 const NOMES = {
   gerente_loja: 'Rael · Loja', atendimento: 'Atendimento', tecnico: 'Técnico',
   chefe: 'Pamella · Tráfego', analista: 'Analista', copywriter: 'Copywriter', roteirista: 'Roteirista', revisor: 'Revisor',
-  gerente_crescimento: 'Helena · Crescimento', especialista: 'Especialista', estagiario: 'Estagiário',
+  gerente_crescimento: 'Helena · Crescimento', especialista: 'Especialista', estagiario: 'Estagiário', estrategista_saas: 'Estrategista SaaS',
   head_vendas: 'Head de vendas', sdr: 'SDR', closer: 'Closer', sucesso: 'Sucesso', produto: 'Produto',
   israel: 'Israel · Boss', peter: 'Peter', bibi: 'Bibi', cliente: 'Cliente',
 };
 const GESTOR_DE = {
   atendimento: 'gerente_loja', tecnico: 'gerente_loja',
-  analista: 'chefe', copywriter: 'chefe', roteirista: 'chefe', revisor: 'chefe',
+  analista: 'chefe', copywriter: 'chefe', roteirista: 'chefe', revisor: 'chefe', estrategista_saas: 'chefe',
   especialista: 'gerente_crescimento', sdr: 'head_vendas', closer: 'head_vendas', sucesso: 'head_vendas', produto: 'head_vendas',
 };
 const CHEFES = ['gerente_loja', 'chefe', 'gerente_crescimento', 'head_vendas'];
@@ -56,6 +56,7 @@ export const CAMERAS = [
   C('agencia', 'analise', 'Análise e Instagram', 1, [5.5, 4.8, 12], [5, 1.1, 4.4]),
   C('agencia', 'ag_placar', 'Placar e reunião', 1, [-0.5, 3.6, 0.8], [0.8, 1.6, -7.8]),
   C('agencia', 'ag_janela', 'Janela', 1, [-3, 4.2, 2.5], [-7, 1.2, -5]),
+  C('agencia', 'ag_saas', 'Estratégia SaaS', 1, [-1.0, 2.9, 8.8], [-4.6, 1.0, 6.3]),
   C('agencia', 'ag_copa', 'Copa e sofá', 1, [6, 3.4, 2.4], [10.5, 0.9, 6.2]),
   C('agencia', 'ag_corredor', 'Corredor', 1, [-11, 3.0, 0.4], [6, 1.0, 0]),
   // 3º andar · vendas e SaaS
@@ -83,7 +84,7 @@ export const MOSAICO_TODOS = ['predio', 'loja', 'balcao', 'reparo', 'geral', 'ch
 const CAM_DE = {
   gerente_loja: 'loja', atendimento: 'balcao', tecnico: 'reparo',
   chefe: 'chefe', analista: 'analise', copywriter: 'criacao', roteirista: 'criacao', revisor: 'analise',
-  gerente_crescimento: 'crescimento', especialista: 'analise', head_vendas: 'vendas', sdr: 'vendas', closer: 'vendas',
+  gerente_crescimento: 'crescimento', especialista: 'analise', estrategista_saas: 'ag_saas', head_vendas: 'vendas', sdr: 'vendas', closer: 'vendas',
   sucesso: 'vendas', produto: 'saas', israel: 'boss',
 };
 
@@ -631,10 +632,11 @@ export function criarEscritorio(container, camada) {
   const visivel = e => e.ativo !== false && andarVisual(e) <= limite;
 
   // ---------- telas ----------
-  const MONITORES = ['gerente_loja', 'atendimento', 'tecnico', 'chefe', 'analista', 'copywriter', 'roteirista', 'revisor', 'gerente_crescimento', 'especialista', 'head_vendas', 'sdr', 'closer', 'sucesso', 'produto', 'israel'];
+  const MONITORES = ['gerente_loja', 'atendimento', 'tecnico', 'chefe', 'analista', 'copywriter', 'roteirista', 'revisor', 'gerente_crescimento', 'especialista', 'estrategista_saas', 'head_vendas', 'sdr', 'closer', 'sucesso', 'produto', 'israel'];
   const estadoTela = Object.fromEntries(MONITORES.map(k => [k, { modo: 'livre', desde: 0 }]));
   const telaModo = (papel, modo) => { if (estadoTela[papel]) estadoTela[papel] = { modo, desde: agora() }; };
   let sinos = 0, cafesDoBoss = 0, pendentesBoss = 0, reunioes = 0;
+  let saasAtual = null;
   // ordens de serviço do laboratório: exemplo até o ReparoSimples ser ligado; depois, as OS reais da loja RB Tech
   let ordens = {
     fonte: 'exemplo',
@@ -915,11 +917,11 @@ export function criarEscritorio(container, camada) {
         await p.irPara(2, [[3.6, 0], [3.6, -1.0]], PI);
         p.falar('🔔 VENDEU!', 2600);
         for (const q of Object.values(pessoas)) if (q.casa === 2 && q !== p && q.emCasa) q.falar('👏👏', 1800);
-        sinos++; desenharSaas(telas.saas, sinos);
+        sinos++; desenharSaas(telas.saas, sinos, saasAtual);
         await esperar(2400);
         return p.voltarAoPosto();
       }
-      p.falar(sortear(['📞 Alô! Aqui é da RBTech…', '📞 posso te mostrar o Sorteia Aí?', '📞 te mando a proposta!', '✍️ anotando no CRM']), 3200);
+      p.falar(sortear(['📞 Alô! Aqui é da RBTech…', '📞 conhece o ReparoSimples?', '📞 posso te mostrar o Sorteia Aí?', '📞 te mando a proposta!', '✍️ anotando no CRM']), 3200);
       p.digitando = true; telaModo(p.id, 'trabalhando'); await esperar(5000); p.digitando = false; telaModo(p.id, 'livre');
       return;
     }
@@ -1176,6 +1178,19 @@ export function criarEscritorio(container, camada) {
       pessoas.estagiario.ativo = (dados?.diasNaMeta ?? 0) >= 10;
     },
     definirSeguidores(info) { desenharSeguidores(telas.seguidores, info); },
+    /** ReparoSimples (SaaS): números, última revisão dos servidores e lojas novas (o sino toca e o time comemora). */
+    definirSaas(saas, novas = []) {
+      saasAtual = saas;
+      const cor = { ok: 0x2fd17a, atencao: 0xffb020, falha: 0xff4d4d }[saas?.revisao?.status] ?? 0x2fd17a;
+      for (const l of telas.leds || []) { l.material.color.setHex(cor); l.material.emissive?.setHex(cor); }
+      if (novas.length) {
+        sinos += novas.length;
+        const quem = ['head_vendas', 'sucesso', 'produto'].map(k => pessoas[k]).filter(Boolean);
+        quem[0]?.falar(`🔔 Loja nova no ReparoSimples: ${resumo(novas[0].nome)}!`, 5000);
+        for (const q of quem.slice(1)) if (q.emCasa) q.falar('👏👏 bem-vinda!', 2600);
+      }
+      desenharSaas(telas.saas, sinos, saas);
+    },
     /**
      * OS em andamento da loja RB Tech, vindas do ReparoSimples: [{ os, modelo, status }].
      * Na primeira carga as prateleiras são preenchidas direto; depois, cada OS nova ou mudança de status vira animação.
@@ -1242,7 +1257,7 @@ export function criarEscritorio(container, camada) {
     },
     foto() { renderer.render(cena, camera); return renderer.domElement.toDataURL('image/png'); },
   };
-  document.fonts?.ready.then(() => { desenharBoss(telas.boss, pendentesBoss, cafesDoBoss); desenharSaas(telas.saas, sinos); });
+  document.fonts?.ready.then(() => { desenharBoss(telas.boss, pendentesBoss, cafesDoBoss); desenharSaas(telas.saas, sinos, saasAtual); });
   return api;
 }
 
@@ -1257,6 +1272,7 @@ const FRASES = {
   revisor: ['Preço confere? 🔎', 'Isso o Meta reprova.'],
   gerente_crescimento: ['Bora crescer! 📈', 'Engajamento é rei 👑'],
   especialista: ['Esse reels bombou! 🔥', 'Salvamentos subindo 📌'],
+  estrategista_saas: ['Teste grátis → assinatura 🎯', 'Post sem rosto, só tela 🎥', 'Assistência é nosso público 🔧'],
   estagiario: ['Primeiro dia! 😅', 'Onde fica o café?'],
   head_vendas: ['Funil cheio! 🎯', 'Quem fechou hoje?'],
   sdr: ['Mais um lead! 🎯', 'Agendei uma demo 📅'],

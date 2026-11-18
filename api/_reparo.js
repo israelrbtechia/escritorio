@@ -14,6 +14,10 @@ export const reparoConfigurado = reparoConectavel;
 
 export class ErroReparo extends Error {}
 
+export const urlReparo = url;
+export const chaveReparo = chave;
+export async function restReparo(caminho) { return rest(caminho); }
+
 async function rest(caminho) {
   const k = chave();
   const cab = { apikey: k, accept: 'application/json' };

@@ -5,7 +5,7 @@
 // tom e ritmo de cada um quando a voz é a do navegador
 const TOM = {
   chefe: [1.15, 1.05], gerente_crescimento: [1.25, 1.08], gerente_loja: [0.85, 1.0], head_vendas: [0.9, 1.02], israel: [0.75, 0.95],
-  analista: [0.95, 1.0], copywriter: [1.2, 1.05], roteirista: [1.0, 1.1], revisor: [1.1, 0.95], especialista: [1.05, 1.1],
+  analista: [0.95, 1.0], copywriter: [1.2, 1.05], roteirista: [1.0, 1.1], revisor: [1.1, 0.95], especialista: [1.05, 1.1], estrategista_saas: [1.15, 1.0],
   atendimento: [1.25, 1.05], tecnico: [0.9, 1.0], sdr: [1.05, 1.1], closer: [0.85, 1.0], sucesso: [1.2, 1.0], produto: [0.95, 1.0],
 };
 

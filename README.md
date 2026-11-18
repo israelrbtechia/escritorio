@@ -39,6 +39,7 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 | `AGENCIA_MODELO` | opcional: padrão `claude-opus-5-5` |
 | `AGENCIA_MODELO_EQUIPE` | opcional: modelo só dos funcionários (os chefes continuam no `AGENCIA_MODELO`). Ex.: `claude-sonnet-5-5`, que custa metade |
 | `AGENCIA_ESFORCO_CHEFES` / `AGENCIA_ESFORCO_EQUIPE` | opcional: `low`, `medium`, `high`… Padrão: chefes `medium`, equipe `low` |
+| `REPARO_SITE_URL` | opcional: endereço do site do ReparoSimples, para a revisão dos servidores conferir se está no ar |
 | `ROTINAS_ATIVAS` | opcional: liga as rotinas automáticas. Ex.: `trafego,loja` ou `todas`. Sem ela, ficam em standby |
 | `ELEVENLABS_API_KEY` | opcional: vozes reais para cada funcionário e transcrição das perguntas por áudio |
 | `ELEVENLABS_VOZES` | opcional: troca vozes, em JSON (ex.: `{"chefe":"id-da-voz"}`) |
@@ -93,6 +94,19 @@ Variáveis na Vercel (projeto do prédio):
 | `REPARO_LOJA_ID` | opcional: o prédio acha sozinho a loja com "RB Tech" no nome. Só precisa se houver mais de uma loja com esse nome |
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
+
+## ReparoSimples como SaaS (3º andar)
+O ReparoSimples é o SaaS principal do prédio. A aba **SaaS** e o painel do 3º andar mostram, calculados como no painel admin:
+- lojas ativas, em teste, inadimplentes, expiradas e bloqueadas;
+- pagantes por plano e por plataforma (Kiwify e Hotmart);
+- receita mensal recorrente (em reais e, da Hotmart, na moeda dela);
+- lojas novas no mês e as últimas cadastradas.
+
+Usa as mesmas variáveis do laboratório (`REPARO_SUPABASE_URL` e `REPARO_SUPABASE_SERVICE_KEY`), porque é o mesmo banco.
+
+- **Loja nova**: com o app aberto, ele confere a cada 5 minutos. Quando entra uma loja, o sino toca no 3º andar, aparece um aviso no chat de Vendas e SaaS e, se você ativar, chega uma notificação do navegador. Com o app fechado, o aviso aparece quando você abrir.
+- **Revisão dos servidores**: 2 vezes por dia (8h41 e 20h41, cron da Vercel), sem IA. Confere o banco, o login das lojas, os pagamentos travados, os avisos da plataforma e, com `REPARO_SITE_URL` (opcional, ex.: o endereço do site do ReparoSimples), o site no ar. O resultado fica na aba SaaS e acende os LEDs do servidor no 3º andar (verde, amarelo ou vermelho). Para guardar o histórico, ligue o Redis (Upstash).
+- **Equipe**: o head de vendas, o gestor de produto e o novo **Estrategista SaaS** (time da Pamella, 2º andar) leem esses números sozinhos. O estrategista pensa como vender o ReparoSimples e como alimentar o Instagram dele sem ninguém aparecer.
 
 ## Vozes e perguntas por áudio
 - Botão 🎙️ no chat: você fala, o texto aparece e o **Claude Haiku** corrige nomes e pontuação antes de enviar. O Claude não ouve áudio: quem transcreve é o ElevenLabs (com a chave) ou o próprio navegador (Chrome).

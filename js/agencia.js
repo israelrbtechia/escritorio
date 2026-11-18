@@ -15,6 +15,7 @@ export const PESSOAS = {
   revisor:      { nome: 'Revisor', andar: 1, tarefa: '🔎 revisando tudo' },
   gerente_crescimento: { nome: 'Helena', cargo: 'gerente de crescimento', andar: 1, gestor: true },
   especialista: { nome: 'Especialista de crescimento', andar: 1, tarefa: '📱 estudando o Instagram' },
+  estrategista_saas: { nome: 'Estrategista SaaS', andar: 1, tarefa: '🧩 planejando como vender o ReparoSimples' },
   // 3º andar · Vendas e SaaS
   head_vendas:  { nome: 'Head de vendas', andar: 2, gestor: true },
   sdr:          { nome: 'Prospecção (SDR)', andar: 2, tarefa: '🎯 achando clientes' },
@@ -33,9 +34,9 @@ export const GESTORES = {
     sugestoes: ['Monta o roteiro de atendimento do balcão e do WhatsApp', 'Checklist para avaliar iPhone usado na troca', 'Mensagens para clientes do conserto'],
   },
   chefe: {
-    titulo: '2º · Pamella · Tráfego', equipe: ['analista', 'copywriter', 'roteirista', 'revisor'], rotina: 'trafego', placar: true,
+    titulo: '2º · Pamella · Tráfego', equipe: ['analista', 'copywriter', 'roteirista', 'revisor', 'estrategista_saas'], rotina: 'trafego', placar: true,
     boasVindas: 'Oi, Israel! Aqui é Pamella, do tráfego no 2º andar. Me diga o que você quer vender ou o que te preocupa nos anúncios, e eu coloco a equipe para trabalhar.',
-    sugestoes: ['Como estão os anúncios? O que você faria?', 'Cria 3 anúncios para o iPhone 15 com chamada pro WhatsApp', 'Preciso de um roteiro de reels mostrando a loja'],
+    sugestoes: ['Como estão os anúncios? O que você faria?', 'Cria 3 anúncios para o iPhone 15 com chamada pro WhatsApp', 'Monta a estratégia para vender o ReparoSimples e um mês de posts sem aparecer'],
   },
   gerente_crescimento: {
     titulo: '2º · Helena · Crescimento', equipe: ['especialista'], rotina: 'crescimento',
@@ -44,8 +45,8 @@ export const GESTORES = {
   },
   head_vendas: {
     titulo: '3º · Vendas e SaaS', equipe: ['sdr', 'closer', 'sucesso', 'produto'], rotina: 'vendas',
-    boasVindas: 'Oi, Israel! Aqui é o head de vendas e produtos, no 3º andar. Aqui vendemos e cuidamos dos sistemas SaaS da RBTech: o Sorteia Aí e a própria Agência.',
-    sugestoes: ['Monta o plano para vender o Sorteia Aí para lojas', 'Qual a melhoria mais importante do Sorteia Aí?', 'Como reduzir o cancelamento dos clientes?'],
+    boasVindas: 'Oi, Israel! Aqui é o head de vendas e produtos, no 3º andar. Cuidamos dos sistemas SaaS da RBTech, com o ReparoSimples na frente (também o Sorteia Aí e a própria Agência). Os números do ReparoSimples estão na aba SaaS.',
+    sugestoes: ['Como está o ReparoSimples? Lojas, pagantes e receita', 'Monta o plano para converter as lojas em teste em pagantes', 'Qual a melhoria mais importante do ReparoSimples?'],
   },
 };
 
@@ -365,6 +366,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   function metaDeEnsaio(nome) {
     const base = { ensaio: true, aviso: 'Números de ENSAIO, não são reais.' };
     if (nome === 'ler_metricas_anuncios') return { ...base, linhas: [{ investimento: 180, conversasWhatsApp: 23, custoPorConversa: 7.83, ctr: 1.9, cpm: 21.4, frequencia: 1.6 }] };
+    if (nome === 'ler_saas_reparo') return { ...base, lojas: 64, ativas: 31, emTeste: 18, pagantes: 27, receitaMensal: { reais: 1880 }, novasNoMes: 9, recentes: [{ nome: 'Assistência Exemplo', plano: 'Pro', situacao: 'teste' }] };
     if (nome === 'ler_posts_instagram') return { ...base, posts: [{ tipo: 'reels', curtidas: 210, comentarios: 18, numeros: { reach: 5400, shares: 31, saved: 22 } }] };
     return { ...base, perfil: { usuario: 'rbtech', seguidores: 12000 }, numerosDoPeriodo: { reach: 31000, accounts_engaged: 1400 } };
   }

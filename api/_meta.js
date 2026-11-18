@@ -211,6 +211,7 @@ export async function lerStatus() {
 /** Executa a ferramenta pedida por um funcionário. */
 export async function executarFerramentaMeta(nome, entrada = {}) {
   if (nome === 'ler_ordens_de_servico') return (await import('./_reparo.js')).ferramentaOrdens();
+  if (nome === 'ler_saas_reparo') return (await import('./_saas.js')).ferramentaSaas();
   if (nome === 'ler_metricas_anuncios') return lerAnuncios(entrada);
   if (nome === 'ler_metricas_instagram') return lerInstagram(entrada);
   if (nome === 'ler_posts_instagram') return lerPosts(entrada);
