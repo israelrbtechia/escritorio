@@ -207,15 +207,24 @@ export function montarLoja(g, telas) {
     if (i % 2 === 1) caixa(0.45, 0.5, 0.45, AMARELO, x - 0.6, 0.25, 7.2, g); // mesinha entre as cadeiras
   }
 
-  // parede esquerda: grama sintética inteira, quadros e a mesa de negociação
-  const grama = new THREE.Mesh(new THREE.PlaneGeometry(15.8, PAREDE_H), new THREE.MeshLambertMaterial({ map: texturaGrama() }));
-  grama.position.set(-11.98, PAREDE_H / 2, -0.1);
+  // parede esquerda: grama sintética (até o laboratório), quadros, TV aérea e a mesa de negociação
+  const grama = new THREE.Mesh(new THREE.PlaneGeometry(12.05, PAREDE_H), new THREE.MeshLambertMaterial({ map: texturaGrama() }));
+  grama.position.set(-11.98, PAREDE_H / 2, 1.78);
   grama.rotation.y = PI / 2;
   g.add(grama);
-  quadro(g, -6.0, 'logo');
-  quadro(g, -2.6, 'iphone');
-  quadro(g, 1.0, 'troca');
-  quadro(g, 4.6, 'reparo');
+  quadro(g, -3.2, 'iphone');
+  quadro(g, 4.4, 'troca');
+  quadro(g, 6.6, 'logo');
+  // TV aérea no suporte, inclinada para baixo, passando propagandas
+  caixa(0.5, 0.12, 0.12, 0x222222, -11.7, 3.2, 0.9, g);
+  caixa(0.12, 0.12, 0.12, 0x222222, -11.45, 3.1, 0.9, g);
+  const tv = grupo(-11.3, 2.85, 0.9, g);
+  tv.rotation.order = 'YXZ'; // vira para a loja e inclina a tela para baixo
+  tv.rotation.y = PI / 2;
+  tv.rotation.x = 0.22;
+  caixa(2.5, 1.45, 0.1, 0x0a0a0a, 0, 0, -0.06, tv);
+  telas.tvLoja = telaCanvas(640, 360);
+  placa(2.4, 1.35, telas.tvLoja.t, 0, 0, 0.0, 0, tv);
   mesa(g, -9.4, 2.6, 1.6, 1.2, 0x111111, 0x111111);
   caixa(1.6, 0.03, 1.2, AMARELO, -9.4, 0.86, 2.6, g);
   cadeira(g, -10.9, 2.6, PI / 2, true);   // Rael
@@ -224,50 +233,103 @@ export function montarLoja(g, telas) {
   caixa(0.14, 0.02, 0.28, 0x1c1c1c, -9.0, 0.86, 2.45, g); // iPhone em avaliação
   planta(g, -11.3, 7.2, 1.1);
 
-  // ao fundo: balcão de atendimento no centro e vitrines do mesmo tamanho dos dois lados
-  caixa(3.6, 1.0, 0.9, PRETO, 0, 0.5, -3.6, g);
-  caixa(3.7, 0.06, 1.0, 0xf2f2f2, 0, 1.03, -3.6, g);
-  caixa(3.6, 0.12, 0.02, AMARELO, 0, 0.75, -3.14, g);
-  telas.atendimento = monitor(g, 0.9, -3.75, 0);
-  caixa(0.3, 0.2, 0.2, 0x222222, -0.9, 1.15, -3.7, g); // maquininha
-  vitrine(g, -3.6, -3.6, 3.6);
-  vitrine(g, 3.6, -3.6, 3.6);
+  // balcão de atendimento no centro e vitrines do mesmo tamanho dos dois lados
+  caixa(3.6, 1.0, 0.9, PRETO, 0, 0.5, -2.4, g);
+  caixa(3.7, 0.06, 1.0, 0xf2f2f2, 0, 1.03, -2.4, g);
+  caixa(3.6, 0.12, 0.02, AMARELO, 0, 0.75, -1.94, g);
+  telas.atendimento = monitor(g, 0.9, -2.55, 0);
+  caixa(0.3, 0.2, 0.2, 0x222222, -0.9, 1.15, -2.5, g); // maquininha
+  vitrine(g, -3.6, -2.4, 3.6);
+  vitrine(g, 3.6, -2.4, 3.6);
 
-  // painel atrás do balcão: capinhas, acessórios e estoque (é a divisória do setor de reparo)
-  caixa(12.8, 2.8, 0.25, 0x1a1a1a, 0, 1.4, -5.45, g);
-  caixa(12.8, 0.1, 0.3, AMARELO, 0, 2.85, -5.45, g);
+  // painel atrás do balcão: capinhas, acessórios e estoque (divisória do laboratório)
+  caixa(12.8, 2.8, 0.25, 0x1a1a1a, 0, 1.4, -4.25, g);
+  caixa(12.8, 0.1, 0.3, AMARELO, 0, 2.85, -4.25, g);
   const rnd = aleatorio(31);
   const coresCapa = [0xff5a5a, 0x3b6fd6, 0xffd60a, 0x2fd17a, 0x9b6bd1, 0xff8a3d, 0xffffff, 0xe1306c];
   for (let fila = 0; fila < 4; fila++) {
     for (let i = 0; i < 20; i++) {
       const x = -6.0 + i * 0.62;
-      const y = 0.6 + fila * 0.42;
       if (Math.abs(x) < 1.7) continue; // atrás do atendente: prateleiras do estoque de aparelhos
-      caixa(0.22, 0.3, 0.04, coresCapa[Math.floor(rnd() * coresCapa.length)], x, y, -5.3, g);
+      caixa(0.22, 0.3, 0.04, coresCapa[Math.floor(rnd() * coresCapa.length)], x, 0.6 + fila * 0.42, -4.1, g);
     }
   }
   for (const y of [0.75, 1.3, 1.85]) {
-    caixa(3.0, 0.05, 0.35, 0x8b5e3c, 0, y, -5.18, g);
-    for (let i = 0; i < 8; i++) caixa(0.28, 0.32, 0.18, i % 3 ? 0xffffff : 0x1c1c1c, -1.2 + i * 0.34, y + 0.19, -5.18, g); // caixas de aparelho
+    caixa(3.0, 0.05, 0.35, 0x8b5e3c, 0, y, -3.98, g);
+    for (let i = 0; i < 8; i++) caixa(0.28, 0.32, 0.18, i % 3 ? 0xffffff : 0x1c1c1c, -1.2 + i * 0.34, y + 0.19, -3.98, g);
   }
   const letreiroPainel = letreiro({ w: 1024, h: 96, titulo: 'CAPINHAS · ACESSÓRIOS · APARELHOS', tamanho: 50 });
-  placa(6.4, 0.6, letreiroPainel.t, 0, 2.45, -5.31, 0, g);
+  placa(6.4, 0.6, letreiroPainel.t, 0, 2.45, -4.11, 0, g);
 
-  // setor de reparo (atrás do painel): bancada e o técnico
-  paredeVidro(g, 'z', -6.4, -8, -5.45);
-  paredeVidro(g, 'z', 6.4, -8, -5.45, [-7.2, -5.9]);
-  caixa(4.4, 0.95, 0.9, 0x5a6270, 0, 0.475, -7.4, g);
-  caixa(4.5, 0.05, 1.0, 0xf2f2f2, 0, 0.97, -7.4, g);
-  cadeira(g, 0, -6.6, PI);
-  telas.tecnico = monitor(g, -1.3, -7.5, 0);
-  caixa(0.3, 0.45, 0.3, 0x333333, 0.7, 1.22, -7.5, g);   // microscópio
-  caixa(0.12, 0.25, 0.12, 0x333333, 0.7, 1.55, -7.35, g);
-  caixa(0.06, 0.6, 0.06, 0x222222, 1.6, 1.3, -7.6, g);   // luminária
-  caixa(0.35, 0.06, 0.2, 0xfff3c4, 1.6, 1.6, -7.45, g, { emissive: 0xfff0b0, emissiveIntensity: 0.9 });
-  for (let i = 0; i < 4; i++) caixa(0.14, 0.02, 0.28, [0x1c1c1c, 0xf2f2f2][i % 2], -0.4 + i * 0.25, 1.0, -7.2, g); // aparelhos abertos
-  caixa(0.9, 1.6, 0.5, 0xc0392b, -5.6, 0.8, -7.6, g); // armário de peças
-  const placaReparo = letreiro({ w: 512, h: 96, titulo: 'REPARO', tamanho: 60 });
-  placa(1.6, 0.3, placaReparo.t, 6.45, 2.35, -6.55, PI / 2, g);
+  // laboratório de reparos: ocupa todo o fundo (x -12 a 6,4), com bancada em L
+  paredeVidro(g, 'x', -4.25, -11.9, -6.4, null, 2.8);  // vitrine do laboratório (o cliente vê o técnico)
+  const placaLab = letreiro({ w: 1024, h: 128, titulo: 'LABORATÓRIO DE REPAROS', tamanho: 60 });
+  placa(5.2, 0.62, placaLab.t, -9.15, 2.35, -4.21, 0, g);
+  paredeVidro(g, 'z', 6.4, -8, -4.25, [-6.0, -4.8]);
+  tapete(g, 18.2, 3.7, 0x2b3445, -2.75, -6.12);
+  // parede de ferramentas (lado esquerdo, por dentro)
+  caixa(0.05, 2.2, 3.6, 0xf2f2f2, -11.95, 1.9, -6.1, g);
+  const ferramentas = [0xc0392b, 0x3b6fd6, 0xffd60a, 0x2b2b2b, 0x2fd17a];
+  for (let i = 0; i < 14; i++) caixa(0.04, 0.32 + (i % 3) * 0.08, 0.06, ferramentas[i % 5], -11.9, 2.3 - (i % 2) * 0.55, -7.6 + i * 0.22, g);
+  // bancada em L: perna do fundo (paralela à parede) e perna da esquerda
+  const bancada = (w, d, x, z) => {
+    caixa(w, 0.9, d, 0x5a6270, x, 0.45, z, g);
+    caixa(w + 0.05, 0.05, d + 0.05, 0xf2f2f2, x, 0.92, z, g);
+  };
+  bancada(10.4, 0.9, -6.3, -7.5);   // fundo: x -11.5 a -1.1
+  bancada(0.9, 2.75, -11.45, -5.68); // esquerda: z -7.05 a -4.3
+  // mantas azuis antiestáticas nos postos de trabalho
+  for (const x of [-9.4, -6.3, -3.2]) caixa(1.6, 0.012, 0.7, 0x2e6fd8, x, 0.952, -7.45, g);
+  caixa(0.7, 0.012, 1.4, 0x2e6fd8, -11.45, 0.952, -5.6, g);
+  // posto principal: microscópio, luminária com lupa, estação de ar quente, fonte e tela de diagnóstico
+  const microscopio = (x, z) => {
+    caixa(0.32, 0.06, 0.38, 0x2b2b2b, x, 0.98, z, g);
+    caixa(0.07, 0.55, 0.07, 0x2b2b2b, x, 1.25, z - 0.12, g);
+    caixa(0.18, 0.22, 0.18, 0xe8e8e8, x, 1.45, z, g).rotation.x = 0.3;
+    caixa(0.06, 0.16, 0.06, 0x111111, x, 1.62, z + 0.04, g);
+  };
+  microscopio(-6.3, -7.55);
+  microscopio(-11.45, -5.2);
+  caixa(0.05, 0.7, 0.05, 0x222222, -5.3, 1.3, -7.8, g);
+  caixa(0.45, 0.06, 0.45, 0xfff3c4, -5.3, 1.65, -7.55, g, { emissive: 0xfff0b0, emissiveIntensity: 0.9 });
+  caixa(0.4, 0.22, 0.3, 0xc0392b, -8.0, 1.06, -7.7, g);    // estação de ar quente
+  caixa(0.05, 0.05, 0.3, 0x222222, -7.7, 1.1, -7.45, g);
+  caixa(0.35, 0.18, 0.25, 0x2b2b2b, -4.2, 1.04, -7.75, g); // fonte de bancada
+  caixa(0.06, 0.04, 0.02, 0x2fd17a, -4.2, 1.06, -7.62, g, { emissive: 0x2fd17a, emissiveIntensity: 0.9 });
+  telas.tecnico = monitor(g, -7.3, -7.7, 0);
+  cadeira(g, -6.3, -6.6, PI);
+  cadeira(g, -10.5, -5.4, -PI / 2);
+  caixa(0.9, 1.7, 0.5, 0xc0392b, -0.55, 0.85, -7.7, g); // armário de peças
+  for (let i = 0; i < 4; i++) caixa(0.8, 0.02, 0.45, 0x8a1e14, -0.55, 0.35 + i * 0.4, -7.44, g);
+
+  // prateleiras de aparelhos com a tag da OS em cima: aguardando reparo e pronto para retirada
+  const prateleira = (x, titulo, fundo, cor) => {
+    caixa(2.7, 1.9, 0.45, 0x2b2b2b, x, 0.95, -7.75, g);
+    for (const y of [0.55, 1.25]) caixa(2.6, 0.04, 0.42, 0xe8e8e8, x, y, -7.62, g);
+    const t = letreiro({ w: 768, h: 128, fundo, titulo, cor, tamanho: 62 });
+    placa(2.6, 0.43, t.t, x, 2.15, -7.5, 0, g);
+  };
+  prateleira(1.5, 'AGUARDANDO REPARO', '#ff9f43', '#0f0f0f');
+  prateleira(4.6, 'PRONTO · RETIRADA', '#2fd17a', '#0f0f0f');
+  telas.vagas = { aguardando: [], retirada: [], bancada: [] };
+  // vagas sobre a bancada (aparelhos em reparo), com a tag da OS em pé
+  for (const x of [-7.2, -6.3, -5.4]) {
+    const aparelho = caixa(0.16, 0.02, 0.3, 0x1c1c1c, x, 0.97, -7.35, g);
+    const tag = telaCanvas(128, 64);
+    const placaTag = placa(0.5, 0.25, tag.t, x, 1.32, -7.6, 0, g);
+    telas.vagas.bancada.push({ aparelho, tag, placaTag });
+  }
+  for (const [lista, x0] of [['aguardando', 1.5], ['retirada', 4.6]]) {
+    for (let i = 0; i < 8; i++) {
+      const x = x0 - 0.97 + (i % 4) * 0.65;
+      const y = i < 4 ? 0.57 : 1.27;
+      const aparelho = caixa(0.18, 0.34, 0.04, 0x1c1c1c, x, y + 0.19, -7.55, g);
+      const tag = telaCanvas(128, 64);
+      const placaTag = placa(0.5, 0.25, tag.t, x, y + 0.53, -7.5, 0, g);
+      telas.vagas[lista].push({ aparelho, tag, placaTag });
+    }
+  }
+  planta(g, 11.3, -7.3, 1.0);
 
   // parede direita (de vidro): neon RB TECH, ponto de selfie e estação para carregar o celular
   paredeVidro(g, 'z', 11.9, -8, -2.4, null, 3.2);
@@ -305,7 +367,6 @@ export function montarLoja(g, telas) {
   caixa(0.62, 0.25, 0.62, AMARELO, 11.0, 1.42, 1.4, g);
   for (let i = 0; i < 3; i++) caixa(0.05, 0.25, 0.12, 0x2fd17a, 10.68, 0.7 + i * 0.3, 1.4, g, { emissive: 0x2fd17a, emissiveIntensity: 0.6 });
   planta(g, 11.3, 7.2, 1.1);
-  planta(g, 11.3, -7.3, 1.0);
 }
 
 // ======================================================================
@@ -552,9 +613,9 @@ export const PESSOAS_3D = {
   gerente_loja: { andar: 0, ap: ap(0xd9a27a, 0x1a1a1a, 'curto', 0x1c1c1c, 0x1c1c1c, 0x0c0c0c, { frente: 0xffffff, gravata: AMARELO, barba: true }),
     posto: { assento: [-10.9, 2.6], olhar: PI / 2, rota: [[-10.9, 2.6], [-10.9, 0]] } },
   atendimento: { andar: 0, ap: ap(0xf0c8a0, 0x6b3a1f, 'longo', AMARELO, 0x1c1c1c, 0xffffff),
-    posto: { assento: [0, -4.6], olhar: 0, empe: true, rota: [[0, -4.6], [6.0, -4.6], [6.0, 0]] }, visita: [[-9.4, 0], [-9.4, 1.4]], olharVisita: 0 },
+    posto: { assento: [0, -3.4], olhar: 0, empe: true, rota: [[0, -3.4], [6.0, -3.4], [6.0, 0]] }, visita: [[-9.4, 0], [-9.4, 1.4]], olharVisita: 0 },
   tecnico: { andar: 0, ap: ap(0xc68a5e, 0x2b1d14, 'topete', 0x2b2b2b, 0x2d3446, 0x222222, { oculos: true, frente: 0x5a6270 }),
-    posto: { assento: [0, -6.6], olhar: PI, rota: [[0, -6.6], [5.6, -6.6], [7.2, -6.6], [7.2, 0]] }, visita: [[-8.6, 0], [-8.6, 1.4]], olharVisita: 0 },
+    posto: { assento: [-6.3, -6.6], olhar: PI, rota: [[-6.3, -6.6], [-6.3, -5.4], [7.2, -5.4], [7.2, 0]] }, visita: [[-8.6, 0], [-8.6, 1.4]], olharVisita: 0 },
   // 2º andar
   chefe: { andar: 1, ap: ap(0xc68a5e, 0x2b1d14, 'longo', 0x1c1c1c, 0x1c1c1c, 0x0c0c0c, { frente: 0xf4f4f4, gravata: AMARELO }),
     posto: { assento: [8, -6.2], olhar: 0, rota: [[8, -6.2], [9.9, -6.2], [9.9, -3.1], [9.2, -3.1], [9.2, 0]] } },
@@ -608,7 +669,7 @@ export const PAUSAS = {
 };
 /** Lugares por onde Peter e Bibi passeiam. */
 export const LUGARES_CAES = {
-  0: [[-1, 5.6], [3, 5.6], [0, -1.8], [-5.5, 5.2], [6.5, 4.0], [9.6, 3.2], [-6.5, 0.8]],
+  0: [[-1, 5.6], [3, 5.6], [0, -0.9], [-5.5, 5.2], [6.5, 4.0], [9.6, 3.2], [-6.5, 0.8]],
   1: [[-3.2, -1.6], [0.5, 1.6], [-6, 6.8], [10.8, 1.5], [2.5, -1.3], [-2.0, 5.6], [10.0, 6.6]],
   2: [[-1, -2.5], [4, 6.4], [10.5, -3.0], [-10.7, 6.0], [8.6, 5.6]],
   3: [[-8, 6.0], [8.6, 2.8], [-1, 6.0], [-6.2, 3.0], [-5, -2.0], [9.4, 1.0]],

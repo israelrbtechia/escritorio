@@ -73,6 +73,22 @@ Para publicar de verdade:
 2. No token da Meta, inclua também `instagram_content_publish` (além de `instagram_basic` e `instagram_manage_insights`).
 3. Redeploy.
 
+## ReparoSimples (assistência da loja RB Tech)
+O laboratório do térreo mostra as OS reais da loja RB Tech no ReparoSimples (repositório REPARORBTECH):
+- OS nova → o atendente avisa e o técnico busca o aparelho no balcão; ele entra na prateleira **AGUARDANDO REPARO** com a tag da OS.
+- Em análise (laranja) / aguardando peça (vermelha) → prateleira de espera · em reparo (roxa) → na bancada, com o técnico trabalhando nela · pronto (verde) → **PRONTO · RETIRADA** · entregue → o atendente busca e entrega · interrompida ou na lixeira → sai.
+- Atualiza a cada 15 segundos. Só lê número da OS, aparelho, status, defeito e previsão: nenhum dado de cliente.
+- O Rael e o técnico também consultam as OS (atrasadas, prontas, na fila) pela ferramenta `ler_ordens_de_servico`.
+
+Variáveis na Vercel (projeto do prédio):
+| Variável | Valor |
+|---|---|
+| `REPARO_SUPABASE_URL` | o endereço do Supabase do ReparoSimples (o mesmo do `js/config.js` do REPARORBTECH) |
+| `REPARO_SUPABASE_SERVICE_KEY` | a chave secreta do Supabase (Project Settings → API Keys → secret / service_role). A mesma `SUPABASE_SERVICE_ROLE_KEY` do projeto REPARORBTECH na Vercel |
+| `REPARO_LOJA_ID` | o id da loja RB Tech: com as duas primeiras ligadas, a aba Ajustes do prédio mostra a lista de lojas com os ids |
+
+A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
+
 ## Vozes e perguntas por áudio
 - Botão 🎙️ no chat: você fala, o texto aparece e o **Claude Haiku** corrige nomes e pontuação antes de enviar. O Claude não ouve áudio: quem transcreve é o ElevenLabs (com a chave) ou o próprio navegador (Chrome).
 - Os chefes respondem em texto e em voz. Com `ELEVENLABS_API_KEY`, cada funcionário tem uma voz brasileira própria (lista em `api/voz.js`); sem ela, o app usa a voz do navegador com tom diferente para cada um.

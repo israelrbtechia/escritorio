@@ -16,12 +16,13 @@ export default async function handler(req, res) {
   try {
     if (consulta === 'status') return responder(res, 200, await lerStatus());
     if (consulta === 'placar') return responder(res, 200, await lerPlacar());
-    if (['ler_metricas_anuncios', 'ler_metricas_instagram', 'ler_posts_instagram'].includes(consulta)) {
+    if (['ler_metricas_anuncios', 'ler_metricas_instagram', 'ler_posts_instagram', 'ler_ordens_de_servico'].includes(consulta)) {
       return responder(res, 200, await executarFerramentaMeta(consulta, entrada));
     }
     return responder(res, 400, { erro: 'Consulta desconhecida.' });
   } catch (e) {
-    if (!(e instanceof ErroMeta)) console.error(e);
-    return responder(res, e instanceof ErroMeta ? 422 : 502, { erro: e.message || 'Não deu para ler a Meta.' });
+    const conhecido = e instanceof ErroMeta || e?.constructor?.name === 'ErroReparo';
+    if (!conhecido) console.error(e);
+    return responder(res, conhecido ? 422 : 502, { erro: e.message || 'Não deu para ler a Meta.' });
   }
 }

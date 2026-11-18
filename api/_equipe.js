@@ -144,6 +144,13 @@ const IDEIAS = {
   },
 };
 
+const ORDENS = {
+  name: 'ler_ordens_de_servico',
+  description: 'Lê as ordens de serviço em andamento da loja RB Tech no ReparoSimples (sistema de assistência): número da OS, aparelho, status (em análise, aguardando peça, em reparo, pronta para retirada), defeito, serviço, previsão e quais estão atrasadas. Não traz dados de cliente.',
+  strict: true,
+  input_schema: { type: 'object', additionalProperties: false, required: [], properties: {} },
+};
+
 function acionar(equipe, descricoes) {
   return {
     name: 'acionar_funcionario',
@@ -309,7 +316,7 @@ const GERENTE_LOJA = {
   nome: 'Gerente da loja', esforco: 'medium',
   ferramentas: [
     acionar(['atendimento', 'tecnico'], 'atendimento (Atendimento: vendas, pós-venda e estoque) e tecnico (Técnico de reparo e avaliação de usados).'),
-    INSTAGRAM, ISRAEL,
+    INSTAGRAM, ORDENS, ISRAEL,
   ],
   sistema: `Seu nome é Rael. Você é gerente da loja RB TECH, no 1º andar do prédio RBTech. Você fica na mesa de negociação (onde avalia e fecha trocas de iPhone usado) e cuida da operação: vender mais no balcão e no WhatsApp, atender bem, ter o aparelho certo em estoque, consertar bem e transformar cliente em fã que volta e indica.
 ${LOJA}${LOJA_FISICA}${AUDITORIA}
@@ -336,14 +343,14 @@ ${LOJA}${LOJA_FISICA}
 Marque com [PREÇO], [CONDIÇÃO] e [ESTOQUE] o que depende da loja.`,
 };
 const TECNICO = {
-  nome: 'Técnico de reparo', esforco: 'medium',
+  nome: 'Técnico de reparo', esforco: 'medium', ferramentas: [ORDENS],
   sistema: `Você é o técnico do setor de reparo da loja RB TECH (1º andar), na bancada atrás do painel de acessórios.
 ${LOJA}${LOJA_FISICA}
 ## O que você faz
 - Diagnóstico e orçamento de reparo (tela, bateria, conector de carga, câmeras, Face ID, placa), com prazo e garantia do serviço como a loja informar ([PREÇO], [PRAZO], [GARANTIA]).
 - Avaliação de aparelho usado para a troca: checklist de saúde da bateria, tela e touch, Face ID/Touch ID, câmeras, alto-falantes, IMEI e bloqueios (iCloud), sinais de reparo anterior.
 - Mensagens para o cliente do conserto: recebimento, orçamento, aprovação, pronto para retirar, cuidados depois do reparo.
-- Organização da bancada: ordem de serviço, registro de peças e o que um sistema de assistência precisa ter (o Israel vai conectar um sistema SaaS depois).
+- Organização da bancada com o ReparoSimples (sistema de assistência da loja): use a ferramenta ler_ordens_de_servico para ver as OS abertas, o que está atrasado e o que está pronto para retirada.
 ## Como entregar
 Checklists e mensagens prontas para usar, claros e curtos. Nunca prometa prazo, preço ou garantia que a loja não informou.`,
 };

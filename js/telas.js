@@ -230,3 +230,58 @@ export function desenharMonitor(tela, papel, modo, tempo) {
   }
   tela.t.needsUpdate = true;
 }
+
+// ---------- TV aérea da loja: propagandas passando ----------
+const PROPAGANDAS = [
+  { fundo: '#ffd60a', cor: '#0f0f0f', titulo: 'iPHONE NA RB TECH', sub: 'novos modelos chegando toda semana', icone: '📱' },
+  { fundo: '#0f0f0f', cor: '#ffd60a', titulo: 'TROQUE SEU USADO', sub: 'avaliação na hora, na mesa do Rael', icone: '⇄' },
+  { fundo: '#13294b', cor: '#ffffff', titulo: 'ASSISTÊNCIA TÉCNICA', sub: 'tela · bateria · conector · câmera', icone: '🔧' },
+  { fundo: 'insta', cor: '#ffffff', titulo: 'SIGA @RBTECH', sub: 'novidades e promoções no Instagram', icone: '📸' },
+  { fundo: '#128c4a', cor: '#ffffff', titulo: 'CHAMA NO WHATSAPP', sub: 'atendimento rápido, sem sair de casa', icone: '💬' },
+];
+export function desenharTv(tela, tempo) {
+  const g = tela.ctx;
+  const W = 640, H = 360, dur = 5;
+  const i = Math.floor(tempo / dur) % PROPAGANDAS.length;
+  const p = PROPAGANDAS[i];
+  const k = (tempo % dur) / dur;
+  if (p.fundo === 'insta') {
+    const grad = g.createLinearGradient(0, 0, W, H);
+    grad.addColorStop(0, '#833ab4'); grad.addColorStop(0.5, '#e1306c'); grad.addColorStop(1, '#fcaf45');
+    g.fillStyle = grad;
+  } else g.fillStyle = p.fundo;
+  g.fillRect(0, 0, W, H);
+  const entrada = Math.min(1, k * 4);
+  g.globalAlpha = entrada;
+  g.textAlign = 'left';
+  g.fillStyle = p.cor;
+  g.font = `400 120px ${FONTE}`;
+  g.fillText(p.icone, 470 + (1 - entrada) * 60, 190);
+  g.font = `800 50px ${FONTE}`;
+  g.fillText(p.titulo, 36 - (1 - entrada) * 40, 150);
+  g.font = `600 24px ${FONTE}`;
+  g.fillText(p.sub, 38, 200);
+  g.globalAlpha = 1;
+  g.fillStyle = p.cor === '#ffffff' ? 'rgba(255,255,255,.85)' : p.cor;
+  g.font = `800 22px ${FONTE}`;
+  g.fillText('RB TECH', 38, 320);
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(0, H - 8, W, 8);
+  g.fillStyle = p.fundo === '#ffd60a' ? '#0f0f0f' : '#ffd60a'; g.fillRect(0, H - 8, W * k, 8);
+  tela.t.needsUpdate = true;
+}
+
+// ---------- tags de OS das prateleiras do laboratório ----------
+const COR_STATUS = { analise: '#ff9f43', peca: '#ff5a5a', servico: '#c084fc', concluido: '#2fd17a' };
+export function desenharTag(tela, item, lista) {
+  const g = tela.ctx;
+  g.clearRect(0, 0, 128, 64);
+  g.fillStyle = COR_STATUS[item.status] || (lista === 'retirada' ? '#2fd17a' : lista === 'bancada' ? '#c084fc' : '#ff9f43');
+  g.fillRect(0, 0, 128, 64);
+  g.fillStyle = '#0f0f0f';
+  g.textAlign = 'center';
+  g.font = `800 26px ${FONTE}`;
+  g.fillText(`OS ${item.os}`, 64, 30);
+  g.font = `600 15px ${FONTE}`;
+  g.fillText(item.status === 'peca' ? 'aguard. peça' : String(item.modelo || '').slice(0, 14), 64, 52);
+  tela.t.needsUpdate = true;
+}

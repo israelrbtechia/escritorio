@@ -7,7 +7,7 @@ import {
   ALT, ELEVADOR, montarLoja, montarAgencia, montarVendas, montarTerraco, montarRua, montarElevador,
   PESSOAS_3D, DIANTE_DO_ISRAEL, ESPRESSO, PAUSAS, LUGARES_CAES, CAMAS, REUNIAO,
 } from './andares.js';
-import { desenharPlacar, desenharMonitor, desenharSeguidores, desenharSaas, desenharBoss } from './telas.js';
+import { desenharPlacar, desenharMonitor, desenharSeguidores, desenharSaas, desenharBoss, desenharTv, desenharTag } from './telas.js';
 
 const NOMES = {
   gerente_loja: 'Rael · Loja', atendimento: 'Atendimento', tecnico: 'Técnico',
@@ -27,8 +27,8 @@ const CHEFES = ['gerente_loja', 'chefe', 'gerente_crescimento', 'head_vendas'];
 export const CAMERAS = [
   { id: 'predio',      nome: 'CAM 00 · PRÉDIO RBTECH',     botao: 'Prédio',      andar: 0, limite: 3, pos: [34, 22, 42], alvo: [0, 6.5, 0], largura: 1.3, alvoEmPe: [0, 7, 0] },
   { id: 'loja',        nome: 'CAM 01 · LOJA RB TECH',      botao: '1º Loja',     andar: 0, limite: 0, pos: [17, 15, 19], alvo: [0, 0, -0.5], largura: 1.5, alvoEmPe: [0.7, 0, -1] },
-  { id: 'balcao',      nome: 'CAM 02 · BALCÃO',            botao: 'Balcão',      andar: 0, limite: 0, pos: [1, 4.4, 4.4], alvo: [0, 1.2, -4.2] },
-  { id: 'reparo',      nome: 'CAM 02 · REPARO',            botao: 'Reparo',      andar: 0, limite: 0, pos: [2.8, 6.4, -3.8], alvo: [0, 0.9, -7.0] },
+  { id: 'balcao',      nome: 'CAM 02 · BALCÃO',            botao: 'Balcão',      andar: 0, limite: 0, pos: [1, 4.4, 5.4], alvo: [0, 1.2, -3.0] },
+  { id: 'reparo',      nome: 'CAM 02 · REPARO',            botao: 'Reparo',      andar: 0, limite: 0, pos: [-2.75, 16.9, -0.2], alvo: [-2.75, 0.9, -6.2], largura: 1.7 },
   { id: 'geral',       nome: 'CAM 03 · AGÊNCIA',           botao: '2º Agência',  andar: 1, limite: 1, pos: [17, 15, 19], alvo: [0, 0, -0.5], largura: 1.5, alvoEmPe: [0.7, 0, -1] },
   { id: 'chefe',       nome: 'CAM 04 · SALA DO TRÁFEGO',   botao: 'Tráfego',     andar: 1, limite: 1, pos: [7.4, 4.4, 2.4], alvo: [8, 1.3, -5.6] },
   { id: 'crescimento', nome: 'CAM 05 · SALA DO CRESCIMENTO', botao: 'Crescimento', andar: 1, limite: 1, pos: [-7.6, 4.4, 2.4], alvo: [-8.2, 1.3, -5.6] },
@@ -519,12 +519,12 @@ export function criarEscritorio(container, camada) {
     }
     const lado = Math.random() < 0.5 ? -1 : 1;
     const vx = lado * (3.6 + (Math.random() - 0.5) * 2.4);
-    await c.caminhar([[vx, -2.5]]);
+    await c.caminhar([[vx, -1.3]]);
     c.rotAlvo = PI;
     c.falar(sortear(['😍 olha esse!', '📱 que cor linda', '🤔 qual eu levo?', '🎧 tem fone também?']), 2400);
     await esperar(2800);
     const bx = dx * 1.4;
-    await c.caminhar([[bx, -2.55]]);
+    await c.caminhar([[bx, -1.35]]);
     c.rotAlvo = PI;
     const r = Math.random();
     if (r < 0.45) { // compra
@@ -555,21 +555,18 @@ export function criarEscritorio(container, camada) {
       c.falar(sortear(['📱 minha tela quebrou', '🔋 a bateria não segura', '🔌 não carrega mais']), 2600);
       await esperar(1300);
       if (livre(atendente)) atendente.falar('🔧 vou chamar o técnico', 2400);
-      if (livre(tecnico) && !tecnico.trabalhando && !tecnico.pendentes) {
+      if (ordens.fonte === 'saas') {
+        if (livre(atendente)) setTimeout(() => atendente.falar('📝 vou abrir a OS no sistema', 2400), 1500);
+      } else if (livre(tecnico) && !tecnico.trabalhando && !tecnico.pendentes) {
         tecnico.enfileirar(async () => {
-          const ida = [[5.6, -6.6], [7.0, -6.6], [6.2, -4.75], [1.0, -4.75]];
+          const ida = [[-6.3, -5.4], [7.0, -5.4], [6.2, -3.4], [1.0, -3.4]];
           await tecnico.caminhar(ida); tecnico.emCasa = false; tecnico.rotAlvo = 0;
-          tecnico.falar('🔧 deixa comigo!', 2400);
+          const nova = ordens.fonte === 'exemplo' ? { os: String(++ultimaOs), modelo: sortear(['iPhone 11', 'iPhone 12', 'iPhone 13', 'iPhone 14', 'iPhone 15 Pro']), status: 'analise' } : null;
+          tecnico.falar(nova ? `🔧 abri a OS ${nova.os}` : '🔧 deixa comigo!', 2600);
           await esperar(2600);
-          await tecnico.caminhar([...ida.slice(0, -1).reverse(), [0, -6.6]]);
+          await tecnico.caminhar([...ida.slice(0, -1).reverse(), [-6.3, -6.6]]);
           tecnico.sentarJa();
-          tecnico.digitando = true; tecnico.status = '🔧 consertando';
-          telaModo('tecnico', 'trabalhando');
-          await esperar(9000);
-          tecnico.digitando = false; tecnico.status = '';
-          telaModo('tecnico', 'pronto');
-          tecnico.falar('✅ aparelho pronto', 2400);
-          setTimeout(() => telaModo('tecnico', 'livre'), 6000);
+          if (nova && ordens.aguardando.length < 8) { ordens.aguardando.push(nova); desenharVagas(); }
         });
       }
       await esperar(5000);
@@ -599,6 +596,91 @@ export function criarEscritorio(container, camada) {
   const estadoTela = Object.fromEntries(MONITORES.map(k => [k, { modo: 'livre', desde: 0 }]));
   const telaModo = (papel, modo) => { if (estadoTela[papel]) estadoTela[papel] = { modo, desde: agora() }; };
   let sinos = 0, cafesDoBoss = 0, pendentesBoss = 0, reunioes = 0;
+  // ordens de serviço do laboratório: exemplo até o ReparoSimples ser ligado; depois, as OS reais da loja RB Tech
+  let ordens = {
+    fonte: 'exemplo',
+    aguardando: [{ os: '1041', modelo: 'iPhone 13', status: 'analise' }, { os: '1042', modelo: 'iPhone 11', status: 'peca' }, { os: '1043', modelo: 'iPhone 14 Pro', status: 'analise' }],
+    bancada: [],
+    retirada: [{ os: '1038', modelo: 'iPhone 12', status: 'concluido' }, { os: '1039', modelo: 'iPhone XR', status: 'concluido' }],
+  };
+  let ultimaOs = 1043;
+  const grupoDoStatus = st => ({ analise: 'aguardando', peca: 'aguardando', servico: 'bancada', concluido: 'retirada' }[st] || null);
+  function desenharVagas() {
+    for (const lista of ['aguardando', 'bancada', 'retirada']) {
+      telas.vagas[lista].forEach((vaga, i) => {
+        const item = ordens[lista][i];
+        vaga.aparelho.visible = vaga.placaTag.visible = !!item;
+        if (item) desenharTag(vaga.tag, item, lista);
+      });
+    }
+    const t = pessoas.tecnico;
+    if (t && ordens.fonte === 'saas') { // o status do técnico acompanha o que está na bancada
+      const naBancada = ordens.bancada[0];
+      t.status = naBancada ? `🔧 OS ${naBancada.os}${naBancada.modelo ? ' · ' + naBancada.modelo : ''}` : '';
+      t.digitando = !!naBancada && t.emCasa;
+      telaModo('tecnico', naBancada ? 'trabalhando' : 'livre');
+    }
+  }
+  /** Tira a OS de onde estiver e coloca na lista nova (ou some, se lista for null). */
+  function moverOs(item, lista) {
+    for (const l of ['aguardando', 'bancada', 'retirada']) ordens[l] = ordens[l].filter(x => x.os !== item.os);
+    if (lista) ordens[lista].push(item);
+    desenharVagas();
+  }
+  desenharVagas();
+  document.fonts?.ready.then(desenharVagas);
+  // caminhos do laboratório
+  const LAB = {
+    assento: [-6.3, -6.6],
+    aoBalcao: [[-6.3, -5.4], [7.0, -5.4], [6.2, -3.4], [1.0, -3.4]],
+    prateleira: x => [[-6.3, -5.4], [x, -5.4], [x, -7.0]],
+  };
+  async function tecnicoVai(pontos, olhar) { const t = pessoas.tecnico; await t.caminhar(pontos); t.emCasa = false; t.rotAlvo = olhar; }
+  async function tecnicoVolta(de) { const t = pessoas.tecnico; await t.caminhar([...de.slice(0, -1).reverse(), LAB.assento]); t.sentarJa(); }
+  /** Animação de uma mudança vinda do ReparoSimples; a vaga só muda quando o aparelho chega no lugar. */
+  function animarMudanca(ev) {
+    const t = pessoas.tecnico, a = pessoas.atendimento;
+    const { item, de, para } = ev;
+    if (!para && de === 'retirada') { // entregue ao cliente: o atendente busca na prateleira de retirada
+      a.enfileirar(async () => {
+        const ida = [[6.0, -3.4], [7.0, -5.4], [4.6, -5.4], [4.6, -7.0]];
+        await a.caminhar(ida); a.emCasa = false; a.rotAlvo = PI;
+        a.falar(`📦 pegando a OS ${item.os}`, 2000);
+        await esperar(1500);
+        moverOs(item, null);
+        await a.caminhar([...ida.slice(0, -1).reverse(), a.posto.assento]); a.sentarJa();
+        a.falar(`🛍️ OS ${item.os} entregue!`, 2600);
+      });
+      return;
+    }
+    if (!para) { moverOs(item, null); return; } // interrompida ou apagada
+    t.enfileirar(async () => {
+      if (!de) { // OS nova: o técnico busca o aparelho no balcão
+        a.falar(`📝 OS ${item.os} aberta`, 2400);
+        await tecnicoVai(LAB.aoBalcao, 0);
+        t.falar(`🔧 recebendo OS ${item.os}`, 2200);
+        await esperar(2200);
+        await tecnicoVolta(LAB.aoBalcao);
+      } else if (de === 'aguardando') {
+        await tecnicoVai(LAB.prateleira(1.5), PI);
+        t.falar(`📱 pegando a OS ${item.os}`, 2000);
+        await esperar(1300);
+        await tecnicoVolta(LAB.prateleira(1.5));
+      } else if (de === 'retirada') {
+        await tecnicoVai(LAB.prateleira(4.6), PI);
+        await esperar(1000);
+        await tecnicoVolta(LAB.prateleira(4.6));
+      }
+      if (para === 'bancada') { moverOs(item, 'bancada'); t.falar(`🔧 começando a OS ${item.os}`, 2400); return; }
+      const x = para === 'retirada' ? 4.6 : 1.5;
+      await tecnicoVai(LAB.prateleira(x), PI);
+      moverOs(item, para);
+      t.falar(para === 'retirada' ? `✅ OS ${item.os} pronta pra retirada` : item.status === 'peca' ? `📦 OS ${item.os} aguardando peça` : `📱 OS ${item.os} na fila`, 2600);
+      await esperar(1800);
+      await tecnicoVolta(LAB.prateleira(x));
+      desenharVagas();
+    });
+  }
 
   // ---------- câmeras ----------
   let camAtual = CAMERAS[0];
@@ -752,10 +834,36 @@ export function criarEscritorio(container, camada) {
     }
     if (p.id === 'atendimento' && Math.random() < 0.5) { // busca no painel atrás do balcão
       const [x, z] = p.posto.assento;
-      await p.caminhar([[x + (Math.random() - 0.5) * 3, -5.0]]); p.emCasa = false; p.rotAlvo = PI;
+      await p.caminhar([[x + (Math.random() - 0.5) * 3, -3.85]]); p.emCasa = false; p.rotAlvo = PI;
       p.falar(sortear(['📦 pegando uma capinha', '📦 buscando o aparelho no estoque', '🎧 separando um fone']), 2200);
       await esperar(2400);
       await p.caminhar([[x, z]]); p.sentarJa();
+      return;
+    }
+    if (p.id === 'tecnico' && ordens.fonte === 'exemplo' && ordens.aguardando.length && Math.random() < 0.6) { // pega o próximo da fila, conserta e leva para a retirada
+      const item = ordens.aguardando[0];
+      const ir = async x => { await p.caminhar([[-6.3, -5.4], [x, -5.4], [x, -7.0]]); p.emCasa = false; p.rotAlvo = PI; };
+      const voltar = async x => { await p.caminhar([[x, -5.4], [-6.3, -5.4], [-6.3, -6.6]]); p.sentarJa(); };
+      await ir(1.5);
+      p.falar(`📱 pegando a OS ${item.os}`, 2200);
+      await esperar(1500);
+      ordens.aguardando = ordens.aguardando.filter(x => x !== item);
+      desenharVagas();
+      await voltar(1.5);
+      p.digitando = true; p.status = `🔧 OS ${item.os} · ${item.modelo || 'reparo'}`;
+      telaModo('tecnico', 'trabalhando');
+      await esperar(10000 + Math.random() * 6000);
+      p.digitando = false; p.status = '';
+      telaModo('tecnico', 'pronto');
+      await ir(4.6);
+      item.status = 'concluido';
+      ordens.retirada.push(item);
+      if (ordens.retirada.length > 8) ordens.retirada.shift();
+      desenharVagas();
+      p.falar(`✅ OS ${item.os} pronta pra retirada`, 2600);
+      await esperar(1800);
+      await voltar(4.6);
+      telaModo('tecnico', 'livre');
       return;
     }
     if (p.id === 'tecnico' && Math.random() < 0.65) { // na bancada
@@ -825,6 +933,7 @@ export function criarEscritorio(container, camada) {
     controles.update();
     if (t - ultimoDesenho > 0.25) {
       ultimoDesenho = t;
+      if (telas.tvLoja && limite >= 0) desenharTv(telas.tvLoja, t);
       for (const papel of MONITORES) {
         const tela = telas[papel];
         if (!tela) continue;
@@ -963,6 +1072,33 @@ export function criarEscritorio(container, camada) {
       pessoas.estagiario.ativo = (dados?.diasNaMeta ?? 0) >= 10;
     },
     definirSeguidores(info) { desenharSeguidores(telas.seguidores, info); },
+    /**
+     * OS em andamento da loja RB Tech, vindas do ReparoSimples: [{ os, modelo, status }].
+     * Na primeira carga as prateleiras são preenchidas direto; depois, cada OS nova ou mudança de status vira animação.
+     */
+    definirOrdensDeServico(lista) {
+      const atual = new Map(['aguardando', 'bancada', 'retirada'].flatMap(l => ordens[l].map(x => [x.os, { item: x, grupo: l }])));
+      const novo = (lista || []).map(o => ({ os: String(o.os), modelo: o.modelo || '', status: o.status }));
+      if (ordens.fonte !== 'saas') {
+        ordens = { fonte: 'saas', aguardando: [], bancada: [], retirada: [] };
+        for (const o of novo) { const g = grupoDoStatus(o.status); if (g && ordens[g].length < (g === 'bancada' ? 3 : 8)) ordens[g].push(o); }
+        desenharVagas();
+        return;
+      }
+      const eventos = [];
+      const vistos = new Set();
+      for (const o of novo) {
+        vistos.add(o.os);
+        const antes = atual.get(o.os);
+        const para = grupoDoStatus(o.status);
+        if (!antes) eventos.push({ item: o, de: null, para });
+        else if (antes.grupo !== para) eventos.push({ item: o, de: antes.grupo, para });
+        else if (antes.item.status !== o.status || antes.item.modelo !== o.modelo) { Object.assign(antes.item, o); desenharVagas(); }
+      }
+      for (const [os, antes] of atual) if (!vistos.has(os)) eventos.push({ item: antes.item, de: antes.grupo, para: null });
+      eventos.slice(0, 8).forEach(animarMudanca);
+      for (const ev of eventos.slice(8)) moverOs(ev.item, ev.para); // muitas de uma vez: aplica direto
+    },
     falando(papel, sim) {
       const p = pessoas[papel];
       if (!p) return;

@@ -277,3 +277,6 @@ body.modo-video .ent .tag { font-size: 12px; }
 .entrega-acoes { flex-wrap: wrap; align-items: center; }
 .msg.evento a { color: var(--amarelo); font-weight: 600; }
 .abas .aba-bt { padding: 12px 4px; font-size: 13px; }
+
+.linha-loja { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 4px 0; border-top: 1px solid var(--linha); }
+.linha-loja code { user-select: all; color: var(--amarelo); background: none; padding: 0; }

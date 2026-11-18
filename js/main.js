@@ -126,6 +126,32 @@ async function verificarMeta() {
 }
 $('btMeta').addEventListener('click', () => puxarPlacarDaMeta(true));
 
+// ---------- ReparoSimples: OS da loja RB Tech no laboratório do térreo ----------
+let reparoLigado = false;
+async function sincronizarOs() {
+  if (semServidor || chkEnsaio.checked) return;
+  try {
+    const r = await chamarApi('/api/os', null, 'GET');
+    if (r.configurado) {
+      reparoLigado = true;
+      cena.definirOrdensDeServico(r.ordens);
+      const n = s => r.ordens.filter(o => o.status === s).length;
+      $('statusReparo').textContent = `✅ Ligado à loja RB Tech · ${r.ordens.length} OS em andamento (${n('analise') + n('peca')} na fila, ${n('servico')} em reparo, ${n('concluido')} prontas). Atualiza a cada 15 s.`;
+    } else {
+      $('statusReparo').textContent = r.conectavel
+        ? 'Falta escolher a loja: defina REPARO_LOJA_ID na Vercel com o id da RB Tech (veja a lista abaixo).'
+        : 'Não ligado: defina REPARO_SUPABASE_URL, REPARO_SUPABASE_SERVICE_KEY e REPARO_LOJA_ID na Vercel. Enquanto isso o laboratório mostra OS de exemplo.';
+      if (r.conectavel && !$('listaLojasReparo').dataset.ok) {
+        const l = await chamarApi('/api/os?lojas=1', null, 'GET');
+        $('listaLojasReparo').dataset.ok = '1';
+        $('listaLojasReparo').innerHTML = l.lojas.map(x => `<div class="linha-loja"><b>${String(x.nome).replace(/[<>&]/g, '')}</b><code>${x.id}</code></div>`).join('');
+      }
+    }
+  } catch (e) {
+    $('statusReparo').textContent = `ReparoSimples: ${e.message}`;
+  }
+}
+
 // ---------- câmeras ----------
 const autoCam = $('autoCam');
 let timerCam = null;
@@ -718,5 +744,6 @@ trocarGestor(gestorAtual, false);
 desenharEntregas();
 desenharDiretoria();
 desenharInstagram();
-if (!semServidor) { verificarMeta(); sincronizar(true); }
+if (!semServidor) { verificarMeta(); sincronizar(true); sincronizarOs(); }
+setInterval(() => { if (!document.hidden) sincronizarOs(); }, 15000);
 setInterval(() => { if (!document.hidden) sincronizar(); }, 5 * 60 * 1000);
