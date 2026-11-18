@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Prédio RBTech</title>
+  <meta name="description" content="Prédio RBTech em 3D: loja, agência, vendas e SaaS, cada andar com uma equipe de IA, e a diretoria do Israel no terraço.">
+  <meta name="theme-color" content="#0f0f0f">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilo.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <header class="topo">
+    <div class="marca">
+      <span class="logo">RB</span>
+      <div><strong>Prédio RBTech</strong><small>loja · agência · vendas · diretoria</small></div>
+    </div>
+    <nav class="cams" id="cams" aria-label="Câmeras"></nav>
+    <div class="acoes-topo">
+      <label class="chave"><input type="checkbox" id="autoCam" checked><span>Câmera automática</span></label>
+      <button id="btVideo" class="bt-sec" type="button">▶ Modo vídeo 9:16</button>
+    </div>
+  </header>
+
+  <main class="app">
+    <section class="palco" id="palco">
+      <div class="moldura" id="moldura">
+        <div class="cena3d" id="cena3d"></div>
+        <div class="camada" id="camada"></div>
+        <div class="cam-rotulo"><span class="rec"></span><span id="camNome">CAM 01 · VISÃO GERAL</span><span id="camHora"></span></div>
+        <div class="selo-ensaio" id="seloEnsaio" hidden>MODO ENSAIO · sem IA</div>
+        <button id="btSairVideo" class="bt-sair-video" type="button" hidden>✕ sair do modo vídeo</button>
+        <div class="sem-3d" id="sem3d" hidden>
+          <p>Não deu para abrir o escritório 3D neste navegador.</p>
+          <p>Os chats com as equipes continuam funcionando ao lado.</p>
+        </div>
+      </div>
+    </section>
+
+    <aside class="painel">
+      <div class="abas" role="tablist">
+        <button role="tab" class="aba-bt ativa" data-aba="chefe" type="button">Chefes</button>
+        <button role="tab" class="aba-bt" data-aba="diretoria" type="button">Diretoria <span id="numDecisoes" class="contador">0</span></button>
+        <button role="tab" class="aba-bt" data-aba="entregas" type="button">Entregas <span id="numEntregas" class="contador">0</span></button>
+        <button role="tab" class="aba-bt" data-aba="placar" type="button">Placar</button>
+        <button role="tab" class="aba-bt" data-aba="ajustes" type="button">Ajustes</button>
+      </div>
+
+      <section class="aba ativa" id="aba-chefe">
+        <div class="gestores" id="gestores" role="group" aria-label="Com qual chefe falar"></div>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="sugestoes" id="sugestoes"></div>
+        <form class="composer" id="form">
+          <textarea id="entrada" rows="2" placeholder="Fale com o chefe… (Enter envia)" autocomplete="off"></textarea>
+          <button id="btEnviar" type="submit">Enviar</button>
+        </form>
+      </section>
+
+      <section class="aba" id="aba-diretoria">
+        <p class="dica">Sala do Israel, no terraço. Toda decisão dos chefes chega aqui. Nada é executado antes da sua auditoria, e os chefes leem o que você aprovou ou recusou antes de decidir de novo.</p>
+        <div id="listaDecisoes"></div>
+      </section>
+
+      <section class="aba" id="aba-entregas">
+        <p class="dica">Tudo que a equipe produziu, com o código que o chefe cita no relatório.</p>
+        <div id="listaEntregas"></div>
+      </section>
+
+      <section class="aba" id="aba-placar">
+        <div class="caixa-meta">
+          <div><strong>Meta (anúncios e Instagram)</strong><br><small id="statusMeta">Verificando…</small></div>
+          <button type="button" class="bt-sec" id="btMeta" disabled>Puxar do Meta</button>
+        </div>
+        <p class="dica" id="avisoPlacar">Com o Meta Ads ligado, o placar se preenche sozinho. Sem ele, digite os números do dia aqui.</p>
+        <form id="formPlacar" class="form">
+          <label>Conversas no WhatsApp hoje<input type="number" min="0" step="1" name="conversasHoje" inputmode="numeric"></label>
+          <label>Investimento hoje (R$)<input type="number" min="0" step="0.01" name="investimentoHoje" inputmode="decimal"></label>
+          <label>Meta de custo por conversa (R$)<input type="number" min="0.01" step="0.01" name="metaCusto" inputmode="decimal"></label>
+          <label>Dias seguidos na meta<input type="number" min="0" max="99" step="1" name="diasNaMeta" inputmode="numeric"></label>
+          <label class="chave"><input type="checkbox" name="reais"><span>Esses números são reais (tira o selo EXEMPLO)</span></label>
+          <div class="resumo-placar" id="resumoPlacar"></div>
+          <button type="submit">Salvar placar</button>
+        </form>
+        <p class="dica">Regra da agência: 10 dias seguidos na meta liberam um estagiário novo no escritório.</p>
+      </section>
+
+      <section class="aba" id="aba-ajustes">
+        <div class="form">
+          <label class="chave"><input type="checkbox" id="chkEnsaio"><span><strong>Modo ensaio</strong>: a equipe se mexe com respostas de mentira, sem IA e sem gastar créditos.</span></label>
+          <div class="rotinas">
+            <strong>Rotinas automáticas</strong>
+            <small>Todo dia de manhã cada andar trabalha sozinho, mesmo com o app fechado, e deixa o relatório aqui.</small>
+            <small id="statusRotinas">…</small>
+            <div class="botoes-rotina">
+              <button type="button" class="bt-sec" data-rotina="loja">Rodar loja</button>
+              <button type="button" class="bt-sec" data-rotina="trafego">Rodar tráfego</button>
+              <button type="button" class="bt-sec" data-rotina="crescimento">Rodar crescimento</button>
+              <button type="button" class="bt-sec" data-rotina="vendas">Rodar vendas</button>
+            </div>
+          </div>
+          <div class="linha-ajuste">
+            <div><strong>Gasto estimado com a IA</strong><br><span id="gasto">US$ 0,00</span></div>
+            <button type="button" class="bt-sec" id="btZerarGasto">Zerar</button>
+          </div>
+          <div class="linha-ajuste">
+            <div><strong>Nova reunião</strong><br><small>O chefe escolhido esquece a conversa atual. As entregas ficam.</small></div>
+            <button type="button" class="bt-sec" id="btNova">Começar</button>
+          </div>
+          <div class="linha-ajuste">
+            <div><strong>Código de acesso</strong><br><small>O mesmo da variável AGENCIA_CODIGO na Vercel.</small></div>
+            <button type="button" class="bt-sec" id="btCodigo">Trocar</button>
+          </div>
+          <div class="linha-ajuste">
+            <div><strong>Apagar entregas</strong><br><small>Remove tudo da aba Entregas deste navegador.</small></div>
+            <button type="button" class="bt-perigo" id="btApagar">Apagar</button>
+          </div>
+        </div>
+        <p class="dica">Dica: clique nos personagens e nos cachorros. Arraste para girar o escritório e use a rolagem para aproximar.</p>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="dlgCodigo" class="dialogo">
+    <form method="dialog">
+      <h3>Código de acesso</h3>
+      <p>Digite o código da agência (variável AGENCIA_CODIGO na Vercel).</p>
+      <input id="campoCodigo" class="oculto" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div class="botoes">
+        <button value="cancelar" class="bt-sec" type="submit">Cancelar</button>
+        <button value="ok" type="submit">Entrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

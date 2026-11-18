@@ -1,0 +1,305 @@
+// Conduz as reuniões do prédio RBTech: cada chefe de andar conversa com o dono, chama a equipe (em paralelo
+// quando dá), lê as métricas da Meta e manda as decisões para a auditoria do Israel, no terraço.
+// O navegador executa as ferramentas; assim o 3D acompanha cada passo.
+
+export const PESSOAS = {
+  // 1º andar · Loja RB TECH
+  gerente_loja: { nome: 'Gerente da loja', andar: 0, gestor: true },
+  atendimento:  { nome: 'Consultor de vendas', andar: 0, tarefa: '💬 escrevendo o atendimento' },
+  estoque:      { nome: 'Compras e estoque', andar: 0, tarefa: '📦 conferindo o estoque' },
+  posvenda:     { nome: 'Pós-venda', andar: 0, tarefa: '⭐ cuidando dos clientes' },
+  // 2º andar · Agência RBTech
+  chefe:        { nome: 'Chefe de tráfego', andar: 1, gestor: true },
+  analista:     { nome: 'Analista', andar: 1, tarefa: '📊 analisando os números' },
+  copywriter:   { nome: 'Copywriter', andar: 1, tarefa: '✍️ escrevendo os anúncios' },
+  roteirista:   { nome: 'Roteirista', andar: 1, tarefa: '🎬 escrevendo o roteiro' },
+  revisor:      { nome: 'Revisor', andar: 1, tarefa: '🔎 revisando tudo' },
+  gerente_crescimento: { nome: 'Gerente de crescimento', andar: 1, gestor: true },
+  especialista: { nome: 'Especialista de crescimento', andar: 1, tarefa: '📱 estudando o Instagram' },
+  // 3º andar · Vendas e SaaS
+  head_vendas:  { nome: 'Head de vendas', andar: 2, gestor: true },
+  sdr:          { nome: 'Prospecção (SDR)', andar: 2, tarefa: '🎯 achando clientes' },
+  closer:       { nome: 'Executivo de vendas', andar: 2, tarefa: '🤝 preparando a proposta' },
+  sucesso:      { nome: 'Sucesso do cliente', andar: 2, tarefa: '💛 cuidando da base' },
+  produto:      { nome: 'Gestor de produto', andar: 2, tarefa: '🛠️ priorizando o roadmap' },
+  // terraço
+  israel:       { nome: 'Israel · Boss', andar: 3 },
+};
+export const EQUIPE = PESSOAS; // nomes usados pela interface
+
+export const GESTORES = {
+  gerente_loja: {
+    titulo: '1º · Loja RB TECH', equipe: ['atendimento', 'estoque', 'posvenda'], rotina: 'loja',
+    boasVindas: 'Oi! Sou o gerente da loja RB TECH, aqui no 1º andar. Cuido do balcão, do WhatsApp, do estoque e do pós-venda. Me diga o que precisa.',
+    sugestoes: ['Monta o roteiro de atendimento do balcão e do WhatsApp', 'Como pedir mais avaliações no Google?', 'O que eu preciso controlar no estoque?'],
+  },
+  chefe: {
+    titulo: '2º · Tráfego', equipe: ['analista', 'copywriter', 'roteirista', 'revisor'], rotina: 'trafego', placar: true,
+    boasVindas: 'Oi! Sou o chefe de tráfego da agência, no 2º andar. Me diga o que você quer vender ou o que te preocupa nos anúncios, e eu coloco a equipe para trabalhar.',
+    sugestoes: ['Como estão os anúncios? O que você faria?', 'Cria 3 anúncios para o iPhone 15 com chamada pro WhatsApp', 'Preciso de um roteiro de reels mostrando a loja'],
+  },
+  gerente_crescimento: {
+    titulo: '2º · Crescimento', equipe: ['especialista'], rotina: 'crescimento',
+    boasVindas: 'Oi! Sou o gerente de crescimento, no 2º andar. Meu departamento só pensa em uma coisa: fazer a RBTech crescer no Instagram (seguidores, engajamento e melhorias no que já está publicado).',
+    sugestoes: ['Lê todas as métricas do Instagram e me dá um plano', 'Quais posts eu devo editar ou repostar?', 'Como ganhar mais seguidores este mês?'],
+  },
+  head_vendas: {
+    titulo: '3º · Vendas e SaaS', equipe: ['sdr', 'closer', 'sucesso', 'produto'], rotina: 'vendas',
+    boasVindas: 'Oi! Sou o head de vendas e produtos, no 3º andar. Aqui vendemos e cuidamos dos sistemas SaaS da RBTech: o Sorteia Aí e a própria Agência.',
+    sugestoes: ['Monta o plano para vender o Sorteia Aí para lojas', 'Qual a melhoria mais importante do Sorteia Aí?', 'Como reduzir o cancelamento dos clientes?'],
+  },
+};
+
+const CHAVE = { entregas: 'agencia.entregas', decisoes: 'agencia.decisoes', codigo: 'agencia.codigo', gasto: 'agencia.gasto' };
+const chaveConversa = g => (g === 'chefe' ? 'agencia.conversa' : 'agencia.conversa.' + g);
+const PRECO = { entrada: 4, saida: 20 }; // por milhão de tokens (estimativa)
+
+export function ler(chave, padrao) {
+  try { const v = localStorage.getItem(chave); return v == null ? padrao : JSON.parse(v); } catch { return padrao; }
+}
+export function gravar(chave, valor) {
+  try { localStorage.setItem(chave, JSON.stringify(valor)); } catch { /* sem armazenamento: segue na memória */ }
+}
+
+export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
+  const conversas = {};
+  for (const g of Object.keys(GESTORES)) conversas[g] = ler(chaveConversa(g), []);
+  let entregas = ler(CHAVE.entregas, []);
+  let decisoes = ler(CHAVE.decisoes, []);
+  let entregasRotina = [];
+  let decisoesServidor = [];
+  let gasto = ler(CHAVE.gasto, { usd: 0 });
+  const ocupados = new Set();
+  const emitir = (tipo, dados = {}) => aoEvento({ tipo, ...dados });
+
+  const salvar = () => {
+    for (const g of Object.keys(conversas)) gravar(chaveConversa(g), conversas[g]);
+    gravar(CHAVE.entregas, entregas);
+    gravar(CHAVE.decisoes, decisoes);
+    gravar(CHAVE.gasto, gasto);
+  };
+  function somarGasto(u) {
+    if (!u) return;
+    const entrada = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) * 1.25 + (u.cache_read_input_tokens || 0) * 0.1;
+    gasto.usd += (entrada * PRECO.entrada + (u.output_tokens || 0) * PRECO.saida) / 1e6;
+    emitir('gasto', { usd: gasto.usd });
+  }
+  const textoDe = c => (c || []).filter(b => b.type === 'text').map(b => b.text).join('\n\n').trim();
+  const proximo = (lista, prefixo) => prefixo + (lista.reduce((m, e) => Math.max(m, Number(String(e.id).replace(prefixo, '')) || 0), 0) + 1);
+  const todasEntregas = () => [...entregas, ...entregasRotina];
+  const todasDecisoes = () => {
+    const mapa = new Map(decisoesServidor.map(d => [d.id, d]));
+    for (const d of decisoes) mapa.set(d.id, { ...mapa.get(d.id), ...d });
+    return [...mapa.values()].sort((a, b) => b.quando - a.quando);
+  };
+
+  function consertarPendencias(msgs) {
+    const ultima = msgs[msgs.length - 1];
+    if (ultima?.role !== 'assistant' || !Array.isArray(ultima.content)) return;
+    const pendentes = ultima.content.filter(b => b.type === 'tool_use');
+    if (pendentes.length) {
+      msgs.push({ role: 'user', content: pendentes.map(b => ({ type: 'tool_result', tool_use_id: b.id, is_error: true, content: 'Interrompido: a página foi fechada antes desta tarefa terminar.' })) });
+    }
+  }
+
+  async function api(caminho, corpo, metodo = 'POST') {
+    const resp = await fetch(caminho, {
+      method: metodo,
+      headers: { 'content-type': 'application/json', 'x-agencia-codigo': ler(CHAVE.codigo, '') },
+      ...(metodo === 'POST' ? { body: JSON.stringify(corpo) } : {}),
+    });
+    let dados = null;
+    try { dados = await resp.json(); } catch { /* sem JSON */ }
+    if (resp.status === 401 && dados?.precisaCodigo) {
+      const novo = await pedirCodigo();
+      if (!novo) throw new Error('Sem o código de acesso a equipe não trabalha.');
+      gravar(CHAVE.codigo, novo);
+      return api(caminho, corpo, metodo);
+    }
+    if (!resp.ok || !dados) {
+      if (resp.status === 504) throw new Error('O servidor demorou demais para responder. Tente um pedido menor.');
+      if (resp.status === 404) throw new Error('Não achei o servidor da agência. Use o modo ensaio ou publique na Vercel.');
+      throw new Error(dados?.erro || `Erro ${resp.status} no servidor.`);
+    }
+    return dados;
+  }
+  const chamar = corpo => (ensaio() ? simular(corpo) : api('/api/agente', corpo));
+
+  function auditoriaTexto(gestor) {
+    const minhas = todasDecisoes().filter(d => d.gestor === gestor && d.status && d.status !== 'pendente').slice(0, 6);
+    if (!minhas.length) return '';
+    return '[AUDITORIA]\n' + minhas.map(d => `- ${d.id} "${d.titulo}": ${d.status === 'aprovada' ? 'APROVADA' : 'RECUSADA'}${d.comentario ? ` — comentário do Israel: ${d.comentario}` : ''}`).join('\n') + '\n[/AUDITORIA]\n\n';
+  }
+
+  // ---------- o laço de um funcionário (gestor ou não) ----------
+  async function rodar(papel, msgs, ctx) {
+    const limite = PESSOAS[papel].gestor ? 14 : 6;
+    for (let i = 0; i < limite; i++) {
+      if (ctx.gestor === papel) emitir('chefe', { gestor: papel, estado: i === 0 ? 'pensando' : 'relatorio' });
+      const r = await chamar({ papel, messages: msgs });
+      msgs.push({ role: 'assistant', content: r.content });
+      if (ctx.persistir) salvar();
+      somarGasto(r.usage);
+      if (r.stop_reason === 'refusal') return { texto: 'O filtro de segurança do Claude recusou este pedido. Tente explicar de outro jeito.' };
+      const falas = textoDe(r.content);
+      const chamados = (r.content || []).filter(b => b.type === 'tool_use');
+      if (!chamados.length) return { texto: falas + (r.stop_reason === 'max_tokens' ? '\n\n_(A resposta foi cortada por ser longa demais.)_' : '') };
+      if (falas && ctx.gestor === papel) emitir('chefeTexto', { gestor: papel, texto: falas, final: false });
+      if (ctx.gestor === papel) emitir('chefe', { gestor: papel, estado: 'esperando' });
+      const resultados = await Promise.all(chamados.map(b => executar(papel, b, ctx)));
+      msgs.push({ role: 'user', content: resultados });
+      if (ctx.persistir) salvar();
+    }
+    return { texto: '', limite: true };
+  }
+
+  async function executar(papel, b, ctx) {
+    const erro = msg => ({ type: 'tool_result', tool_use_id: b.id, is_error: true, content: msg });
+    const ent = b.input || {};
+    try {
+      if (b.name === 'acionar_funcionario') {
+        const func = ent.funcionario;
+        if (!GESTORES[papel]?.equipe.includes(func) || typeof ent.pedido !== 'string') return erro('Funcionário ou pedido inválido.');
+        const anexos = (Array.isArray(ent.anexos) ? ent.anexos : [])
+          .map(id => todasEntregas().find(e => e.id === String(id).trim().toUpperCase() || e.id === String(id).trim())).filter(Boolean);
+        emitir('acionar', { gestor: papel, papel: func, pedido: ent.pedido, anexos: anexos.map(a => a.id) });
+        const pedido = ent.pedido + (anexos.length
+          ? '\n\n---\n## Anexos\n' + anexos.map(a => `### ${a.id} — ${PESSOAS[a.papel]?.nome || a.papel}\n${a.texto}`).join('\n\n') : '');
+        const r = await rodar(func, [{ role: 'user', content: pedido }], { ...ctx, persistir: false });
+        if (!r.texto) throw new Error(r.limite ? 'passou do limite de rodadas' : 'a resposta veio vazia');
+        const entrega = { id: proximo(entregas, 'E'), papel: func, gestor: papel, pedido: ent.pedido, anexos: anexos.map(a => a.id), texto: r.texto, quando: Date.now(), ensaio: !!ensaio() };
+        entregas.push(entrega);
+        salvar();
+        emitir('entrega', { gestor: papel, entrega });
+        return { type: 'tool_result', tool_use_id: b.id, content: `Entrega ${entrega.id} (${PESSOAS[func].nome}):\n\n${r.texto}` };
+      }
+      if (b.name === 'enviar_para_israel') {
+        const d = {
+          id: proximo(decisoes, 'D'), gestor: papel, andar: PESSOAS[papel].andar,
+          titulo: String(ent.titulo || 'Decisão').slice(0, 140), decisao: ent.decisao || '', motivo: ent.motivo || '', riscos: ent.riscos || '',
+          urgencia: ent.urgencia || 'media', entregas: ent.entregas || [], status: 'pendente', comentario: '', quando: Date.now(), origem: 'app', ensaio: !!ensaio(),
+        };
+        decisoes.push(d);
+        salvar();
+        emitir('decisao', { gestor: papel, decisao: d });
+        if (!ensaio()) api('/api/decisoes', { acao: 'salvar', decisao: d }).catch(() => {});
+        return { type: 'tool_result', tool_use_id: b.id, content: `Decisão ${d.id} entregue na sala do Israel, no terraço. Status: pendente de auditoria. Não execute nada antes da aprovação; siga com o relatório.` };
+      }
+      if (b.name.startsWith('ler_')) {
+        emitir('meta', { papel, tipo: b.name });
+        const dados = ensaio() ? metaDeEnsaio(b.name) : await api('/api/meta', { consulta: b.name, ...ent });
+        return { type: 'tool_result', tool_use_id: b.id, content: JSON.stringify(dados).slice(0, 40000) };
+      }
+      return erro('Ferramenta desconhecida.');
+    } catch (e) {
+      if (b.name === 'acionar_funcionario') emitir('erroFuncionario', { gestor: papel, papel: ent.funcionario, erro: e.message });
+      return erro(`Não deu certo: ${e.message}`);
+    }
+  }
+
+  async function enviar(gestor, texto) {
+    if (ocupados.has(gestor) || !texto.trim() || !GESTORES[gestor]) return;
+    ocupados.add(gestor);
+    emitir('ocupado', { gestor, ocupado: true });
+    const msgs = conversas[gestor];
+    consertarPendencias(msgs);
+    const placar = GESTORES[gestor].placar ? `[PLACAR]\n${placarTexto()}\n[/PLACAR]\n\n` : '';
+    msgs.push({ role: 'user', content: placar + auditoriaTexto(gestor) + texto.trim() });
+    salvar();
+    let terminou = false;
+    try {
+      const r = await rodar(gestor, msgs, { gestor, persistir: true });
+      if (r.limite) emitir('aviso', { gestor, texto: 'A reunião passou do limite de rodadas. Peça para fechar o relatório.' });
+      else { emitir('chefeTexto', { gestor, texto: r.texto || '(sem resposta)', final: true }); terminou = true; }
+    } catch (e) {
+      emitir('aviso', { gestor, texto: e.message });
+    } finally {
+      ocupados.delete(gestor);
+      emitir('chefe', { gestor, estado: terminou ? 'pronto' : 'livre' });
+      emitir('ocupado', { gestor, ocupado: false });
+    }
+  }
+
+  // ---------- rotinas e auditoria guardadas no servidor ----------
+  async function sincronizar() {
+    if (ensaio()) return { rotinas: [], armazem: null };
+    const [rot, dec] = await Promise.allSettled([api('/api/rotina', null, 'GET'), api('/api/decisoes', null, 'GET')]);
+    const rotinas = rot.status === 'fulfilled' ? rot.value.rotinas || [] : [];
+    if (dec.status === 'fulfilled') decisoesServidor = dec.value.decisoes || [];
+    for (const r of rotinas) for (const d of r.decisoes || []) if (!decisoesServidor.some(x => x.id === d.id)) decisoesServidor.push(d);
+    entregasRotina = rotinas.flatMap(r => (r.entregas || []).map(e => ({ ...e, gestor: r.gestor, rotina: r.id })));
+    return { rotinas, armazem: rot.status === 'fulfilled' ? rot.value.armazem : null, erro: rot.status === 'rejected' ? rot.reason.message : null };
+  }
+  async function rodarRotina(equipe) {
+    return api(`/api/rotina?equipe=${encodeURIComponent(equipe)}&executar=1`, {});
+  }
+  async function auditar(id, status, comentario) {
+    const local = decisoes.find(d => d.id === id);
+    if (local) Object.assign(local, { status, comentario, auditadaEm: Date.now() });
+    else decisoes.push({ ...(decisoesServidor.find(d => d.id === id) || { id }), status, comentario, auditadaEm: Date.now() });
+    salvar();
+    if (!ensaio()) await api('/api/decisoes', { acao: 'auditar', id, status, comentario }).catch(() => {});
+  }
+
+  // ---------- modo ensaio: respostas de mentira para ver a animação sem gastar créditos ----------
+  const esperar = ms => new Promise(r => setTimeout(r, ms));
+  const PLANO_ENSAIO = {
+    chefe: [['analista'], ['copywriter', 'roteirista'], ['revisor'], ['israel']],
+    gerente_crescimento: [['meta:ler_metricas_instagram', 'especialista'], ['israel']],
+    gerente_loja: [['atendimento', 'posvenda'], ['estoque'], ['israel']],
+    head_vendas: [['sdr', 'produto'], ['closer', 'sucesso'], ['israel']],
+  };
+  async function simular(corpo) {
+    const vazio = { input_tokens: 0, output_tokens: 0 };
+    const id = () => 'ensaio_' + Math.random().toString(36).slice(2, 10);
+    const papel = corpo.papel;
+    if (!PESSOAS[papel].gestor) {
+      await esperar(4000 + Math.random() * 4000);
+      const leitura = { analista: 'ler_metricas_anuncios', especialista: 'ler_posts_instagram' }[papel];
+      if (leitura && corpo.messages.length === 1) {
+        return { stop_reason: 'tool_use', usage: vazio, content: [{ type: 'tool_use', id: id(), name: leitura, input: leitura === 'ler_posts_instagram' ? { quantidade: 12 } : { periodo: '7dias', nivel: 'conta' } }] };
+      }
+      return { stop_reason: 'end_turn', usage: vazio, content: [{ type: 'text', text: `**${PESSOAS[papel].nome}** (ensaio)\n\nEsta é uma entrega de mentira, só para ver o escritório funcionando. Desligue o modo ensaio para a equipe trabalhar de verdade.\n\n- Item 1 do trabalho\n- Item 2 do trabalho\n- Item 3 do trabalho` }] };
+    }
+    await esperar(2000 + Math.random() * 1500);
+    let etapa = 0;
+    for (let i = corpo.messages.length - 1; i >= 0; i--) {
+      const m = corpo.messages[i];
+      if (m.role !== 'user') continue;
+      if (Array.isArray(m.content) && m.content.some(b => b.type === 'tool_result')) etapa++; else break;
+    }
+    const plano = PLANO_ENSAIO[papel];
+    if (etapa < plano.length) {
+      const blocos = plano[etapa].map(item => {
+        if (item === 'israel') {
+          return { type: 'tool_use', id: id(), name: 'enviar_para_israel', input: { titulo: 'Testar a sugestão da equipe por 7 dias (ensaio)', decisao: 'Aplicar a melhoria principal sugerida pela equipe e medir por 7 dias.', motivo: 'Entregas da equipe nesta reunião (ensaio).', riscos: 'Nenhum dado real ainda: é um ensaio.', urgencia: 'media', entregas: entregas.slice(-2).map(e => e.id) } };
+        }
+        if (item.startsWith('meta:')) return { type: 'tool_use', id: id(), name: item.slice(5), input: { periodo: '7dias' } };
+        return { type: 'tool_use', id: id(), name: 'acionar_funcionario', input: { funcionario: item, pedido: `Tarefa de ensaio para ${PESSOAS[item].nome}.`, anexos: etapa > 0 ? entregas.slice(-2).map(e => e.id) : [] } };
+      });
+      const fala = etapa === 0 ? [{ type: 'text', text: 'Beleza! Vou colocar a equipe para trabalhar. _(ensaio: respostas de mentira, sem IA)_' }] : [];
+      return { stop_reason: 'tool_use', usage: vazio, content: [...fala, ...blocos] };
+    }
+    const minhas = entregas.filter(e => e.gestor === papel).slice(-4).map(e => `- ${e.id}: ${PESSOAS[e.papel].nome}`).join('\n');
+    const dec = decisoes.filter(d => d.gestor === papel).slice(-1).map(d => d.id).join(', ');
+    return { stop_reason: 'end_turn', usage: vazio, content: [{ type: 'text', text: `**Resumo** (ensaio)\nReunião de mentira, só para ver o prédio funcionando.\n\n**O que a equipe entregou**\n${minhas}\n\n**Decisões enviadas ao Israel**\n- ${dec || 'nenhuma'}\n\n**Próximo passo**\nDesligue o modo ensaio para a equipe trabalhar de verdade.` }] };
+  }
+  function metaDeEnsaio(nome) {
+    const base = { ensaio: true, aviso: 'Números de ENSAIO, não são reais.' };
+    if (nome === 'ler_metricas_anuncios') return { ...base, linhas: [{ investimento: 180, conversasWhatsApp: 23, custoPorConversa: 7.83, ctr: 1.9, cpm: 21.4, frequencia: 1.6 }] };
+    if (nome === 'ler_posts_instagram') return { ...base, posts: [{ tipo: 'reels', curtidas: 210, comentarios: 18, numeros: { reach: 5400, shares: 31, saved: 22 } }] };
+    return { ...base, perfil: { usuario: 'rbtech', seguidores: 12000 }, numerosDoPeriodo: { reach: 31000, accounts_engaged: 1400 } };
+  }
+
+  return {
+    enviar, sincronizar, rodarRotina, auditar,
+    ocupado: g => (g ? ocupados.has(g) : ocupados.size > 0),
+    entregas: () => todasEntregas().sort((a, b) => a.quando - b.quando),
+    decisoes: todasDecisoes,
+    gasto: () => gasto.usd,
+    zerarGasto() { gasto = { usd: 0 }; salvar(); emitir('gasto', { usd: 0 }); },
+    novaReuniao(g) { if (!ocupados.has(g)) { conversas[g] = []; salvar(); } },
+    apagarEntregas() { if (!ocupados.size) { entregas = []; salvar(); } },
+    trocarCodigo(c) { gravar(CHAVE.codigo, c); },
+  };
+}

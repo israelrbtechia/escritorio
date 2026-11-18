@@ -1,0 +1,9 @@
+{
+  "name": "agencia-rbtech",
+  "private": true,
+  "type": "module",
+  "description": "Agência de tráfego pago da RBTech: escritório 3D com uma equipe de IA",
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.10.0"
+  }
+}
