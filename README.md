@@ -4,13 +4,16 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 
 | Andar | Chefe | Equipe |
 |---|---|---|
-| 1º · Loja RB TECH | Gerente da loja | Consultor de vendas, Compras e estoque, Pós-venda e reputação |
-| 2º · Agência RBTech (tráfego) | Chefe de tráfego | Analista, Copywriter, Roteirista, Revisor |
-| 2º · Agência RBTech (crescimento) | Gerente de crescimento | Especialista de crescimento |
+| 1º · Loja RB TECH | **Rael** | Consultor de vendas, Compras e estoque, Pós-venda e reputação (e os clientes entrando pela rua) |
+| 2º · Agência RBTech (tráfego) | **Pamella** | Analista, Copywriter, Roteirista, Revisor |
+| 2º · Agência RBTech (crescimento) | **Helena** | Especialista de crescimento |
 | 3º · Vendas e SaaS | Head de vendas e produtos | Prospecção (SDR), Executivo de vendas, Sucesso do cliente, Gestor de produto |
-| Terraço · Diretoria | **Israel (Boss)** | audita toda decisão: aprova ou recusa, com comentário |
+| Terraço · Diretoria | **Israel (Boss)** | audita toda decisão; tem a própria máquina de espresso |
 
+- Cada chefe tem sala fechada de vidro com notebook. Cada andar tem copa; o terraço tem área de lazer (sofás, videogame, pebolim) e a copa do prédio.
+- A equipe está sempre em movimento: pausas para o café, conversas, lazer no terraço. Pessoas e cachorros (Peter e Bibi) trocam de andar pelo elevador de vidro, um por vez: ninguém fica em dois lugares ao mesmo tempo.
 - **Chefes**: escolha com qual chefe falar. Ele chama a equipe (em paralelo quando dá), lê as métricas da Meta e manda as decisões para o Israel.
+- **Reunião geral**: o Israel escreve a pauta; os chefes sobem para a mesa do terraço e cada um responde pelo seu andar.
 - **Diretoria**: a sua sala. Nada é executado antes da sua aprovação, e os chefes leem as suas auditorias antes de decidir de novo.
 - **Entregas**: tudo que as equipes produziram (E1, E2…), com botão de copiar.
 - **Placar**: com o Meta Ads ligado, preenche sozinho (conversas no WhatsApp, investimento, dias na meta).
@@ -25,7 +28,8 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 | Variável | Para quê |
 |---|---|
 | `ANTHROPIC_API_KEY` | chave da API do Claude (obrigatória) |
-| `AGENCIA_CODIGO` | código de acesso que você inventa; o site pede uma vez. Sem ele, qualquer pessoa com o link gasta seus créditos |
+| `AGENCIA_USUARIO` | usuário do login (ex.: `rbtech`) |
+| `AGENCIA_SENHA` | senha do login. **Só aqui, nunca no código**: este repositório é público |
 | `CRON_SECRET` | um texto secreto qualquer; a Vercel usa para disparar as rotinas automáticas |
 | `META_ACCESS_TOKEN` | token da Meta (veja abaixo) |
 | `META_AD_ACCOUNT_ID` | id da conta de anúncios (com ou sem `act_`) |
@@ -35,6 +39,8 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 
 3. **Storage → Marketplace → Upstash (Redis)** → conecte ao projeto. Ele cria `KV_REST_API_URL` e `KV_REST_API_TOKEN` sozinho. É onde ficam guardados os relatórios das rotinas e as decisões auditadas.
 4. **Deployments → Redeploy** para as variáveis valerem.
+
+Sem `AGENCIA_USUARIO` e `AGENCIA_SENHA`, o site fica aberto: qualquer pessoa com o link gasta seus créditos. Trocar a senha encerra todos os logins.
 
 ### Token da Meta
 1. Em business.facebook.com → **Configurações do negócio → Usuários do sistema**, crie um usuário do sistema (administrador).

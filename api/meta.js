@@ -4,12 +4,12 @@
 //   { consulta: "ler_metricas_anuncios", periodo, nivel }    → ferramentas usadas pela equipe
 //   { consulta: "ler_metricas_instagram", periodo }
 //   { consulta: "ler_posts_instagram", quantidade }
-import { responder, codigoOk, lerCorpo } from './_agentes.js';
+import { responder, codigoOk, lerCorpo, NAO_AUTENTICADO } from './_agentes.js';
 import { lerStatus, lerPlacar, executarFerramentaMeta, ErroMeta } from './_meta.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return responder(res, 405, { erro: 'Use POST.' });
-  if (!codigoOk(req)) return responder(res, 401, { erro: 'Código de acesso inválido.', precisaCodigo: true });
+  if (!codigoOk(req)) return responder(res, 401, NAO_AUTENTICADO);
   const corpo = lerCorpo(req);
   if (!corpo) return responder(res, 400, { erro: 'JSON inválido.' });
   const { consulta, ...entrada } = corpo;

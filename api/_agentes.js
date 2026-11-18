@@ -11,11 +11,39 @@ export function responder(res, status, corpo) {
   res.status(status).json(corpo);
 }
 
-/** Confere o código de acesso do site (variável AGENCIA_CODIGO). */
-export function codigoOk(req) {
-  const codigo = process.env.AGENCIA_CODIGO;
-  return !codigo || req.headers['x-agencia-codigo'] === codigo;
+// ---------- login (usuário e senha nas variáveis AGENCIA_USUARIO e AGENCIA_SENHA da Vercel) ----------
+import crypto from 'node:crypto';
+const DIAS_DE_SESSAO = 30;
+export const loginExigido = () => !!(process.env.AGENCIA_USUARIO && process.env.AGENCIA_SENHA);
+function segredo() {
+  return process.env.AGENCIA_SEGREDO || crypto.createHash('sha256').update(`predio-rbtech|${process.env.AGENCIA_USUARIO}|${process.env.AGENCIA_SENHA}`).digest('hex');
 }
+const assinar = dados => crypto.createHmac('sha256', segredo()).update(dados).digest('base64url');
+function igual(a, b) {
+  const ha = crypto.createHash('sha256').update(String(a)).digest();
+  const hb = crypto.createHash('sha256').update(String(b)).digest();
+  return crypto.timingSafeEqual(ha, hb);
+}
+export function conferirSenha(usuario, senha) {
+  return igual(String(usuario || '').trim().toLowerCase(), process.env.AGENCIA_USUARIO.trim().toLowerCase()) && igual(senha, process.env.AGENCIA_SENHA);
+}
+export function criarSessao(usuario) {
+  const dados = Buffer.from(JSON.stringify({ u: usuario, exp: Date.now() + DIAS_DE_SESSAO * 86400_000 })).toString('base64url');
+  return `${dados}.${assinar(dados)}`;
+}
+function sessaoValida(token) {
+  const [dados, assinatura] = String(token || '').split('.');
+  if (!dados || !assinatura || !igual(assinatura, assinar(dados))) return false;
+  try { return JSON.parse(Buffer.from(dados, 'base64url').toString()).exp > Date.now(); } catch { return false; }
+}
+/** Quem chama a API precisa ter feito login (se AGENCIA_USUARIO e AGENCIA_SENHA estiverem definidos). */
+export function autenticado(req) {
+  if (!loginExigido()) return true;
+  const h = req.headers.authorization || '';
+  return sessaoValida(h.startsWith('Bearer ') ? h.slice(7) : '');
+}
+export const codigoOk = autenticado; // nome antigo, usado pelas outras rotas
+export const NAO_AUTENTICADO = { erro: 'Faça login para continuar.', precisaLogin: true };
 
 export function lerCorpo(req) {
   let c = req.body;

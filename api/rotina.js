@@ -7,7 +7,7 @@
 // Variáveis: CRON_SECRET (a Vercel manda no cabeçalho do cron) e o Redis do Upstash para guardar os relatórios.
 import crypto from 'node:crypto';
 import { ROTINAS } from './_equipe.js';
-import { responder, codigoOk, reuniaoNoServidor, erroDaApi } from './_agentes.js';
+import { responder, codigoOk, reuniaoNoServidor, erroDaApi, NAO_AUTENTICADO } from './_agentes.js';
 import { armazemLigado, salvarRotina, lerRotinas, lerDecisoes, resumoAuditoria } from './_armazem.js';
 
 const DURACAO_MAX_MS = 300_000; // igual ao maxDuration do vercel.json
@@ -23,7 +23,7 @@ export default async function handler(req, res) {
 
   if (!executar) {
     if (req.method !== 'GET') return responder(res, 405, { erro: 'Use GET.' });
-    if (!codigoOk(req)) return responder(res, 401, { erro: 'Código de acesso inválido.', precisaCodigo: true });
+    if (!codigoOk(req)) return responder(res, 401, NAO_AUTENTICADO);
     try {
       return responder(res, 200, { armazem: armazemLigado(), rotinas: await lerRotinas(12) });
     } catch (e) {
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 
   // executar uma rotina: pelo cron (GET com CRON_SECRET) ou pelo app (POST com o código)
   const permitido = (req.method === 'GET' && chamadaDoCron(req)) || (req.method === 'POST' && codigoOk(req));
-  if (!permitido) return responder(res, 401, { erro: 'Rotina não autorizada.', precisaCodigo: req.method === 'POST' });
+  if (!permitido) return responder(res, 401, req.method === 'POST' ? NAO_AUTENTICADO : { erro: 'Rotina não autorizada.' });
   if (!process.env.ANTHROPIC_API_KEY) return responder(res, 500, { erro: 'Falta a variável ANTHROPIC_API_KEY.' });
 
   const equipe = req.query?.equipe;

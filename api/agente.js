@@ -3,16 +3,16 @@
 //
 // Variáveis na Vercel:
 //   ANTHROPIC_API_KEY  (obrigatória) chave da API do Claude
-//   AGENCIA_CODIGO     (recomendada) código de acesso pedido pelo site
+//   AGENCIA_USUARIO e AGENCIA_SENHA  login do site (recomendado)
 //   AGENCIA_MODELO     (opcional) padrão: claude-opus-5-5
 import { PAPEIS } from './_equipe.js';
-import { responder, codigoOk, lerCorpo, rodada, erroDaApi } from './_agentes.js';
+import { responder, codigoOk, lerCorpo, rodada, erroDaApi, NAO_AUTENTICADO } from './_agentes.js';
 
 const LIMITE_BYTES = 700_000;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return responder(res, 405, { erro: 'Use POST.' });
-  if (!codigoOk(req)) return responder(res, 401, { erro: 'Código de acesso inválido.', precisaCodigo: true });
+  if (!codigoOk(req)) return responder(res, 401, NAO_AUTENTICADO);
   if (!process.env.ANTHROPIC_API_KEY) return responder(res, 500, { erro: 'Falta a variável ANTHROPIC_API_KEY no projeto da Vercel.' });
 
   const corpo = lerCorpo(req);

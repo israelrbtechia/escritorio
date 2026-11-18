@@ -118,8 +118,8 @@
             <button type="button" class="bt-sec" id="btNova">Começar</button>
           </div>
           <div class="linha-ajuste">
-            <div><strong>Código de acesso</strong><br><small>O mesmo da variável AGENCIA_CODIGO na Vercel.</small></div>
-            <button type="button" class="bt-sec" id="btCodigo">Trocar</button>
+            <div><strong>Sair</strong><br><small>Encerra o login neste navegador.</small></div>
+            <button type="button" class="bt-sec" id="btSair">Sair</button>
           </div>
           <div class="linha-ajuste">
             <div><strong>Apagar entregas</strong><br><small>Remove tudo da aba Entregas deste navegador.</small></div>
@@ -131,17 +131,17 @@
     </aside>
   </main>
 
-  <dialog id="dlgCodigo" class="dialogo">
-    <form method="dialog">
-      <h3>Código de acesso</h3>
-      <p>Digite o código da agência (variável AGENCIA_CODIGO na Vercel).</p>
-      <input id="campoCodigo" class="oculto" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
-      <div class="botoes">
-        <button value="cancelar" class="bt-sec" type="submit">Cancelar</button>
-        <button value="ok" type="submit">Entrar</button>
-      </div>
+  <div class="tela-login" id="telaLogin" hidden>
+    <form class="caixa-login" id="formLogin" autocomplete="on">
+      <span class="logo">RB</span>
+      <h1>Prédio RBTech</h1>
+      <p>Entrada restrita. Faça login para falar com as equipes.</p>
+      <label>Usuário<input id="loginUsuario" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+      <label>Senha<input id="loginSenha" name="password" type="password" autocomplete="current-password" required></label>
+      <p class="erro" id="loginErro" role="alert"></p>
+      <button type="submit" id="btEntrar">Entrar</button>
     </form>
-  </dialog>
+  </div>
 
   <script type="module" src="js/main.js"></script>
 </body>

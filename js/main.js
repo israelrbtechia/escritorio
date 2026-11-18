@@ -13,7 +13,14 @@ const PLACAR_EXEMPLO = { conversasHoje: 23, investimentoHoje: 180, metaCusto: 9,
 
 const brl = n => (Number.isFinite(n) ? n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '–');
 const hora = t => new Date(t).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-const nome = p => PESSOAS[p]?.nome || p;
+const nome = p => (p === 'reuniao' ? 'Reunião geral' : PESSOAS[p]?.nome || p);
+const CANAIS = ['reuniao', ...Object.keys(GESTORES)];
+const REUNIAO = {
+  titulo: '🏛️ Reunião geral',
+  boasVindas: 'Israel, aqui você convoca os chefes. Escreva a pauta: Rael, Pamella, Helena e o head de vendas sobem até a mesa do terraço e cada um responde pelo seu andar.',
+  sugestoes: ['Como está cada andar hoje? Prioridade de cada um?', 'Onde estamos perdendo dinheiro?', 'O que cada andar precisa de mim esta semana?'],
+};
+const canalInfo = g => (g === 'reuniao' ? REUNIAO : GESTORES[g]);
 
 // ---------- placar e humor do chefe de tráfego ----------
 let placar = { ...PLACAR_EXEMPLO, ...ler(CHAVE_PLACAR, {}) };
@@ -170,26 +177,53 @@ function abrirAba(nomeAba) {
 }
 for (const b of document.querySelectorAll('.aba-bt')) b.addEventListener('click', () => abrirAba(b.dataset.aba));
 
-// ---------- código de acesso ----------
-function pedirCodigo() {
-  const dlg = $('dlgCodigo');
-  $('campoCodigo').value = '';
-  return new Promise(res => {
-    dlg.addEventListener('close', () => res(dlg.returnValue === 'ok' ? $('campoCodigo').value.trim() : ''), { once: true });
-    dlg.showModal();
+// ---------- login ----------
+let loginPendente = null;
+function pedirLogin() {
+  if (loginPendente) return loginPendente;
+  const tela = $('telaLogin');
+  tela.hidden = false;
+  $('loginUsuario').focus();
+  loginPendente = new Promise(res => {
+    $('formLogin').onsubmit = async e => {
+      e.preventDefault();
+      $('loginErro').textContent = '';
+      $('btEntrar').disabled = true;
+      try {
+        const r = await fetch('/api/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ usuario: $('loginUsuario').value, senha: $('loginSenha').value }) });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(d.erro || 'Não deu para entrar.');
+        gravar('agencia.token', d.token || '');
+        $('loginSenha').value = '';
+        tela.hidden = true;
+        loginPendente = null;
+        res(true);
+      } catch (err) {
+        $('loginErro').textContent = err.message;
+      } finally {
+        $('btEntrar').disabled = false;
+      }
+    };
   });
+  return loginPendente;
+}
+async function conferirLogin() {
+  try {
+    const r = await fetch('/api/login', { headers: { authorization: `Bearer ${ler('agencia.token', '')}` } });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.exigeLogin && !d.valido) await pedirLogin();
+  } catch { /* sem servidor (arquivo local): segue sem login */ }
 }
 async function chamarApi(caminho, corpo, metodo = 'POST') {
   const resp = await fetch(caminho, {
     method: metodo,
-    headers: { 'content-type': 'application/json', 'x-agencia-codigo': ler('agencia.codigo', '') },
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${ler('agencia.token', '')}` },
     ...(metodo === 'POST' ? { body: JSON.stringify(corpo) } : {}),
   });
   const dados = await resp.json().catch(() => null);
-  if (resp.status === 401 && dados?.precisaCodigo) {
-    const novo = await pedirCodigo();
-    if (!novo) throw new Error('Sem o código de acesso.');
-    gravar('agencia.codigo', novo);
+  if (resp.status === 401 && dados?.precisaLogin) {
+    await pedirLogin();
     return chamarApi(caminho, corpo, metodo);
   }
   if (!resp.ok || !dados) throw new Error(dados?.erro || (resp.status === 404 ? 'Servidor não encontrado (publique na Vercel).' : `Erro ${resp.status}.`));
@@ -197,31 +231,33 @@ async function chamarApi(caminho, corpo, metodo = 'POST') {
 }
 
 // ---------- chats (um por chefe) ----------
-let gestorAtual = GESTORES[ler(CHAVE_GESTOR, 'chefe')] ? ler(CHAVE_GESTOR, 'chefe') : 'chefe';
+let gestorAtual = CANAIS.includes(ler(CHAVE_GESTOR, 'chefe')) ? ler(CHAVE_GESTOR, 'chefe') : 'chefe';
 const chats = {};
-for (const g of Object.keys(GESTORES)) chats[g] = ler(chaveChat(g), []);
+for (const g of CANAIS) chats[g] = ler(chaveChat(g), []);
+let reuniaoAtiva = false;
+const canalOcupado = g => (g === 'reuniao' ? reuniaoAtiva : agencia?.ocupado(g));
 let indicador = null;
 
 function desenharSeletor() {
   const s = $('gestores');
   s.innerHTML = '';
-  for (const [g, info] of Object.entries(GESTORES)) {
+  for (const g of CANAIS) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'gestor-bt' + (g === gestorAtual ? ' ativo' : '') + (agencia?.ocupado(g) ? ' trabalhando' : '');
-    b.textContent = info.titulo;
+    b.className = 'gestor-bt' + (g === gestorAtual ? ' ativo' : '') + (canalOcupado(g) ? ' trabalhando' : '') + (g === 'reuniao' ? ' reuniao' : '');
+    b.textContent = canalInfo(g).titulo;
     b.addEventListener('click', () => trocarGestor(g));
     s.appendChild(b);
   }
 }
-function trocarGestor(g) {
+function trocarGestor(g, focarCamera = true) {
   gestorAtual = g;
   gravar(CHAVE_GESTOR, g);
   desenharChat();
   desenharSeletor();
-  $('btEnviar').disabled = agencia.ocupado(g);
-  $('entrada').placeholder = `Fale com o ${nome(g).toLowerCase()}… (Enter envia)`;
-  focarAuto(cameraDe(g));
+  $('btEnviar').disabled = canalOcupado(g);
+  $('entrada').placeholder = g === 'reuniao' ? 'Escreva a pauta da reunião… (Enter envia)' : `Fale com ${nome(g)}… (Enter envia)`;
+  if (focarCamera) focarAuto(cameraDe(g));
 }
 function elementoMsg(item, gestor) {
   const el = document.createElement('div');
@@ -235,9 +271,9 @@ function desenharChat() {
   const c = $('chat');
   c.innerHTML = '';
   indicador = null;
-  if (!chats[gestorAtual].length) adicionarChat(gestorAtual, { quem: 'chefe', texto: GESTORES[gestorAtual].boasVindas });
+  if (!chats[gestorAtual].length) adicionarChat(gestorAtual, { quem: gestorAtual === 'reuniao' ? 'evento' : 'chefe', texto: canalInfo(gestorAtual).boasVindas });
   else for (const m of chats[gestorAtual]) c.appendChild(elementoMsg(m, gestorAtual));
-  if (agencia?.ocupado(gestorAtual)) mostrarDigitando(true);
+  if (canalOcupado(gestorAtual)) mostrarDigitando(true);
   c.scrollTop = c.scrollHeight;
   atualizarSugestoes();
 }
@@ -257,7 +293,7 @@ function mostrarDigitando(ligar) {
   if (ligar && !indicador) {
     indicador = document.createElement('div');
     indicador.className = 'msg chefe';
-    indicador.innerHTML = `<div class="quem">${nome(gestorAtual)}</div><span class="digitando"><i></i><i></i><i></i></span>`;
+    indicador.innerHTML = `<div class="quem">${gestorAtual === 'reuniao' ? 'Chefes' : nome(gestorAtual)}</div><span class="digitando"><i></i><i></i><i></i></span>`;
     $('chat').appendChild(indicador);
     $('chat').scrollTop = $('chat').scrollHeight;
   } else if (!ligar && indicador) { indicador.remove(); indicador = null; }
@@ -266,7 +302,7 @@ function atualizarSugestoes() {
   const s = $('sugestoes');
   s.innerHTML = '';
   if (chats[gestorAtual].some(m => m.quem === 'voce')) return;
-  for (const texto of GESTORES[gestorAtual].sugestoes) {
+  for (const texto of canalInfo(gestorAtual).sugestoes) {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = texto;
@@ -365,12 +401,26 @@ $('seloEnsaio').hidden = !chkEnsaio.checked;
 const agencia = criarAgencia({
   ensaio: () => chkEnsaio.checked,
   placarTexto,
-  pedirCodigo,
+  pedirLogin,
   aoEvento(ev) {
     const g = ev.gestor;
+    const canal = ev.canal || g;
     switch (ev.tipo) {
       case 'ocupado':
         if (g === gestorAtual) { $('btEnviar').disabled = ev.ocupado; mostrarDigitando(ev.ocupado); }
+        desenharSeletor();
+        break;
+      case 'reuniao':
+        reuniaoAtiva = ev.estado === 'inicio';
+        if (reuniaoAtiva) {
+          cena.reuniao(ev.participantes);
+          adicionarChat('reuniao', { quem: 'evento', html: true, texto: `🏛️ ${ev.participantes.map(nome).join(', ')} subindo para a mesa do terraço` });
+          focarAuto('terraco', 1500);
+        } else {
+          cena.fimReuniao();
+          adicionarChat('reuniao', { quem: 'evento', html: true, texto: '👏 <b>Reunião encerrada.</b> Cada um voltou para o seu andar.' });
+        }
+        if (gestorAtual === 'reuniao') { $('btEnviar').disabled = reuniaoAtiva; mostrarDigitando(reuniaoAtiva); }
         desenharSeletor();
         break;
       case 'chefe':
@@ -378,7 +428,7 @@ const agencia = criarAgencia({
         if (ev.estado === 'pensando') focarAuto(cameraDe(g));
         break;
       case 'chefeTexto':
-        adicionarChat(g, { quem: 'chefe', texto: ev.texto });
+        adicionarChat(canal, { quem: 'chefe', titulo: canal === 'reuniao' ? (PESSOAS[g].cargo ? `${nome(g)} · ${PESSOAS[g].cargo}` : nome(g)) : undefined, texto: ev.texto });
         if (ev.final) { cena.comemorar(g); focarAuto(cameraDe(g)); }
         else cena.fala(g, ev.texto.split('\n')[0].replace(/[*_#`]/g, '').slice(0, 46));
         break;
@@ -410,7 +460,7 @@ const agencia = criarAgencia({
         adicionarChat(g, { quem: 'aviso', texto: `${nome(ev.papel)}: ${ev.erro}` });
         break;
       case 'aviso':
-        adicionarChat(g || gestorAtual, { quem: 'aviso', texto: ev.texto });
+        adicionarChat(canal || gestorAtual, { quem: 'aviso', texto: (canal === 'reuniao' ? `${nome(g)}: ` : '') + ev.texto });
         break;
       case 'gasto':
         $('gasto').textContent = 'US$ ' + ev.usd.toFixed(2).replace('.', ',');
@@ -422,10 +472,11 @@ const agencia = criarAgencia({
 $('form').addEventListener('submit', e => {
   e.preventDefault();
   const texto = $('entrada').value.trim();
-  if (!texto || agencia.ocupado(gestorAtual)) return;
+  if (!texto || canalOcupado(gestorAtual)) return;
   $('entrada').value = '';
   adicionarChat(gestorAtual, { quem: 'voce', texto });
-  agencia.enviar(gestorAtual, texto);
+  if (gestorAtual === 'reuniao') agencia.reuniao(texto);
+  else agencia.enviar(gestorAtual, texto);
 });
 $('entrada').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('form').requestSubmit(); }
@@ -489,14 +540,14 @@ chkEnsaio.addEventListener('change', () => {
 });
 $('btZerarGasto').addEventListener('click', () => agencia.zerarGasto());
 $('btNova').addEventListener('click', () => {
-  if (agencia.ocupado(gestorAtual)) return;
-  agencia.novaReuniao(gestorAtual);
+  if (canalOcupado(gestorAtual)) return;
+  if (gestorAtual !== 'reuniao') agencia.novaReuniao(gestorAtual);
   chats[gestorAtual] = [];
   gravar(chaveChat(gestorAtual), []);
   desenharChat();
   abrirAba('chefe');
 });
-$('btCodigo').addEventListener('click', async () => { const c = await pedirCodigo(); if (c) agencia.trocarCodigo(c); });
+$('btSair').addEventListener('click', () => { gravar('agencia.token', ''); location.reload(); });
 $('btApagar').addEventListener('click', () => {
   if (agencia.ocupado() || !confirm('Apagar as entregas deste navegador?')) return;
   agencia.apagarEntregas();
@@ -504,9 +555,10 @@ $('btApagar').addEventListener('click', () => {
 });
 
 // ---------- início ----------
+await conferirLogin();
 aplicarPlacar();
 $('gasto').textContent = 'US$ ' + agencia.gasto().toFixed(2).replace('.', ',');
-trocarGestor(gestorAtual);
+trocarGestor(gestorAtual, false);
 desenharEntregas();
 desenharDiretoria();
 verificarMeta();

@@ -2,13 +2,13 @@
 //   GET                                          → lista de decisões (rotinas e app)
 //   POST { acao: "salvar", decisao }             → guarda uma decisão criada no app
 //   POST { acao: "auditar", id, status, comentario } → Israel aprova ou recusa
-import { responder, codigoOk, lerCorpo } from './_agentes.js';
+import { responder, codigoOk, lerCorpo, NAO_AUTENTICADO } from './_agentes.js';
 import { armazemLigado, salvarDecisao, lerDecisoes, auditarDecisao } from './_armazem.js';
 
 const texto = (v, max) => String(v ?? '').slice(0, max);
 
 export default async function handler(req, res) {
-  if (!codigoOk(req)) return responder(res, 401, { erro: 'Código de acesso inválido.', precisaCodigo: true });
+  if (!codigoOk(req)) return responder(res, 401, NAO_AUTENTICADO);
   if (!armazemLigado()) return responder(res, 200, { armazem: false, decisoes: [] });
   try {
     if (req.method === 'GET') return responder(res, 200, { armazem: true, decisoes: await lerDecisoes() });

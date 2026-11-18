@@ -4,17 +4,17 @@
 
 export const PESSOAS = {
   // 1º andar · Loja RB TECH
-  gerente_loja: { nome: 'Gerente da loja', andar: 0, gestor: true },
+  gerente_loja: { nome: 'Rael', cargo: 'gerente da loja', andar: 0, gestor: true },
   atendimento:  { nome: 'Consultor de vendas', andar: 0, tarefa: '💬 escrevendo o atendimento' },
   estoque:      { nome: 'Compras e estoque', andar: 0, tarefa: '📦 conferindo o estoque' },
   posvenda:     { nome: 'Pós-venda', andar: 0, tarefa: '⭐ cuidando dos clientes' },
   // 2º andar · Agência RBTech
-  chefe:        { nome: 'Chefe de tráfego', andar: 1, gestor: true },
+  chefe:        { nome: 'Pamella', cargo: 'chefe de tráfego', andar: 1, gestor: true },
   analista:     { nome: 'Analista', andar: 1, tarefa: '📊 analisando os números' },
   copywriter:   { nome: 'Copywriter', andar: 1, tarefa: '✍️ escrevendo os anúncios' },
   roteirista:   { nome: 'Roteirista', andar: 1, tarefa: '🎬 escrevendo o roteiro' },
   revisor:      { nome: 'Revisor', andar: 1, tarefa: '🔎 revisando tudo' },
-  gerente_crescimento: { nome: 'Gerente de crescimento', andar: 1, gestor: true },
+  gerente_crescimento: { nome: 'Helena', cargo: 'gerente de crescimento', andar: 1, gestor: true },
   especialista: { nome: 'Especialista de crescimento', andar: 1, tarefa: '📱 estudando o Instagram' },
   // 3º andar · Vendas e SaaS
   head_vendas:  { nome: 'Head de vendas', andar: 2, gestor: true },
@@ -23,34 +23,34 @@ export const PESSOAS = {
   sucesso:      { nome: 'Sucesso do cliente', andar: 2, tarefa: '💛 cuidando da base' },
   produto:      { nome: 'Gestor de produto', andar: 2, tarefa: '🛠️ priorizando o roadmap' },
   // terraço
-  israel:       { nome: 'Israel · Boss', andar: 3 },
+  israel:       { nome: 'Israel', cargo: 'Boss', andar: 3 },
 };
 export const EQUIPE = PESSOAS; // nomes usados pela interface
 
 export const GESTORES = {
   gerente_loja: {
-    titulo: '1º · Loja RB TECH', equipe: ['atendimento', 'estoque', 'posvenda'], rotina: 'loja',
-    boasVindas: 'Oi! Sou o gerente da loja RB TECH, aqui no 1º andar. Cuido do balcão, do WhatsApp, do estoque e do pós-venda. Me diga o que precisa.',
+    titulo: '1º · Rael · Loja', equipe: ['atendimento', 'estoque', 'posvenda'], rotina: 'loja',
+    boasVindas: 'Oi, Israel! Aqui é Rael, da loja RB TECH no 1º andar. Cuido do balcão, do WhatsApp, do estoque e do pós-venda com a equipe. O que você precisa?',
     sugestoes: ['Monta o roteiro de atendimento do balcão e do WhatsApp', 'Como pedir mais avaliações no Google?', 'O que eu preciso controlar no estoque?'],
   },
   chefe: {
-    titulo: '2º · Tráfego', equipe: ['analista', 'copywriter', 'roteirista', 'revisor'], rotina: 'trafego', placar: true,
-    boasVindas: 'Oi! Sou o chefe de tráfego da agência, no 2º andar. Me diga o que você quer vender ou o que te preocupa nos anúncios, e eu coloco a equipe para trabalhar.',
+    titulo: '2º · Pamella · Tráfego', equipe: ['analista', 'copywriter', 'roteirista', 'revisor'], rotina: 'trafego', placar: true,
+    boasVindas: 'Oi, Israel! Aqui é Pamella, do tráfego no 2º andar. Me diga o que você quer vender ou o que te preocupa nos anúncios, e eu coloco a equipe para trabalhar.',
     sugestoes: ['Como estão os anúncios? O que você faria?', 'Cria 3 anúncios para o iPhone 15 com chamada pro WhatsApp', 'Preciso de um roteiro de reels mostrando a loja'],
   },
   gerente_crescimento: {
-    titulo: '2º · Crescimento', equipe: ['especialista'], rotina: 'crescimento',
-    boasVindas: 'Oi! Sou o gerente de crescimento, no 2º andar. Meu departamento só pensa em uma coisa: fazer a RBTech crescer no Instagram (seguidores, engajamento e melhorias no que já está publicado).',
+    titulo: '2º · Helena · Crescimento', equipe: ['especialista'], rotina: 'crescimento',
+    boasVindas: 'Oi, Israel! Aqui é a Helena, do crescimento no 2º andar. Meu departamento só pensa em uma coisa: fazer a RBTech crescer no Instagram (seguidores, engajamento e melhorias no que já está publicado).',
     sugestoes: ['Lê todas as métricas do Instagram e me dá um plano', 'Quais posts eu devo editar ou repostar?', 'Como ganhar mais seguidores este mês?'],
   },
   head_vendas: {
     titulo: '3º · Vendas e SaaS', equipe: ['sdr', 'closer', 'sucesso', 'produto'], rotina: 'vendas',
-    boasVindas: 'Oi! Sou o head de vendas e produtos, no 3º andar. Aqui vendemos e cuidamos dos sistemas SaaS da RBTech: o Sorteia Aí e a própria Agência.',
+    boasVindas: 'Oi, Israel! Aqui é o head de vendas e produtos, no 3º andar. Aqui vendemos e cuidamos dos sistemas SaaS da RBTech: o Sorteia Aí e a própria Agência.',
     sugestoes: ['Monta o plano para vender o Sorteia Aí para lojas', 'Qual a melhoria mais importante do Sorteia Aí?', 'Como reduzir o cancelamento dos clientes?'],
   },
 };
 
-const CHAVE = { entregas: 'agencia.entregas', decisoes: 'agencia.decisoes', codigo: 'agencia.codigo', gasto: 'agencia.gasto' };
+const CHAVE = { entregas: 'agencia.entregas', decisoes: 'agencia.decisoes', token: 'agencia.token', gasto: 'agencia.gasto' };
 const chaveConversa = g => (g === 'chefe' ? 'agencia.conversa' : 'agencia.conversa.' + g);
 const PRECO = { entrada: 4, saida: 20 }; // por milhão de tokens (estimativa)
 
@@ -61,7 +61,7 @@ export function gravar(chave, valor) {
   try { localStorage.setItem(chave, JSON.stringify(valor)); } catch { /* sem armazenamento: segue na memória */ }
 }
 
-export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
+export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
   const conversas = {};
   for (const g of Object.keys(GESTORES)) conversas[g] = ler(chaveConversa(g), []);
   let entregas = ler(CHAVE.entregas, []);
@@ -105,15 +105,13 @@ export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
   async function api(caminho, corpo, metodo = 'POST') {
     const resp = await fetch(caminho, {
       method: metodo,
-      headers: { 'content-type': 'application/json', 'x-agencia-codigo': ler(CHAVE.codigo, '') },
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${ler(CHAVE.token, '')}` },
       ...(metodo === 'POST' ? { body: JSON.stringify(corpo) } : {}),
     });
     let dados = null;
     try { dados = await resp.json(); } catch { /* sem JSON */ }
-    if (resp.status === 401 && dados?.precisaCodigo) {
-      const novo = await pedirCodigo();
-      if (!novo) throw new Error('Sem o código de acesso a equipe não trabalha.');
-      gravar(CHAVE.codigo, novo);
+    if (resp.status === 401 && dados?.precisaLogin) {
+      if (!(await pedirLogin())) throw new Error('Faça login para a equipe trabalhar.');
       return api(caminho, corpo, metodo);
     }
     if (!resp.ok || !dados) {
@@ -144,7 +142,7 @@ export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
       const falas = textoDe(r.content);
       const chamados = (r.content || []).filter(b => b.type === 'tool_use');
       if (!chamados.length) return { texto: falas + (r.stop_reason === 'max_tokens' ? '\n\n_(A resposta foi cortada por ser longa demais.)_' : '') };
-      if (falas && ctx.gestor === papel) emitir('chefeTexto', { gestor: papel, texto: falas, final: false });
+      if (falas && ctx.gestor === papel) emitir('chefeTexto', { gestor: papel, canal: ctx.canal, texto: falas, final: false });
       if (ctx.gestor === papel) emitir('chefe', { gestor: papel, estado: 'esperando' });
       const resultados = await Promise.all(chamados.map(b => executar(papel, b, ctx)));
       msgs.push({ role: 'user', content: resultados });
@@ -197,7 +195,19 @@ export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
     }
   }
 
-  async function enviar(gestor, texto) {
+  /** Reunião convocada pelo Israel: cada chefe responde pelo seu andar (em paralelo). */
+  async function reuniao(texto, participantes = Object.keys(GESTORES)) {
+    const livres = participantes.filter(g => !ocupados.has(g));
+    if (!livres.length || !texto.trim()) return;
+    emitir('reuniao', { estado: 'inicio', participantes: livres });
+    const pauta = `[REUNIÃO CONVOCADA PELO ISRAEL, NA MESA DO TERRAÇO, COM OS CHEFES DE TODOS OS ANDARES]
+Pauta do Israel: ${texto.trim()}
+Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o que precisa do Israel. Acione a equipe ou envie decisões só se for indispensável.`;
+    await Promise.allSettled(livres.map(g => enviar(g, pauta, 'reuniao')));
+    emitir('reuniao', { estado: 'fim', participantes: livres });
+  }
+
+  async function enviar(gestor, texto, canal = null) {
     if (ocupados.has(gestor) || !texto.trim() || !GESTORES[gestor]) return;
     ocupados.add(gestor);
     emitir('ocupado', { gestor, ocupado: true });
@@ -208,11 +218,11 @@ export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
     salvar();
     let terminou = false;
     try {
-      const r = await rodar(gestor, msgs, { gestor, persistir: true });
-      if (r.limite) emitir('aviso', { gestor, texto: 'A reunião passou do limite de rodadas. Peça para fechar o relatório.' });
-      else { emitir('chefeTexto', { gestor, texto: r.texto || '(sem resposta)', final: true }); terminou = true; }
+      const r = await rodar(gestor, msgs, { gestor, persistir: true, canal });
+      if (r.limite) emitir('aviso', { gestor, canal, texto: 'Passou do limite de rodadas. Peça para fechar o relatório.' });
+      else { emitir('chefeTexto', { gestor, canal, texto: r.texto || '(sem resposta)', final: true }); terminou = true; }
     } catch (e) {
-      emitir('aviso', { gestor, texto: e.message });
+      emitir('aviso', { gestor, canal, texto: e.message });
     } finally {
       ocupados.delete(gestor);
       emitir('chefe', { gestor, estado: terminou ? 'pronto' : 'livre' });
@@ -292,7 +302,7 @@ export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
   }
 
   return {
-    enviar, sincronizar, rodarRotina, auditar,
+    enviar, reuniao, sincronizar, rodarRotina, auditar,
     ocupado: g => (g ? ocupados.has(g) : ocupados.size > 0),
     entregas: () => todasEntregas().sort((a, b) => a.quando - b.quando),
     decisoes: todasDecisoes,
@@ -300,6 +310,5 @@ export function criarAgencia({ ensaio, placarTexto, pedirCodigo, aoEvento }) {
     zerarGasto() { gasto = { usd: 0 }; salvar(); emitir('gasto', { usd: 0 }); },
     novaReuniao(g) { if (!ocupados.has(g)) { conversas[g] = []; salvar(); } },
     apagarEntregas() { if (!ocupados.size) { entregas = []; salvar(); } },
-    trocarCodigo(c) { gravar(CHAVE.codigo, c); },
   };
 }
