@@ -118,7 +118,7 @@ const erroDeAssinatura = e => e instanceof Anthropic.BadRequestError && /signatu
 export async function rodada(papel, messages) {
   const p = PAPEIS[papel];
   const model = modeloDe(papel);
-  const pedir = msgs => client.beta.messages.create({
+  const pedir = (msgs, ferramentas = p.ferramentas) => client.beta.messages.create({
     model,
     max_tokens: 16000,
     // se o modelo recusar por política de segurança, a própria API tenta de novo num modelo reserva (o Haiku não tem reserva)
@@ -126,15 +126,21 @@ export async function rodada(papel, messages) {
     output_config: { effort: esforcoDe(papel) },
     cache_control: { type: 'ephemeral' },
     system: p.sistema,
-    ...(p.ferramentas ? { tools: p.ferramentas } : {}),
+    ...(ferramentas ? { tools: ferramentas } : {}),
     messages: msgs,
   });
-  let r;
-  try { r = await pedir(semPensamentos(messages)); }
-  catch (e) {
-    // o deploy mudou a equipe no meio de um turno: tenta de novo sem nenhum pensamento antigo
-    if (!erroDeAssinatura(e)) throw e;
-    r = await pedir(semPensamentos(messages, true));
+  let r, msgs = semPensamentos(messages), ferramentas = p.ferramentas;
+  for (let tentativa = 0; ; tentativa++) {
+    try { r = await pedir(msgs, ferramentas); break; }
+    catch (e) {
+      if (tentativa >= 2 || !(e instanceof Anthropic.BadRequestError)) throw e;
+      if (/grammar is too large|reduce the number of strict/i.test(e.message || '') && ferramentas?.some(f => f.strict)) {
+        // muitas ferramentas no modo estrito: a API não aguenta; repete com todas no modo normal (o app confere as entradas)
+        ferramentas = ferramentas.map(f => ({ ...f, strict: false }));
+      } else if (erroDeAssinatura(e)) {
+        msgs = semPensamentos(messages, true); // o deploy mudou a equipe no meio de um turno: sem nenhum pensamento antigo
+      } else throw e;
+    }
   }
   return { content: r.content, stop_reason: r.stop_reason, stop_details: r.stop_details ?? null, model: r.model, usage: r.usage };
 }
