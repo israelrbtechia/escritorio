@@ -36,6 +36,8 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 | `META_IG_USER_ID` | id da conta profissional do Instagram (número, não o @) |
 | `META_APP_SECRET` | opcional: chave secreta do app da Meta (assina as chamadas) |
 | `AGENCIA_MODELO` | opcional: padrão `claude-opus-5-5` |
+| `ELEVENLABS_API_KEY` | opcional: vozes reais para cada funcionário e transcrição das perguntas por áudio |
+| `ELEVENLABS_VOZES` | opcional: troca vozes, em JSON (ex.: `{"chefe":"id-da-voz"}`) |
 
 3. **Storage → Marketplace → Upstash (Redis)** → conecte ao projeto. Ele cria `KV_REST_API_URL` e `KV_REST_API_TOKEN` sozinho. É onde ficam guardados os relatórios das rotinas e as decisões auditadas.
 4. **Deployments → Redeploy** para as variáveis valerem.
@@ -59,6 +61,11 @@ A equipe só **lê** métricas: não publica, não edita posts e não mexe em or
 | 09:37 | Vendas e SaaS |
 
 No plano Hobby da Vercel, cada rotina roda uma vez por dia, e o horário pode variar dentro da hora.
+
+## Vozes e perguntas por áudio
+- Botão 🎙️ no chat: você fala, o texto aparece e o **Claude Haiku** corrige nomes e pontuação antes de enviar. O Claude não ouve áudio: quem transcreve é o ElevenLabs (com a chave) ou o próprio navegador (Chrome).
+- Os chefes respondem em texto e em voz. Com `ELEVENLABS_API_KEY`, cada funcionário tem uma voz brasileira própria (lista em `api/voz.js`); sem ela, o app usa a voz do navegador com tom diferente para cada um.
+- As vozes escolhidas vêm da biblioteca do ElevenLabs: se alguma não tocar, abra a voz na Voice Library e clique em **Add to my voices**.
 
 ## Custos
 Uma reunião completa custa de alguns centavos a cerca de US$ 0,50; as 4 rotinas diárias, algo parecido cada. A aba Ajustes mostra o gasto estimado das reuniões feitas no app.

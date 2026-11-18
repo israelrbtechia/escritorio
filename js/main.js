@@ -2,6 +2,7 @@
 // o placar, a Meta e as rotinas automáticas.
 import { criarAgencia, PESSOAS, GESTORES, ler, gravar } from './agencia.js';
 import { markdown } from './markdown.js';
+import { criarVoz } from './voz.js';
 
 const $ = id => document.getElementById(id);
 const CHAVE_PLACAR = 'agencia.placar';
@@ -207,13 +208,24 @@ function pedirLogin() {
   });
   return loginPendente;
 }
+let semServidor = false;
 async function conferirLogin() {
   try {
     const r = await fetch('/api/login', { headers: { authorization: `Bearer ${ler('agencia.token', '')}` } });
-    if (!r.ok) return;
+    const json = (r.headers.get('content-type') || '').includes('json');
+    if (!r.ok || !json) { semServidor = true; return; }
     const d = await r.json();
     if (d.exigeLogin && !d.valido) await pedirLogin();
-  } catch { /* sem servidor (arquivo local): segue sem login */ }
+  } catch { semServidor = true; }
+}
+/** Sem o servidor da Vercel (prévia), tudo roda em modo ensaio. */
+function modoPrevia() {
+  if (!semServidor) return;
+  chkEnsaio.checked = true;
+  chkEnsaio.disabled = true;
+  $('seloEnsaio').hidden = false;
+  $('seloEnsaio').textContent = 'PRÉVIA · sem servidor, modo ensaio';
+  $('statusMeta').textContent = 'Prévia: a Meta só funciona com o site publicado na Vercel.';
 }
 async function chamarApi(caminho, corpo, metodo = 'POST') {
   const resp = await fetch(caminho, {
@@ -398,6 +410,24 @@ const chkEnsaio = $('chkEnsaio');
 chkEnsaio.checked = ler(CHAVE_ENSAIO, false);
 $('seloEnsaio').hidden = !chkEnsaio.checked;
 
+const CHAVE_VOZES = 'agencia.vozes';
+const chkVozes = $('chkVozes');
+chkVozes.checked = ler(CHAVE_VOZES, true);
+const voz = criarVoz({
+  token: () => ler('agencia.token', ''),
+  ensaio: () => chkEnsaio.checked,
+  aoFalar: (papel, sim) => cena.falando(papel, sim),
+});
+voz.ligar(chkVozes.checked);
+async function atualizarStatusVozes() {
+  await voz.verificar();
+  $('statusVozes').textContent = !chkVozes.checked ? 'Vozes desligadas.'
+    : voz.usaElevenlabs() ? 'Vozes do ElevenLabs (uma voz para cada funcionário). Perguntas por áudio transcritas pelo ElevenLabs e revisadas pelo Claude Haiku.'
+    : 'Vozes do navegador (tom diferente para cada um). Para vozes reais, ligue o ElevenLabs (veja o README). Perguntas por áudio: reconhecimento do navegador + revisão do Claude Haiku.';
+  $('btMic').hidden = !voz.podeOuvir();
+}
+chkVozes.addEventListener('change', () => { gravar(CHAVE_VOZES, chkVozes.checked); voz.ligar(chkVozes.checked); atualizarStatusVozes(); });
+
 const agencia = criarAgencia({
   ensaio: () => chkEnsaio.checked,
   placarTexto,
@@ -429,7 +459,7 @@ const agencia = criarAgencia({
         break;
       case 'chefeTexto':
         adicionarChat(canal, { quem: 'chefe', titulo: canal === 'reuniao' ? (PESSOAS[g].cargo ? `${nome(g)} · ${PESSOAS[g].cargo}` : nome(g)) : undefined, texto: ev.texto });
-        if (ev.final) { cena.comemorar(g); focarAuto(cameraDe(g)); }
+        if (ev.final) { cena.comemorar(g); focarAuto(cameraDe(g)); voz.falar(g, ev.texto); }
         else cena.fala(g, ev.texto.split('\n')[0].replace(/[*_#`]/g, '').slice(0, 46));
         break;
       case 'acionar': {
@@ -478,6 +508,37 @@ $('form').addEventListener('submit', e => {
   if (gestorAtual === 'reuniao') agencia.reuniao(texto);
   else agencia.enviar(gestorAtual, texto);
 });
+// ---------- pergunta por áudio ----------
+let pararDeOuvir = null;
+$('btMic').addEventListener('click', async () => {
+  const bt = $('btMic');
+  if (pararDeOuvir) {
+    const parar = pararDeOuvir;
+    pararDeOuvir = null;
+    bt.classList.remove('gravando');
+    bt.textContent = '⏳';
+    try {
+      const ouvido = (await parar()).trim();
+      if (!ouvido) { bt.textContent = '🎙️'; return; }
+      $('entrada').value = ouvido;
+      $('entrada').value = await voz.revisar(ouvido); // o Claude Haiku corrige nomes e pontuação
+      $('form').requestSubmit();
+    } catch (e) {
+      adicionarChat(gestorAtual, { quem: 'aviso', texto: `Áudio: ${e.message}` });
+    }
+    bt.textContent = '🎙️';
+    return;
+  }
+  try {
+    voz.calar();
+    pararDeOuvir = await voz.comecarAOuvir(parcial => { $('entrada').value = parcial; });
+    bt.classList.add('gravando');
+    bt.textContent = '⏹';
+  } catch (e) {
+    adicionarChat(gestorAtual, { quem: 'aviso', texto: `Microfone: ${e.message}` });
+  }
+});
+
 $('entrada').addEventListener('keydown', e => {
   if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('form').requestSubmit(); }
 });
@@ -556,11 +617,12 @@ $('btApagar').addEventListener('click', () => {
 
 // ---------- início ----------
 await conferirLogin();
+modoPrevia();
+atualizarStatusVozes();
 aplicarPlacar();
 $('gasto').textContent = 'US$ ' + agencia.gasto().toFixed(2).replace('.', ',');
 trocarGestor(gestorAtual, false);
 desenharEntregas();
 desenharDiretoria();
-verificarMeta();
-sincronizar(true);
+if (!semServidor) { verificarMeta(); sincronizar(true); }
 setInterval(() => { if (!document.hidden) sincronizar(); }, 5 * 60 * 1000);

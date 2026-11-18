@@ -250,3 +250,7 @@ body.modo-video .ent .tag { font-size: 12px; }
 .caixa-login input { background: var(--painel-2); border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; font-size: 15px; }
 .caixa-login .erro { color: #ffb3b3; min-height: 1em; }
 .gestor-bt.reuniao:not(.ativo) { border-color: var(--amarelo); color: var(--amarelo); }
+
+.bt-mic { background: var(--painel-2); border: 1px solid var(--linha); font-size: 18px; padding: 8px 12px; }
+.bt-mic.gravando { background: #ff3b3b; border-color: #ff3b3b; animation: piscar 1s infinite; }
+.chave small { display: block; color: var(--texto-2); font-weight: 400; margin-top: 2px; }

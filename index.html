@@ -63,6 +63,7 @@
         <div class="sugestoes" id="sugestoes"></div>
         <form class="composer" id="form">
           <textarea id="entrada" rows="2" placeholder="Fale com o chefe… (Enter envia)" autocomplete="off"></textarea>
+          <button id="btMic" class="bt-mic" type="button" title="Perguntar por áudio" aria-label="Perguntar por áudio" hidden>🎙️</button>
           <button id="btEnviar" type="submit">Enviar</button>
         </form>
       </section>
@@ -98,6 +99,7 @@
       <section class="aba" id="aba-ajustes">
         <div class="form">
           <label class="chave"><input type="checkbox" id="chkEnsaio"><span><strong>Modo ensaio</strong>: a equipe se mexe com respostas de mentira, sem IA e sem gastar créditos.</span></label>
+          <label class="chave"><input type="checkbox" id="chkVozes"><span><strong>🔊 Vozes da equipe</strong>: os chefes respondem em texto e em voz. <small id="statusVozes"></small></span></label>
           <div class="rotinas">
             <strong>Rotinas automáticas</strong>
             <small>Todo dia de manhã cada andar trabalha sozinho, mesmo com o app fechado, e deixa o relatório aqui.</small>

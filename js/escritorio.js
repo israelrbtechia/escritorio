@@ -303,6 +303,7 @@ export function criarEscritorio(container, camada) {
         p.corpo.position.y = Math.sin(t * 2) * 0.01;
         p.cabeca.rotation.x = 0;
       }
+      if (p.falandoVoz) p.cabeca.rotation.x = Math.sin(t * 14) * 0.06; // mexe a cabeça enquanto fala
       if (p.elHumor && p.elHumor.textContent !== (p.humor ? p.humor + ' ' : '')) p.elHumor.textContent = p.humor ? p.humor + ' ' : '';
     };
   }
@@ -905,6 +906,12 @@ export function criarEscritorio(container, camada) {
       pessoas.estagiario.ativo = (dados?.diasNaMeta ?? 0) >= 10;
     },
     definirSeguidores(info) { desenharSeguidores(telas.seguidores, info); },
+    falando(papel, sim) {
+      const p = pessoas[papel];
+      if (!p) return;
+      p.falandoVoz = sim;
+      if (sim) p.falar('🔊 falando…', 120000); else p.falaAte = 0;
+    },
     /** O Israel convoca: os chefes sobem para a mesa de reunião do terraço. */
     reuniao(participantes) {
       for (const id of [...participantes, 'israel']) {
