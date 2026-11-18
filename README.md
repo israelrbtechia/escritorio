@@ -58,6 +58,11 @@ Sem `AGENCIA_USUARIO` e `AGENCIA_SENHA`, o site fica aberto: qualquer pessoa com
 
 A equipe só **lê** métricas: não publica, não edita posts e não mexe em orçamento.
 
+**Prospecção por hashtag (SDR do 3º andar):** para achar lojas que fizeram sorteio, o SDR busca posts por hashtag (ex.: #sorteio).
+- A Meta exige o recurso **Instagram Public Content Access** no app (em developers.facebook.com → seu app → Revisão do app).
+- Ela limita a busca a 30 hashtags diferentes por semana.
+- Sem esse recurso, o SDR avisa que não conseguiu, em vez de inventar perfis.
+
 ### Rotinas (vercel.json)
 | Rotina | Quando (Brasília) | Quem |
 |---|---|---|

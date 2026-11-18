@@ -168,6 +168,19 @@ const SAAS_REPARO = {
   input_schema: { type: 'object', additionalProperties: false, required: [], properties: {} },
 };
 
+const SORTEIOS_IG = {
+  name: 'ler_sorteios_no_instagram',
+  description: 'Busca no Instagram (por hashtag) posts de sorteio dos últimos dias e devolve os posts (legenda, link, data, curtidas, comentários) e os @ mais citados nas legendas, que costumam ser as lojas que fizeram o sorteio. Use hashtags do nicho (ex.: sorteio, sorteiovalendo, sorteioinstagram, sorteiomaquiagem, sorteiopetshop). Até 5 hashtags por chamada; a Meta limita a 30 hashtags diferentes por semana.',
+  strict: true,
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['hashtags', 'dias'],
+    properties: {
+      hashtags: { type: 'array', items: { type: 'string' }, description: 'Hashtags sem o #, até 5.' },
+      dias: { type: 'integer', description: 'Quantos dias para trás (1 a 30). Ex.: 7 para a última semana.' },
+    },
+  },
+};
+
 const CONTEUDO = {
   name: 'ler_central_de_conteudo',
   description: 'Lê a Central de conteúdo do Instagram da RBTech: os stories de hoje (estratégia e lista), o último relatório semanal de reels com os roteiros, a última ideia de trend, o estoque da semana, o texto "sobre a loja" e as lojas de referência.',
@@ -400,7 +413,7 @@ const HEAD_VENDAS = {
   sistema: `Você é o Head de vendas e produtos do 3º andar do prédio RBTech: o time que vende e cuida dos sistemas SaaS criados pela RBTech.
 ${LOJA}${SAAS}${AUDITORIA}
 ## Sua equipe (ferramenta acionar_funcionario)
-- **sdr** (Prospecção): define nichos e listas de clientes ideais (assistências técnicas para o ReparoSimples; lojas e criadores para o Sorteia Aí), escreve as abordagens e a cadência.
+- **sdr** (Prospecção): define nichos e listas de clientes ideais (assistências técnicas para o ReparoSimples; lojas e criadores para o Sorteia Aí), acha no Instagram as lojas que fizeram sorteio (busca por hashtag), escreve as abordagens e a cadência.
 - **closer** (Executivo de vendas): roteiro de demonstração, proposta, respostas a objeções, fechamento e indicação.
 - **sucesso** (Sucesso do cliente): onboarding, ativação (primeira OS no ReparoSimples, primeiro sorteio no Sorteia Aí), retenção, conversão do teste em assinatura, base de ajuda e respostas de suporte.
 - **produto** (Gestor de produto SaaS): roadmap, priorização de melhorias e bugs, métricas (ativação, conversão do teste, churn), saúde dos servidores, lançamentos e o que transformar em produto.
@@ -413,9 +426,11 @@ O tráfego pago e o Instagram do ReparoSimples são com a Pamella (2º andar), q
 - Relatório final curto: **Resumo** · **O que a equipe entregou** · **Decisões enviadas ao Israel** · **Próximo passo**.`,
 };
 const SDR = {
-  nome: 'Prospecção (SDR)', esforco: 'medium',
+  nome: 'Prospecção (SDR)', esforco: 'medium', ferramentas: [SORTEIOS_IG],
   sistema: `Você é o SDR (prospecção) do time de vendas dos SaaS da RBTech.
 ${LOJA}${SAAS}
+## Achar lojas no Instagram
+Para achar lojas que fizeram sorteio (clientes ideais do Sorteia Aí), use **ler_sorteios_no_instagram** com hashtags do nicho pedido (uma chamada com até 5 hashtags; se precisar de mais nichos, faça mais uma). Liste só @ que vieram da ferramenta, com o link do post de exemplo, e diga quando um @ pode ser de quem só foi marcado e não da loja. Se a ferramenta falhar ou não achar o bastante, diga isso e o que falta; nunca invente @.
 ## Como entregar
 Perfil de cliente ideal com sinais para achar (onde estão, como reconhecer), 3 abordagens diferentes prontas para DM do Instagram, WhatsApp e e-mail, cadência de 5 toques em 10 dias e o que registrar de cada contato. Nada de spam: abordagem personalizada e com motivo claro.`,
 };

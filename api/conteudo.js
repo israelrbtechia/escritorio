@@ -15,6 +15,25 @@ import { ErroMeta } from './_meta.js';
 import * as C from './_conteudo.js';
 
 const json = (corpo, status = 200) => Response.json(corpo, { status, headers: { 'Cache-Control': 'no-store' } });
+/** Geração demorada: manda um espaço a cada 8 s (o iPhone desiste depois de ~60 s sem nada) e o JSON no fim. */
+function demorado(trabalho) {
+  const enc = new TextEncoder();
+  const corpo = new ReadableStream({
+    async start(ctrl) {
+      ctrl.enqueue(enc.encode(' '));
+      const pulso = setInterval(() => { try { ctrl.enqueue(enc.encode(' ')); } catch { /* fechou */ } }, 8000);
+      let r;
+      try { r = await trabalho(); } catch (e) {
+        if (!(e instanceof C.ErroConteudo || e instanceof ErroMeta)) console.error(e);
+        r = { ok: false, erro: e.message || 'Erro na central de conteúdo.', status: 500 };
+      }
+      clearInterval(pulso);
+      ctrl.enqueue(enc.encode(JSON.stringify(r)));
+      ctrl.close();
+    },
+  });
+  return new Response(corpo, { status: 200, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+}
 const logado = request => autenticado({ headers: { authorization: request.headers.get('authorization') || '' } });
 
 async function tratar(request, metodo) {
@@ -37,17 +56,21 @@ async function tratar(request, metodo) {
     return item ? json(item) : json({ erro: 'não encontrado' }, 404);
   }
   if (r === 'stories' && metodo === 'POST') {
-    const { registro, resultado } = await C.rodarRotinaConteudo('stories', 'manual');
-    return registro.status === 'ok' ? json({ ok: true, roteiro: resultado, rotina: registro.id }) : json({ ok: false, erro: registro.erro }, 500);
+    return demorado(async () => {
+      const { registro, resultado } = await C.rodarRotinaConteudo('stories', 'manual');
+      return registro.status === 'ok' ? { ok: true, roteiro: resultado, rotina: registro.id } : { ok: false, erro: registro.erro, status: 500 };
+    });
   }
   if (r === 'gerar' && metodo === 'POST') {
     const { enviar } = await request.json().catch(() => ({}));
-    const { registro, resultado } = await C.rodarRotinaConteudo('reels', 'manual', { whatsapp: enviar === true });
-    return registro.status === 'ok' ? json({ ok: true, relatorio: resultado, avisos: resultado.avisos, rotina: registro.id }) : json({ ok: false, erro: registro.erro }, 500);
+    return demorado(async () => {
+      const { registro, resultado } = await C.rodarRotinaConteudo('reels', 'manual', { whatsapp: enviar === true });
+      return registro.status === 'ok' ? { ok: true, relatorio: resultado, avisos: resultado.avisos, rotina: registro.id } : { ok: false, erro: registro.erro, status: 500 };
+    });
   }
   if (r === 'ideias' && metodo === 'POST') {
     const { tema } = await request.json().catch(() => ({}));
-    return json({ ok: true, ideia: await C.gerarIdeia(typeof tema === 'string' ? tema : '') });
+    return demorado(async () => ({ ok: true, ideia: await C.gerarIdeia(typeof tema === 'string' ? tema : '') }));
   }
   if (r === 'config') {
     if (metodo === 'GET') return json(await C.lerTextosLoja());

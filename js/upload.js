@@ -69,10 +69,13 @@ function pedirLogin() {
   });
 }
 async function api(corpo) {
-  const r = await fetch('/api/instagram', { method: 'POST', headers: cabecalhos(), body: JSON.stringify(corpo) });
+  let r;
+  try { r = await fetch('/api/instagram', { method: 'POST', headers: cabecalhos(), body: JSON.stringify(corpo) }); }
+  catch { throw new Error('A conexão caiu (a internet oscilou ou o celular bloqueou a tela). Toque de novo: se já tinha publicado, o app avisa.'); }
   const d = await r.json().catch(() => null);
   if (r.status === 401 && d?.precisaLogin) { await pedirLogin(); return api(corpo); }
   if (!r.ok || !d) throw new Error(d?.erro || `Erro ${r.status}.`);
+  if (d.erro && d.status >= 400) throw new Error(d.erro);
   return d;
 }
 

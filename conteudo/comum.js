@@ -18,16 +18,22 @@ function rotaDoPredio(caminho) {
 }
 
 async function api(caminho, opcoes = {}) {
-  const resposta = await fetch(rotaDoPredio(caminho), {
-    ...opcoes,
-    headers: { Authorization: `Bearer ${tokenDoPredio()}`, ...(opcoes.headers || {}) },
-  });
+  let resposta;
+  try {
+    resposta = await fetch(rotaDoPredio(caminho), {
+      ...opcoes,
+      headers: { Authorization: `Bearer ${tokenDoPredio()}`, ...(opcoes.headers || {}) },
+    });
+  } catch {
+    throw new Error("A conexão caiu (a internet oscilou ou o celular bloqueou a tela). Veja se já ficou pronto escolhendo o dia na lista, ou tente de novo.");
+  }
   if (resposta.status === 401) {
     irParaLogin();
     throw new Error("sessão expirada");
   }
   const corpo = await resposta.json().catch(() => ({}));
   if (!resposta.ok) throw new Error(corpo.erro || `Erro ${resposta.status}`);
+  if (corpo && corpo.ok === false && corpo.erro) throw new Error(corpo.erro); // erro avisado depois do sinal de vida
   return corpo;
 }
 

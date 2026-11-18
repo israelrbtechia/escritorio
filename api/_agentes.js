@@ -11,6 +11,32 @@ export function responder(res, status, corpo) {
   res.status(status).json(corpo);
 }
 
+/**
+ * Resposta para trabalho demorado (IA pensando, rotina, publicação).
+ * O Safari do iPhone derruba a conexão ("Load failed") se o servidor passa uns 60 s sem mandar nada.
+ * Aqui o servidor manda um espaço a cada 8 s (espaço antes do JSON é válido) e, no fim, o JSON.
+ * Como o status 200 já foi enviado, um erro vem no corpo: { erro, status }.
+ */
+export async function responderDemorado(res, trabalho) {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.write(' ');
+  const pulso = setInterval(() => { try { res.write(' '); } catch { /* conexão fechada */ } }, 8000);
+  let corpo;
+  try {
+    corpo = await trabalho();
+  } catch (e) {
+    console.error(e);
+    const [status, erro] = erroDaApi(e);
+    corpo = { erro, status };
+  } finally {
+    clearInterval(pulso);
+  }
+  res.end(JSON.stringify(corpo));
+}
+
 // ---------- login (usuário e senha nas variáveis AGENCIA_USUARIO e AGENCIA_SENHA da Vercel) ----------
 import crypto from 'node:crypto';
 const DIAS_DE_SESSAO = 30;

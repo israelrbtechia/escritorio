@@ -499,12 +499,18 @@ function modoPrevia() {
   $('statusMeta').textContent = 'Prévia: a Meta só funciona com o site publicado na Vercel.';
 }
 async function chamarApi(caminho, corpo, metodo = 'POST') {
-  const resp = await fetch(caminho, {
-    method: metodo,
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${ler('agencia.token', '')}` },
-    ...(metodo === 'POST' ? { body: JSON.stringify(corpo) } : {}),
-  });
+  let resp;
+  try {
+    resp = await fetch(caminho, {
+      method: metodo,
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${ler('agencia.token', '')}` },
+      ...(metodo === 'POST' ? { body: JSON.stringify(corpo) } : {}),
+    });
+  } catch {
+    throw new Error('Sem conexão com o servidor agora (a internet oscilou ou o celular bloqueou a tela). Tente de novo.');
+  }
   const dados = await resp.json().catch(() => null);
+  if (resp.ok && dados?.erro && dados.status >= 400) throw new Error(dados.erro);
   if (resp.status === 401 && dados?.precisaLogin) {
     await pedirLogin();
     return chamarApi(caminho, corpo, metodo);

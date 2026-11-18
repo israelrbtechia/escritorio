@@ -133,9 +133,9 @@ export async function lerValor(chave) {
   if (!armazemLigado()) return null;
   return comando('GET', `agencia:${chave}`);
 }
-export async function gravarValor(chave, valor) {
+export async function gravarValor(chave, valor, segundos = 0) {
   if (!armazemLigado()) return false;
-  await comando('SET', `agencia:${chave}`, String(valor));
+  await comando('SET', `agencia:${chave}`, String(valor), ...(segundos ? ['EX', segundos] : []));
   return true;
 }
 /** Trava simples (só um pode passar por vez): true se conseguiu travar. */

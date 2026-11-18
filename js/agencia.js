@@ -115,12 +115,30 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
     }
   }
 
-  async function api(caminho, corpo, metodo = 'POST') {
-    const resp = await fetch(caminho, {
-      method: metodo,
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${ler(CHAVE.token, '')}` },
-      ...(metodo === 'POST' ? { body: JSON.stringify(corpo) } : {}),
-    });
+  /** Espera a tela voltar (o iPhone pausa o app com a tela bloqueada). */
+  const quandoVisivel = () => (document.visibilityState === 'visible' ? Promise.resolve()
+    : new Promise(r => document.addEventListener('visibilitychange', function f() { if (document.visibilityState === 'visible') { document.removeEventListener('visibilitychange', f); r(); } })));
+  const CAIU = 'A conexão com o servidor caiu (a internet oscilou ou o celular bloqueou a tela). Mande de novo: o que a equipe já entregou fica guardado.';
+
+  async function api(caminho, corpo, metodo = 'POST', tentativa = 1) {
+    let resp;
+    try {
+      resp = await fetch(caminho, {
+        method: metodo,
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${ler(CHAVE.token, '')}` },
+        ...(metodo === 'POST' ? { body: JSON.stringify(corpo) } : {}),
+      });
+    } catch {
+      // conexão caiu ("Load failed" no iPhone): tenta de novo o mesmo pedido quando a tela voltar.
+      // Uma rodada com idRodada não é cobrada duas vezes: o servidor devolve o resultado guardado.
+      const repetivel = metodo === 'GET' || caminho === '/api/meta' || !!corpo?.idRodada;
+      if (repetivel && tentativa < 4) {
+        await quandoVisivel();
+        await esperar(1500 * tentativa);
+        return api(caminho, corpo, metodo, tentativa + 1);
+      }
+      throw new Error(CAIU);
+    }
     let dados = null;
     try { dados = await resp.json(); } catch { /* sem JSON */ }
     if (resp.status === 401 && dados?.precisaLogin) {
@@ -130,11 +148,14 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
     if (!resp.ok || !dados) {
       if (resp.status === 504) throw new Error('O servidor demorou demais para responder. Tente um pedido menor.');
       if (resp.status === 404) throw new Error('Não achei o servidor da agência. Use o modo ensaio ou publique na Vercel.');
+      if (resp.ok && !dados) throw new Error(CAIU); // a resposta veio cortada
       throw new Error(dados?.erro || `Erro ${resp.status} no servidor.`);
     }
+    if (dados.erro && dados.status >= 400) throw new Error(dados.erro); // erro avisado depois do sinal de vida
     return dados;
   }
-  const chamar = corpo => (ensaio() ? simular(corpo) : api('/api/agente', corpo));
+  const novoId = () => (crypto.randomUUID?.() || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
+  const chamar = corpo => (ensaio() ? simular(corpo) : api('/api/agente', { ...corpo, idRodada: novoId() }));
 
   function auditoriaTexto(gestor) {
     const minhas = todasDecisoes().filter(d => d.gestor === gestor && d.status && d.status !== 'pendente').slice(0, 6);
@@ -366,6 +387,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   function metaDeEnsaio(nome) {
     const base = { ensaio: true, aviso: 'Números de ENSAIO, não são reais.' };
     if (nome === 'ler_metricas_anuncios') return { ...base, linhas: [{ investimento: 180, conversasWhatsApp: 23, custoPorConversa: 7.83, ctr: 1.9, cpm: 21.4, frequencia: 1.6 }] };
+    if (nome === 'ler_sorteios_no_instagram') return { ...base, perfisCitados: [{ perfil: '@loja_exemplo', posts: 2, exemplo: 'https://instagram.com/p/exemplo' }], posts: [], avisos: [] };
     if (nome === 'ler_central_de_conteudo') return { ...base, storiesDeHoje: { estrategia: { estrategiaDoDia: 'Aquecer a Black Friday (exemplo).' } }, ultimoRelatorioDeReels: 'nenhum ainda', estoqueDaSemana: '13 128 seminovo (exemplo)' };
     if (nome === 'ler_saas_reparo') return { ...base, lojas: 64, ativas: 31, emTeste: 18, pagantes: 27, receitaMensal: { reais: 1880 }, novasNoMes: 9, recentes: [{ nome: 'Assistência Exemplo', plano: 'Pro', situacao: 'teste' }] };
     if (nome === 'ler_posts_instagram') return { ...base, posts: [{ tipo: 'reels', curtidas: 210, comentarios: 18, numeros: { reach: 5400, shares: 31, saved: 22 } }] };

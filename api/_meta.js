@@ -208,11 +208,59 @@ export async function lerStatus() {
   return status;
 }
 
+// ---------- prospecção: posts de sorteio no Instagram (busca por hashtag) ----------
+// Usa a Busca de Hashtag da API do Instagram: precisa do recurso "Instagram Public Content Access" no app da Meta
+// e conta no limite de 30 hashtags diferentes por semana. A API não mostra o dono do post: os @ vêm das legendas.
+export async function lerSorteiosNoInstagram({ hashtags = [], dias = 7 } = {}) {
+  if (!metaLigado().instagram) throw new ErroMeta('O Instagram da RBTech ainda não está ligado (faltam META_ACCESS_TOKEN e META_IG_USER_ID na Vercel).');
+  const lista = [...new Set((hashtags.length ? hashtags : ['sorteio']).map(h => String(h).replace(/^#/, '').trim().toLowerCase())
+    .filter(h => /^[\p{L}\p{N}_]{2,50}$/u.test(h)))].slice(0, 5);
+  const periodo = Math.min(Math.max(Number(dias) || 7, 1), 30);
+  const desde = Date.now() - periodo * 864e5;
+  const posts = new Map();
+  const avisos = [];
+  for (const h of lista) {
+    try {
+      const { data } = await graph('ig_hashtag_search', { user_id: contaInstagram(), q: h });
+      const id = data?.[0]?.id;
+      if (!id) { avisos.push(`#${h}: hashtag não encontrada`); continue; }
+      for (const tipo of ['recent_media', 'top_media']) {
+        const r = await graph(`${id}/${tipo}`, { user_id: contaInstagram(), fields: 'caption,permalink,timestamp,like_count,comments_count,media_type', limit: 50 });
+        for (const p of r.data || []) {
+          if (p.timestamp && Date.parse(p.timestamp) < desde) continue;
+          if (!posts.has(p.permalink)) posts.set(p.permalink, { hashtag: h, quando: p.timestamp || null, curtidas: p.like_count ?? null, comentarios: p.comments_count ?? null, link: p.permalink, legenda: String(p.caption || '').slice(0, 400) });
+        }
+      }
+    } catch (e) {
+      avisos.push(`#${h}: ${e.message}${e.codigo === 10 || /permission|permiss/i.test(e.message) ? ' (o app da Meta precisa do recurso "Instagram Public Content Access" para buscar hashtags)' : ''}`);
+    }
+  }
+  // quem faz sorteio quase sempre pede para seguir o próprio perfil: os @ mais citados nas legendas são os candidatos
+  const citados = new Map();
+  for (const p of posts.values()) {
+    for (const m of new Set((p.legenda.match(/@[a-z0-9._]{2,30}/gi) || []).map(x => x.toLowerCase().replace(/\.$/, '')))) {
+      const c = citados.get(m) || { perfil: m, posts: 0, exemplo: p.link };
+      c.posts++;
+      citados.set(m, c);
+    }
+  }
+  return {
+    fonte: 'Instagram, busca de hashtag',
+    hashtags: lista.map(h => `#${h}`),
+    periodo: `últimos ${periodo} dias (a busca de "recentes" cobre só 24 h; o resto vem dos posts em alta)`,
+    aviso: 'A API não diz quem publicou: os @ vêm das legendas. Confira cada perfil antes de abordar e nunca invente @.',
+    perfisCitados: [...citados.values()].sort((a, b) => b.posts - a.posts).slice(0, 60),
+    posts: [...posts.values()].slice(0, 60),
+    avisos,
+  };
+}
+
 /** Executa a ferramenta pedida por um funcionário. */
 export async function executarFerramentaMeta(nome, entrada = {}) {
   if (nome === 'ler_ordens_de_servico') return (await import('./_reparo.js')).ferramentaOrdens();
   if (nome === 'ler_saas_reparo') return (await import('./_saas.js')).ferramentaSaas();
   if (nome === 'ler_central_de_conteudo') return (await import('./_conteudo.js')).ferramentaConteudo();
+  if (nome === 'ler_sorteios_no_instagram') return lerSorteiosNoInstagram(entrada);
   if (nome === 'ler_metricas_anuncios') return lerAnuncios(entrada);
   if (nome === 'ler_metricas_instagram') return lerInstagram(entrada);
   if (nome === 'ler_posts_instagram') return lerPosts(entrada);

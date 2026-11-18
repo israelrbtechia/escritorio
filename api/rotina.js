@@ -8,7 +8,7 @@
 // Quando roda cada uma: veja api/_rotinas.js (tráfego, crescimento e vendas 4x ao dia; loja a cada 10 atualizações de OS).
 import { ROTINAS } from './_equipe.js';
 import { ROTINAS_CONTEUDO } from './_conteudo.js';
-import { responder, codigoOk, NAO_AUTENTICADO } from './_agentes.js';
+import { responder, responderDemorado, codigoOk, NAO_AUTENTICADO } from './_agentes.js';
 import { armazemLigado, lerRotinas } from './_armazem.js';
 import { rotinasAtivas, executarRotina } from './_rotinas.js';
 import { estadoContadorOs, textoUltimasAtualizacoes } from './_reparo.js';
@@ -43,7 +43,12 @@ export default async function handler(req, res) {
   // cron de uma equipe em standby: sai na hora, sem chamar a IA
   if (req.method === 'GET' && !rotinasAtivas().includes(equipe)) return responder(res, 200, { standby: true, equipe });
   const origem = req.method === 'GET' ? 'automatica' : 'manual';
-  const extra = equipe === 'loja' ? await textoUltimasAtualizacoes().catch(() => '') : '';
-  const { registro, salvo } = await executarRotina(equipe, origem, { extra, whatsapp: origem === 'automatica' && equipe === 'reels' });
-  return responder(res, registro.status === 'ok' ? 200 : 502, { salvo, armazem: armazemLigado(), rotina: registro });
+  const rodar = async () => {
+    const extra = equipe === 'loja' ? await textoUltimasAtualizacoes().catch(() => '') : '';
+    const { registro, salvo } = await executarRotina(equipe, origem, { extra, whatsapp: origem === 'automatica' && equipe === 'reels' });
+    return { salvo, armazem: armazemLigado(), rotina: registro };
+  };
+  if (origem === 'manual') return responderDemorado(res, rodar); // o app espera: manda sinal de vida
+  const r = await rodar();
+  return responder(res, r.rotina.status === 'ok' ? 200 : 502, r);
 }

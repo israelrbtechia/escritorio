@@ -4,7 +4,7 @@
 //   POST { acao: "midia_recebida", pedido, midias }       → o Israel subiu os arquivos
 //   POST { acao: "publicar", pedido, midias, legenda }    → publica no Instagram (o clique do Israel é a aprovação)
 //   POST { acao: "salvar_edicao", edicao } / { acao: "marcar_edicao", id, feito }
-import { responder, autenticado, lerCorpo, NAO_AUTENTICADO } from './_agentes.js';
+import { responder, responderDemorado, autenticado, lerCorpo, NAO_AUTENTICADO } from './_agentes.js';
 import { armazemLigado, salvarItem, lerItem, lerItens } from './_armazem.js';
 import { publicarNoInstagram, ErroMeta } from './_meta.js';
 
@@ -48,10 +48,17 @@ export default async function handler(req, res) {
       const midias = (c.midias || base.midias || []).filter(midiaValida);
       if (!midias.length) return responder(res, 400, { erro: 'Suba o arquivo antes de publicar.' });
       const legenda = texto(c.legenda ?? base.legenda, 2200);
-      const r = await publicarNoInstagram({ tipo: base.tipo, midias, legenda, container: base.container }, { prazo: Date.now() + 200_000 });
-      const pedido = { ...base, midias, legenda, status: r.status === 'publicado' ? 'publicado' : 'processando', container: r.container ?? base.container, permalink: r.permalink || null, publicadoEm: r.status === 'publicado' ? Date.now() : null };
-      await salvarItem('pedidos', pedido);
-      return responder(res, 200, { ...r, pedido });
+      return responderDemorado(res, async () => { // vídeo demora: manda sinal de vida para o celular não desistir
+        try {
+          const r = await publicarNoInstagram({ tipo: base.tipo, midias, legenda, container: base.container }, { prazo: Date.now() + 200_000 });
+          const pedido = { ...base, midias, legenda, status: r.status === 'publicado' ? 'publicado' : 'processando', container: r.container ?? base.container, permalink: r.permalink || null, publicadoEm: r.status === 'publicado' ? Date.now() : null };
+          await salvarItem('pedidos', pedido);
+          return { ...r, pedido };
+        } catch (e) {
+          if (!(e instanceof ErroMeta)) console.error(e);
+          return { erro: e.message || 'Erro no Instagram.', status: e instanceof ErroMeta ? 422 : 502 };
+        }
+      });
     }
     if (c.acao === 'salvar_edicao' && c.edicao?.id) {
       const e = c.edicao;
