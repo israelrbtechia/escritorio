@@ -21,25 +21,12 @@
     },
     "api/conteudo.js": {
       "maxDuration": 300
+    },
+    "api/os.js": {
+      "maxDuration": 300
     }
   },
   "crons": [
-    {
-      "path": "/api/rotina?equipe=loja&executar=1",
-      "schedule": "7 11 * * *"
-    },
-    {
-      "path": "/api/rotina?equipe=trafego&executar=1",
-      "schedule": "17 11 * * *"
-    },
-    {
-      "path": "/api/rotina?equipe=crescimento&executar=1",
-      "schedule": "27 12 * * *"
-    },
-    {
-      "path": "/api/rotina?equipe=vendas&executar=1",
-      "schedule": "37 12 * * *"
-    },
     {
       "path": "/api/saas?revisar=1",
       "schedule": "41 11 * * *"
@@ -55,6 +42,54 @@
     {
       "path": "/api/rotina?equipe=reels&executar=1",
       "schedule": "13 11 * * 1"
+    },
+    {
+      "path": "/api/rotina?equipe=trafego&executar=1",
+      "schedule": "17 11 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=trafego&executar=1",
+      "schedule": "17 15 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=trafego&executar=1",
+      "schedule": "17 19 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=trafego&executar=1",
+      "schedule": "17 23 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=crescimento&executar=1",
+      "schedule": "27 11 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=crescimento&executar=1",
+      "schedule": "27 15 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=crescimento&executar=1",
+      "schedule": "27 19 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=crescimento&executar=1",
+      "schedule": "27 23 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=vendas&executar=1",
+      "schedule": "37 11 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=vendas&executar=1",
+      "schedule": "37 15 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=vendas&executar=1",
+      "schedule": "37 19 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=vendas&executar=1",
+      "schedule": "37 23 * * *"
     }
   ],
   "headers": [

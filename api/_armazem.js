@@ -16,6 +16,16 @@ function naMemoria([cmd, chave, ...r]) {
   if (cmd === 'LPUSH') { const l = mem.get(chave) || []; l.unshift(...r); mem.set(chave, l); return l.length; }
   if (cmd === 'LTRIM') { mem.set(chave, (mem.get(chave) || []).slice(r[0], r[1] + 1)); return 'OK'; }
   if (cmd === 'LRANGE') return (mem.get(chave) || []).slice(r[0], r[1] + 1);
+  if (cmd === 'INCRBY') { const v = Number(mem.get(chave) || 0) + Number(r[0]); mem.set(chave, String(v)); return v; }
+  if (cmd === 'GET') return mem.get(chave) ?? null;
+  if (cmd === 'SET') {
+    const nx = r.includes('NX'), ex = r.indexOf('EX');
+    if (nx && mem.has(chave) && !(mem.get(`${chave}:expira`) < Date.now())) return null;
+    mem.set(chave, r[0]);
+    if (ex > 0) mem.set(`${chave}:expira`, Date.now() + Number(r[ex + 1]) * 1000); else mem.delete(`${chave}:expira`);
+    return 'OK';
+  }
+  if (cmd === 'DEL') { mem.delete(chave); return 1; }
   const h = mem.get(chave) || new Map(); mem.set(chave, h);
   if (cmd === 'HSET') { h.set(r[0], r[1]); return 1; }
   if (cmd === 'HGET') return h.get(r[0]) ?? null;
@@ -112,4 +122,37 @@ export async function apagarItem(colecao, id) {
   if (!armazemLigado()) return false;
   await comando('HDEL', `agencia:${colecao}`, id);
   return true;
+}
+
+// ---------- valores soltos (contador das OS, retrato das OS, trava) ----------
+export async function somar(chave, n = 1) {
+  if (!armazemLigado()) return null;
+  return Number(await comando('INCRBY', `agencia:${chave}`, n));
+}
+export async function lerValor(chave) {
+  if (!armazemLigado()) return null;
+  return comando('GET', `agencia:${chave}`);
+}
+export async function gravarValor(chave, valor) {
+  if (!armazemLigado()) return false;
+  await comando('SET', `agencia:${chave}`, String(valor));
+  return true;
+}
+/** Trava simples (só um pode passar por vez): true se conseguiu travar. */
+export async function travar(chave, segundos) {
+  if (!armazemLigado()) return true;
+  return (await comando('SET', `agencia:${chave}`, String(Date.now()), 'NX', 'EX', segundos)) === 'OK';
+}
+export async function soltar(chave) {
+  if (!armazemLigado()) return;
+  await comando('DEL', `agencia:${chave}`);
+}
+export async function guardarEventos(chave, eventos, manter = 30) {
+  if (!armazemLigado() || !eventos.length) return;
+  await comando('LPUSH', `agencia:${chave}`, ...eventos.map(e => JSON.stringify(e)));
+  await comando('LTRIM', `agencia:${chave}`, 0, manter - 1);
+}
+export async function lerEventos(chave, n = 10) {
+  if (!armazemLigado()) return [];
+  return ((await comando('LRANGE', `agencia:${chave}`, 0, n - 1)) || []).map(x => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
 }

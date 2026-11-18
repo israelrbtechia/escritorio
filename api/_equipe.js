@@ -483,6 +483,7 @@ O Israel não está no app agora; ele vai ler seu relatório quando abrir. Faça
 1. Peça ao analista o diagnóstico de ontem comparado com os últimos 7 dias (ele lê o Meta Ads sozinho).
 2. Se o diagnóstico apontar um anúncio fraco ou cansado, peça ao copywriter 2 variações novas para substituí-lo e passe pelo revisor.
 3. Envie ao Israel as decisões que dependem dele (uma por chamada).
+Se nada mudou de forma relevante desde o último turno (veja [ÚLTIMO TURNO]), não acione a equipe: feche com um relatório curto dizendo isso.
 Seja econômico: no máximo 3 chamados à equipe. Feche com o relatório final.`,
   },
   crescimento: {
@@ -492,15 +493,17 @@ O Israel não está no app agora; ele vai ler seu relatório quando abrir. Faça
 1. Leia as métricas do Instagram dos últimos 7 dias.
 2. Peça ao especialista a análise dos últimos 12 posts e 3 melhorias para hoje (um conteúdo para postar, uma edição em algo que já existe e uma ação de engajamento).
 3. Envie ao Israel as decisões que dependem dele.
+Se nada mudou de forma relevante desde o último turno (veja [ÚLTIMO TURNO]), não acione o especialista: feche com um relatório curto.
 Confira a entrega e feche com o relatório final. No máximo 2 chamados ao especialista.`,
   },
   loja: {
     gestor: 'gerente_loja',
-    pedido: data => `[ROTINA AUTOMÁTICA · ${data}]
-O Israel não está no app agora. Faça a abertura do dia da loja:
-1. Peça ao atendimento as mensagens de follow-up do dia (quem não fechou ontem), a mensagem de pós-venda do dia (avaliação no Google ou indicação) e uma abordagem nova para o balcão.
-2. Peça ao técnico as mensagens do dia para os clientes de conserto e um lembrete do checklist de avaliação de usados.
-3. Envie ao Israel as decisões que dependem dele. No máximo 3 chamados. Feche com o relatório final.`,
+    pedido: data => `[ROTINA DA LOJA · ${data}]
+O Israel não está no app agora. A loja faz uma rodada a cada 10 atualizações de OS no ReparoSimples (OS nova ou mudança de status); a lista vem abaixo. Trabalhe em cima delas:
+1. Leia as OS abertas (ler_ordens_de_servico) para ver a fila, o que está atrasado e o que está pronto.
+2. Peça ao técnico o que fazer com as OS que mudaram (prioridade da bancada, peça a pedir, prazo a renegociar) e as mensagens para os clientes cujo aparelho ficou pronto, está esperando peça ou atrasou.
+3. Se houver OS entregue ou pronta, peça ao atendimento o pós-venda (avaliação no Google, indicação, acessório que combina com o conserto).
+4. Envie ao Israel as decisões que dependem dele. No máximo 2 chamados. Feche com o relatório final, curto.`,
   },
   vendas: {
     gestor: 'head_vendas',
@@ -509,6 +512,7 @@ O Israel não está no app agora. Faça a rodada do dia do time de vendas e prod
 1. Leia ler_saas_reparo (lojas, pagantes, em teste, receita, lojas novas e servidores) e comece o relatório por esses números.
 2. Se houver lojas em teste, peça ao sucesso as mensagens para converter o teste em assinatura; se não, peça ao SDR 10 perfis de assistência técnica com a abordagem de cada tipo.
 3. Se a revisão dos servidores tiver falha ou atenção, peça ao gestor de produto o plano de correção.
-4. Envie ao Israel as decisões que dependem dele. No máximo 3 chamados. Feche com o relatório final.`,
+4. Envie ao Israel as decisões que dependem dele. No máximo 3 chamados. Feche com o relatório final.
+Se nada mudou de forma relevante desde o último turno (veja [ÚLTIMO TURNO]), não acione a equipe: feche com um relatório curto com os números.`,
   },
 };

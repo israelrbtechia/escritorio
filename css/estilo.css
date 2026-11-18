@@ -355,3 +355,6 @@ body.modo-video .ent .tag { font-size: 12px; }
 
 .central-conteudo { flex-wrap: wrap; }
 .botoes-central { display: flex; gap: 6px; flex-wrap: wrap; }
+#sqlGatilhoOs { width: 100%; font: 12px/1.4 "JetBrains Mono", monospace; background: var(--painel); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; padding: 8px; margin: 6px 0; }
+#caixaGatilhoOs { display: flex; flex-direction: column; gap: 4px; }
+#caixaGatilhoOs[hidden] { display: none; }

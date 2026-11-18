@@ -139,6 +139,12 @@ async function sincronizarOs() {
       cena.definirOrdensDeServico(r.ordens);
       const n = s => r.ordens.filter(o => o.status === s).length;
       $('statusReparo').textContent = `✅ Ligado à loja “${r.loja || 'RB Tech'}” · ${r.ordens.length} OS em andamento (${n('analise') + n('peca')} na fila, ${n('servico')} em reparo, ${n('concluido')} prontas). Atualiza a cada 1 min.`;
+      if (r.contador) {
+        const c = r.contador;
+        $('contadorOs').textContent = `🔧 Rodada da loja: faltam ${c.faltam} de ${c.aCada} atualizações de OS (${c.total} contadas). ${c.gatilho ? 'Contagem em tempo real pelo Supabase.' : 'Sem o gatilho do Supabase, conta só enquanto o app está aberto.'}`;
+        $('btGatilhoOs').hidden = !!c.gatilho;
+      }
+      if (r.rodadaDaLoja) adicionarChat('gerente_loja', { quem: 'evento', html: true, texto: '🔧 <b>10 atualizações de OS no ReparoSimples</b>: Rael chamou a equipe para uma rodada. O relatório chega em alguns minutos.' });
     } else {
       $('statusReparo').textContent = 'Não ligado: crie REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY na Vercel. Enquanto isso o laboratório mostra OS de exemplo.';
     }
@@ -261,6 +267,20 @@ $('btRevisar').addEventListener('click', async () => {
 $('btAvisosSaas').addEventListener('click', async () => {
   try { await Notification.requestPermission(); } catch { /* navegador sem aviso */ }
   desenharSaasPainel();
+});
+
+$('btGatilhoOs').addEventListener('click', async () => {
+  if (semServidor) { $('statusReparo').textContent = 'Prévia sem servidor: o SQL só sai no site publicado.'; return; }
+  try {
+    const r = await chamarApi('/api/os?gatilho=1', null, 'GET');
+    if (!r.sql) { $('statusReparo').textContent = 'Ligue o ReparoSimples primeiro (REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY).'; return; }
+    $('sqlGatilhoOs').value = r.sql;
+    $('caixaGatilhoOs').hidden = false;
+  } catch (e) { $('statusReparo').textContent = `Gatilho: ${e.message}`; }
+});
+$('btCopiarGatilho').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('sqlGatilhoOs').value); $('btCopiarGatilho').textContent = 'Copiado ✓'; } catch { $('sqlGatilhoOs').select(); }
+  setTimeout(() => { $('btCopiarGatilho').textContent = 'Copiar SQL'; }, 1800);
 });
 
 // ---------- câmeras ----------

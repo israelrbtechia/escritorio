@@ -92,3 +92,90 @@ export async function ferramentaOrdens() {
     ordens: ordens.map(o => ({ ...o, status: nomes[o.status] || o.status })),
   };
 }
+
+// ======================================================================
+// Contador de atualizações de OS: a cada 10 (OS nova ou mudança de status), a loja faz uma rodada.
+// Duas formas de contar:
+//   1) gatilho no Supabase (tempo real, mesmo com o app fechado): o SQL vem do app (Ajustes → ReparoSimples);
+//   2) sem o gatilho: compara as OS a cada leitura do app (enquanto ele está aberto).
+// ======================================================================
+import { somar, lerValor, gravarValor, guardarEventos, lerEventos } from './_armazem.js';
+export const A_CADA = 10;
+const NOMES_STATUS = { analise: 'em análise', peca: 'aguardando peça', servico: 'em reparo', concluido: 'pronta', pago: 'entregue e paga', interrompido: 'interrompida' };
+const nomeStatus = s => NOMES_STATUS[s] || s || '—';
+
+/** Soma as atualizações e diz se completou mais um ciclo de 10. */
+export async function registrarAtualizacoesOs(eventos) {
+  if (!eventos.length) return { disparar: false, total: Number(await lerValor('os_contador')) || 0 };
+  await guardarEventos('os_eventos', eventos.map(e => ({ ...e, quando: e.quando || Date.now() })), 40);
+  const total = await somar('os_contador', eventos.length);
+  if (total == null) return { disparar: false, total: 0 };
+  return { disparar: Math.floor(total / A_CADA) > Math.floor((total - eventos.length) / A_CADA), total };
+}
+
+/** Sem o gatilho: compara as OS abertas com o retrato da última leitura. */
+export async function compararComRetrato(ordens) {
+  const gatilho = Number(await lerValor('os_gatilho')) || 0;
+  if (Date.now() - gatilho < 7 * 864e5) return []; // o gatilho do Supabase já conta em tempo real
+  const atual = Object.fromEntries(ordens.map(o => [o.os, { status: o.status, modelo: o.modelo }]));
+  const bruto = await lerValor('os_retrato');
+  await gravarValor('os_retrato', JSON.stringify(atual));
+  if (!bruto) return []; // primeira leitura: só guarda o retrato
+  let antes = {};
+  try { antes = JSON.parse(bruto); } catch { return []; }
+  const eventos = [];
+  for (const [os, o] of Object.entries(atual)) {
+    if (!antes[os]) eventos.push({ os, modelo: o.modelo, de: null, para: o.status, tipo: 'nova' });
+    else if (antes[os].status !== o.status) eventos.push({ os, modelo: o.modelo, de: antes[os].status, para: o.status, tipo: 'status' });
+  }
+  for (const [os, o] of Object.entries(antes)) if (!atual[os]) eventos.push({ os, modelo: o.modelo, de: o.status, para: 'pago', tipo: 'saiu' });
+  return eventos;
+}
+
+export async function estadoContadorOs() {
+  const total = Number(await lerValor('os_contador')) || 0;
+  const gatilho = Number(await lerValor('os_gatilho')) || 0;
+  return { total, aCada: A_CADA, faltam: A_CADA - (total % A_CADA), gatilho: gatilho ? new Date(gatilho).toISOString() : null };
+}
+
+/** Texto das últimas atualizações, para o pedido da rotina da loja. */
+export async function textoUltimasAtualizacoes(n = A_CADA) {
+  const eventos = await lerEventos('os_eventos', n);
+  if (!eventos.length) return '';
+  const linhas = eventos.reverse().map(e => {
+    const hora = new Date(e.quando).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const quem = `OS ${e.os}${e.modelo ? ` (${e.modelo})` : ''}`;
+    return e.tipo === 'nova' || !e.de ? `- ${hora} · ${quem}: OS nova, ${nomeStatus(e.para)}` : `- ${hora} · ${quem}: ${nomeStatus(e.de)} → ${nomeStatus(e.para)}`;
+  });
+  return `[ÚLTIMAS ${linhas.length} ATUALIZAÇÕES DE OS NO REPAROSIMPLES]\n${linhas.join('\n')}\n[/ATUALIZAÇÕES]`;
+}
+
+/** SQL do gatilho para colar no Supabase do ReparoSimples (avisa o prédio a cada OS nova ou mudança de status da RB Tech). */
+export function sqlDoGatilho({ endereco, lojaId, chave }) {
+  const q = s => String(s).replace(/'/g, "''");
+  return `-- Prédio RBTech: avisa o prédio a cada OS nova ou mudança de status da loja RB Tech.
+-- Cole no Supabase do ReparoSimples (SQL Editor) e rode uma vez. Para desligar: drop trigger predio_rbtech_os on public.itens;
+create extension if not exists pg_net with schema extensions;
+
+create or replace function public.predio_rbtech_os() returns trigger
+  language plpgsql security definer set search_path = public, extensions as $$
+begin
+  if new.colecao is distinct from 'os' or new.loja_id::text <> '${q(lojaId)}' then return new; end if;
+  if tg_op = 'UPDATE' and (old.dados->>'status') is not distinct from (new.dados->>'status') then return new; end if;
+  perform net.http_post(
+    url := '${q(endereco)}/api/os?evento=1',
+    body := jsonb_build_object(
+      'os', coalesce(new.dados->>'numero', new.id::text),
+      'modelo', coalesce(new.dados->'aparelho'->>'modelo', ''),
+      'de', case when tg_op = 'UPDATE' then old.dados->>'status' end,
+      'para', new.dados->>'status'),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'x-predio-chave', '${q(chave)}'),
+    timeout_milliseconds := 5000);
+  return new;
+end $$;
+
+drop trigger if exists predio_rbtech_os on public.itens;
+create trigger predio_rbtech_os after insert or update on public.itens
+  for each row execute function public.predio_rbtech_os();
+`;
+}

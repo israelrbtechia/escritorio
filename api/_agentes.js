@@ -19,6 +19,8 @@ function segredo() {
   return process.env.AGENCIA_SEGREDO || crypto.createHash('sha256').update(`predio-rbtech|${process.env.AGENCIA_USUARIO}|${process.env.AGENCIA_SENHA}`).digest('hex');
 }
 const assinar = dados => crypto.createHmac('sha256', segredo()).update(dados).digest('base64url');
+/** Chave fixa para um uso (ex.: o gatilho de OS do Supabase), derivada do segredo do login. */
+export const chaveDerivada = uso => crypto.createHmac('sha256', segredo()).update(`uso:${uso}`).digest('hex').slice(0, 40);
 function igual(a, b) {
   const ha = crypto.createHash('sha256').update(String(a)).digest();
   const hb = crypto.createHash('sha256').update(String(b)).digest();

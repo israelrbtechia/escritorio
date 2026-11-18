@@ -40,7 +40,7 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 | `AGENCIA_MODELO_EQUIPE` | opcional: modelo só dos funcionários (os chefes continuam no `AGENCIA_MODELO`). Ex.: `claude-sonnet-5-5`, que custa metade |
 | `AGENCIA_ESFORCO_CHEFES` / `AGENCIA_ESFORCO_EQUIPE` | opcional: `low`, `medium`, `high`… Padrão: chefes `medium`, equipe `low` |
 | `REPARO_SITE_URL` | opcional: endereço do site do ReparoSimples, para a revisão dos servidores conferir se está no ar |
-| `ROTINAS_ATIVAS` | opcional: escolhe as rotinas automáticas. Ex.: `stories,reels,trafego` ou `todas`. Sem ela, só rodam `stories` e `reels` |
+| `ROTINAS_ATIVAS` | opcional: escolhe as rotinas automáticas. Ex.: `stories,reels,trafego` ou `todas`. Sem ela, rodam stories, reels, tráfego, crescimento e vendas (a loja roda pelo contador de OS) |
 | `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_DESTINATARIOS` | opcional: avisam no WhatsApp quando o relatório de reels fica pronto (veja Central de conteúdo) |
 | `ELEVENLABS_API_KEY` | opcional: vozes reais para cada funcionário e transcrição das perguntas por áudio |
 | `ELEVENLABS_VOZES` | opcional: troca vozes, em JSON (ex.: `{"chefe":"id-da-voz"}`) |
@@ -59,17 +59,21 @@ Sem `AGENCIA_USUARIO` e `AGENCIA_SENHA`, o site fica aberto: qualquer pessoa com
 A equipe só **lê** métricas: não publica, não edita posts e não mexe em orçamento.
 
 ### Rotinas (vercel.json)
-- **Ligadas por padrão:** os stories do dia (08h03) e os reels da semana (segunda, 08h13), da Central de conteúdo. Cada uma é uma chamada de IA só.
-- **Em standby:** as reuniões automáticas dos andares (loja, tráfego, crescimento e vendas). O cron continua agendado, mas sai na hora sem chamar a IA.
-- **Para escolher:** crie `ROTINAS_ATIVAS` com as equipes (ex.: `stories,reels,trafego`) e faça redeploy.
-- Os botões "Rodar …" da aba Ajustes funcionam sempre.
+| Rotina | Quando (Brasília) | Quem |
+|---|---|---|
+| Tráfego | 4x ao dia: 8h17, 12h17, 16h17, 20h17 | Pamella e equipe |
+| Crescimento | 4x ao dia: 8h27, 12h27, 16h27, 20h27 | Helena e especialista |
+| Vendas e SaaS | 4x ao dia: 8h37, 12h37, 16h37, 20h37 | Head de vendas e equipe |
+| Loja | a cada 10 atualizações de OS no ReparoSimples (OS nova ou mudança de status) | Rael, atendimento e técnico |
+| Stories | todo dia, 8h03 | Especialista de crescimento |
+| Reels | segunda, 8h13 | Roteirista |
+| Revisão dos servidores do ReparoSimples | 8h41 e 20h41 (sem IA) | — |
 
-| Horário (Brasília) | Andar |
-|---|---|
-| 08:07 | Loja |
-| 08:17 | Tráfego |
-| 09:27 | Crescimento |
-| 09:37 | Vendas e SaaS |
+- **Economia:** a cada turno, o chefe recebe o relatório do turno anterior. Se nada mudou, ele fecha um relatório curto sem chamar a equipe.
+- **Rodada da loja:** cada OS nova ou mudança de status conta 1. Na 10ª, Rael faz a rodada com a lista das 10 atualizações.
+  - Para contar em tempo real, mesmo com o app fechado: abra Ajustes → ReparoSimples → **Contar as OS em tempo real**, copie o SQL e rode uma vez no SQL Editor do Supabase do ReparoSimples.
+  - Sem isso, o prédio só conta enquanto o app está aberto (compara as OS a cada minuto).
+- **Para mudar quais rodam sozinhas:** crie `ROTINAS_ATIVAS` na Vercel (ex.: `stories,reels,trafego` ou `todas`). Os botões "Rodar …" da aba Ajustes funcionam sempre.
 
 No plano Hobby da Vercel, cada rotina roda uma vez por dia, e o horário pode variar dentro da hora.
 

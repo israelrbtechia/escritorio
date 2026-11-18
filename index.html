@@ -150,11 +150,18 @@
             <strong>🔧 ReparoSimples · loja RB Tech</strong>
             <small>As OS em andamento aparecem no laboratório do térreo: OS nova vira aparelho para o técnico e cada mudança de status move o aparelho.</small>
             <small id="statusReparo">…</small>
+            <small id="contadorOs"></small>
             <div id="listaLojasReparo"></div>
+            <button type="button" class="bt-sec" id="btGatilhoOs">⚡ Contar as OS em tempo real (SQL para o Supabase)</button>
+            <div id="caixaGatilhoOs" hidden>
+              <small>No Supabase do ReparoSimples: <b>SQL Editor</b> → cole o texto abaixo → <b>Run</b>. Uma vez só. Depois disso, cada OS nova ou mudança de status avisa o prédio na hora, mesmo com o app fechado.</small>
+              <textarea id="sqlGatilhoOs" rows="8" readonly spellcheck="false"></textarea>
+              <button type="button" class="bt-sec" id="btCopiarGatilho">Copiar SQL</button>
+            </div>
           </div>
           <div class="rotinas">
             <strong>Rotinas automáticas</strong>
-            <small>Ligadas por padrão: os stories do dia (antes das 9h) e os reels da semana (segunda), uma chamada de IA cada. As reuniões automáticas dos andares ficam em standby para economizar: para escolher, crie ROTINAS_ATIVAS na Vercel (ex.: stories,reels,trafego). Os botões rodam na hora.</small>
+            <small>Tráfego, crescimento e vendas/SaaS: 4 vezes por dia (8h, 12h, 16h e 20h). Loja: a cada 10 atualizações de OS no ReparoSimples. Stories: todo dia antes das 9h. Reels: segunda de manhã. Para mudar, crie ROTINAS_ATIVAS na Vercel (ex.: stories,reels,trafego). Os botões rodam na hora.</small>
             <small id="statusRotinas">…</small>
             <div class="botoes-rotina">
               <button type="button" class="bt-sec" data-rotina="stories">Rodar stories</button>
