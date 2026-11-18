@@ -144,3 +144,109 @@ export function baixarRelatorio(entrega, opcoes) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
+
+// ======================================================================
+// Relatório HTML de qualquer equipe: o relatório final do chefe + as entregas citadas.
+// ======================================================================
+const ESTILO_TRABALHO = `
+  :root { --amarelo: #ffd60a; --preto: #0f0f0f; --fundo: #f6f5f1; --cartao: #ffffff; --texto: #1a1a1a; --texto-2: #5f5f5f; --linha: #e4e1d8; }
+  @media (prefers-color-scheme: dark) { :root { --fundo: #121212; --cartao: #1c1c1c; --texto: #f2f2f2; --texto-2: #a9a9a9; --linha: #2c2c2c; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.6 "Poppins", system-ui, sans-serif; }
+  .topo { background: var(--preto); color: #fff; padding: 28px 16px; }
+  .topo .in, main { max-width: 920px; margin: 0 auto; }
+  .marca { display: flex; align-items: center; gap: 10px; color: var(--amarelo); font-weight: 800; letter-spacing: .04em; font-size: 13px; text-transform: uppercase; }
+  .logo { width: 34px; height: 34px; display: grid; place-items: center; background: var(--amarelo); color: var(--preto); border-radius: 8px; font-weight: 800; }
+  h1 { font-size: clamp(24px, 4vw, 34px); line-height: 1.15; margin: 14px 0 8px; }
+  .meta { color: #bdbdbd; font-size: 13px; }
+  main { padding: 24px 16px 60px; }
+  .barra { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .barra button { font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--linha); background: var(--cartao); color: var(--texto); border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+  .pedido { background: var(--cartao); border: 1px solid var(--linha); border-left: 6px solid var(--amarelo); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px; }
+  .pedido b { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-2); }
+  nav.indice { background: var(--cartao); border: 1px solid var(--linha); border-radius: 12px; padding: 12px 18px; margin-bottom: 18px; }
+  nav.indice ol { margin: 6px 0 0; padding-left: 20px; }
+  nav.indice a { color: inherit; }
+  section.bloco { background: var(--cartao); border: 1px solid var(--linha); border-radius: 14px; padding: 18px 20px; margin-bottom: 16px; }
+  section.bloco > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; border-bottom: 1px solid var(--linha); padding-bottom: 10px; margin-bottom: 8px; }
+  .codigo { background: var(--amarelo); color: var(--preto); font-weight: 800; border-radius: 6px; padding: 0 8px; font-size: 13px; }
+  .quem { font-weight: 700; }
+  .hora { color: var(--texto-2); font-size: 12px; margin-left: auto; }
+  .copiar { font: inherit; font-size: 12px; border: 1px solid var(--linha); background: transparent; color: var(--texto); border-radius: 8px; padding: 3px 10px; cursor: pointer; }
+  section.bloco h2, section.bloco h3, section.bloco h4 { line-height: 1.3; margin: 16px 0 6px; }
+  section.bloco p { margin: 0 0 10px; }
+  section.bloco ul, section.bloco ol { padding-left: 22px; margin: 4px 0 10px; }
+  details.pedido-entrega { color: var(--texto-2); font-size: 13px; margin-bottom: 8px; }
+  details.pedido-entrega summary { cursor: pointer; }
+  blockquote { margin: 0 0 10px; padding: 8px 12px; border-left: 4px solid var(--amarelo); background: var(--fundo); border-radius: 0 8px 8px 0; }
+  code { background: var(--fundo); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .tabela { overflow-x: auto; } table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 6px 0 12px; } th, td { border: 1px solid var(--linha); padding: 6px 8px; text-align: left; vertical-align: top; } th { background: var(--fundo); }
+  footer { color: var(--texto-2); font-size: 12px; text-align: center; margin-top: 40px; }
+  @media print { .barra, .copiar { display: none; } body { background: #fff; } section.bloco { break-inside: avoid-page; } }
+`;
+const dataLonga = t => new Date(t || Date.now()).toLocaleString('pt-BR', { dateStyle: 'long', timeStyle: 'short' });
+
+/**
+ * Página HTML com o trabalho de uma equipe.
+ * @param {{titulo, equipe, autor, quando, pedido, relatorio, entregas: Array<{id, autor, quando, pedido, texto}>, ensaio}} t
+ */
+export function gerarHtmlTrabalho(t) {
+  const entregas = t.entregas || [];
+  const blocos = [];
+  if (t.relatorio) blocos.push({ ancora: 'relatorio', titulo: `Relatório de ${t.autor}`, html: `<section class="bloco" id="relatorio"><header><span class="quem">📋 Relatório de ${esc(t.autor)}</span><span class="hora">${esc(dataLonga(t.quando))}</span><button class="copiar" type="button" data-copiar="relatorio">Copiar</button></header>${markdown(t.relatorio)}</section>` });
+  for (const e of entregas) {
+    blocos.push({ ancora: `e-${e.id}`, titulo: `${e.id} · ${e.autor}`, html: `<section class="bloco" id="e-${esc(e.id)}"><header><span class="codigo">${esc(e.id)}</span><span class="quem">${esc(e.autor)}</span><span class="hora">${esc(dataLonga(e.quando))}</span><button class="copiar" type="button" data-copiar="e-${esc(e.id)}">Copiar</button></header>${e.pedido ? `<details class="pedido-entrega"><summary>O que foi pedido</summary>${comQuebras(e.pedido)}</details>` : ''}${markdown(e.texto || '')}</section>` });
+  }
+  const textos = Object.fromEntries([['relatorio', t.relatorio || ''], ...entregas.map(e => [`e-${e.id}`, e.texto || ''])]);
+  return `<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(t.titulo)} · RBTech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>${ESTILO_TRABALHO}</style>
+</head>
+<body>
+<header class="topo"><div class="in">
+  <div class="marca"><span class="logo">RB</span> Prédio RBTech · ${esc(t.equipe)}</div>
+  <h1>${esc(t.titulo)}</h1>
+  <div class="meta">${esc(t.autor)} · ${esc(dataLonga(t.quando))}${entregas.length ? ` · ${entregas.length} entrega(s) da equipe` : ''}${t.ensaio ? ' · ENSAIO (respostas de mentira)' : ''}</div>
+</div></header>
+<main>
+  <div class="barra"><button type="button" onclick="print()">🖨️ Imprimir / salvar PDF</button></div>
+  ${t.pedido ? `<div class="pedido"><b>Pedido do Israel</b>${comQuebras(t.pedido)}</div>` : ''}
+  ${blocos.length > 1 ? `<nav class="indice"><b>Nesta página</b><ol>${blocos.map(b => `<li><a href="#${esc(b.ancora)}">${esc(b.titulo)}</a></li>`).join('')}</ol></nav>` : ''}
+  ${blocos.map(b => b.html).join('\n')}
+  <footer>Gerado pelo Prédio RBTech · a equipe só sugere: nada foi publicado, enviado ou gasto sem a aprovação do Israel.</footer>
+</main>
+<script>
+  const TEXTOS = ${JSON.stringify(textos).replace(/</g, '\\u003c')};
+  for (const b of document.querySelectorAll('[data-copiar]')) b.onclick = async () => {
+    try { await navigator.clipboard.writeText(TEXTOS[b.dataset.copiar] || ''); b.textContent = 'Copiado ✓'; } catch { b.textContent = 'Não deu'; }
+    setTimeout(() => { b.textContent = 'Copiar'; }, 1600);
+  };
+</script>
+</body>
+</html>`;
+}
+
+/** Abre um HTML pronto numa aba nova. */
+export function abrirHtml(html) {
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const aba = window.open(url, '_blank');
+  if (!aba) location.href = url;
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+/** Baixa um HTML pronto como arquivo. */
+export function baixarHtml(html, arquivo) {
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = arquivo;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

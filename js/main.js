@@ -2,7 +2,7 @@
 // o placar, a Meta e as rotinas automáticas.
 import { criarAgencia, PESSOAS, GESTORES, ler, gravar, linkUpload } from './agencia.js';
 import { markdown } from './markdown.js';
-import { abrirRelatorio, baixarRelatorio } from './relatorio.js';
+import { abrirRelatorio, baixarRelatorio, gerarHtmlTrabalho, abrirHtml, baixarHtml } from './relatorio.js';
 import { criarVoz } from './voz.js';
 
 const $ = id => document.getElementById(id);
@@ -519,10 +519,12 @@ function trocarGestor(g, focarCamera = true) {
   $('entrada').placeholder = g === 'reuniao' ? 'Escreva a pauta da reunião… (Enter envia)' : `Fale com ${nome(g)}… (Enter envia)`;
   if (focarCamera) focarAuto(cameraDe(g));
 }
+const CODIGOS = /\b(?:R[a-z0-9]+-)?E\d+\b/g; // códigos das entregas (E1, E2… e os das rotinas)
+const temHtml = item => item.quem === 'chefe' && (item.final || (item.texto || '').length > 500 || /\b(?:R[a-z0-9]+-)?E\d+\b/.test(item.texto || ''));
 function elementoMsg(item, gestor) {
   const el = document.createElement('div');
   el.className = 'msg ' + item.quem;
-  if (item.quem === 'chefe') el.innerHTML = `<div class="quem">${item.titulo || nome(gestor)}</div>${markdown(item.texto)}`;
+  if (item.quem === 'chefe') el.innerHTML = `<div class="quem">${item.titulo || nome(gestor)}</div>${markdown(item.texto)}${temHtml(item) ? `<div class="msg-acoes"><button type="button" data-html-chat="abrir" data-quando="${item.quando}">📄 Abrir em HTML</button><button type="button" class="bt-sec" data-html-chat="baixar" data-quando="${item.quando}">⬇️ Baixar</button></div>` : ''}`;
   else if (item.html) el.innerHTML = item.texto;
   else el.textContent = item.texto;
   return el;
@@ -589,15 +591,15 @@ function desenharEntregas() {
       </div>
       <details><summary>Pedido</summary><div class="entrega-pedido"></div></details>
       <div class="entrega-texto">${markdown(e.texto)}</div>
-      <div class="entrega-acoes"><button type="button" class="bt-sec">Copiar texto</button>${e.ideias ? '<button type="button" data-html="abrir">📄 Abrir relatório HTML</button><button type="button" class="bt-sec" data-html="baixar">⬇️ Baixar HTML</button>' : ''}</div>`;
+      <div class="entrega-acoes"><button type="button" class="bt-sec">Copiar texto</button><button type="button" data-html="abrir">📄 Abrir em HTML</button><button type="button" class="bt-sec" data-html="baixar">⬇️ Baixar HTML</button></div>`;
     card.querySelector('.entrega-id').textContent = e.id;
     card.querySelector('.entrega-quem').textContent = nome(e.papel);
     card.querySelector('.entrega-hora').textContent = hora(e.quando);
     const ped = card.querySelector('.entrega-pedido');
     ped.textContent = `${nome(e.gestor || 'chefe')} pediu: ${e.pedido}${e.anexos?.length ? `\n\nAnexos: ${e.anexos.join(', ')}` : ''}`;
     ped.style.whiteSpace = 'pre-wrap';
-    card.querySelector('[data-html="abrir"]')?.addEventListener('click', () => abrirRelatorio(e, opcoesRelatorio(e)));
-    card.querySelector('[data-html="baixar"]')?.addEventListener('click', () => baixarRelatorio(e, opcoesRelatorio(e)));
+    card.querySelector('[data-html="abrir"]').addEventListener('click', () => (e.ideias ? abrirRelatorio(e, opcoesRelatorio(e)) : abrirHtml(htmlDaEntrega(e))));
+    card.querySelector('[data-html="baixar"]').addEventListener('click', () => (e.ideias ? baixarRelatorio(e, opcoesRelatorio(e)) : baixarHtml(htmlDaEntrega(e), `entrega-rbtech-${e.id}.html`)));
     const bt = card.querySelector('button');
     bt.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(e.texto); bt.textContent = 'Copiado ✓'; } catch { bt.textContent = 'Não deu para copiar'; }
@@ -677,6 +679,39 @@ function desenharInstagram() {
 // a página de upload grava o andamento no navegador: atualiza a aba quando ela mudar
 addEventListener('storage', ev => { if (ev.key === 'agencia.pedidos') desenharInstagram(); });
 addEventListener('focus', () => desenharInstagram());
+// ---------- relatórios em HTML de qualquer equipe ----------
+const EQUIPE_DE = { gerente_loja: '1º andar · Loja RB TECH', chefe: '2º andar · Tráfego', gerente_crescimento: '2º andar · Crescimento', head_vendas: '3º andar · Vendas e SaaS', reuniao: 'Reunião geral no terraço' };
+const GESTOR_PADRAO = Object.fromEntries(Object.entries(GESTORES).flatMap(([g, x]) => x.equipe.map(p => [p, g])));
+const paraHtml = e => ({ id: e.id, autor: nome(e.papel), quando: e.quando, pedido: e.pedido, texto: e.texto });
+function htmlDaEntrega(e) {
+  const g = e.gestor || GESTOR_PADRAO[e.papel] || e.papel;
+  const pedido = String(e.pedido || '').replace(/\s+/g, ' ');
+  return gerarHtmlTrabalho({ titulo: `${e.id} · ${nome(e.papel)}`, equipe: EQUIPE_DE[g] || nome(g), autor: nome(e.papel), quando: e.quando, entregas: [{ ...paraHtml(e), pedido }], ensaio: e.ensaio });
+}
+function htmlDoChat(item, canal) {
+  const todas = agencia.entregas();
+  const codigos = [...new Set(item.texto.match(CODIGOS) || [])];
+  let entregas = codigos.map(c => todas.find(e => e.id === c)).filter(Boolean);
+  if (!entregas.length && canal !== 'reuniao') {
+    entregas = todas.filter(e => (e.gestor || GESTOR_PADRAO[e.papel]) === canal && e.quando <= item.quando + 2000 && e.quando > item.quando - 45 * 60_000);
+  }
+  const pedido = [...chats[canal]].reverse().find(m => m.quem === 'voce' && m.quando <= item.quando)?.texto || '';
+  const curto = pedido.replace(/\s+/g, ' ').trim();
+  const titulo = curto ? (curto.length > 90 ? curto.slice(0, 88) + '…' : curto) : (item.texto.match(/^#{1,3}\s+(.+)$/m)?.[1] || `Relatório de ${item.titulo || nome(canal)}`).replace(/[*_`]/g, '');
+  return gerarHtmlTrabalho({
+    titulo, equipe: EQUIPE_DE[canal] || nome(canal), autor: item.titulo || nome(canal), quando: item.quando,
+    pedido, relatorio: item.texto, entregas: entregas.map(paraHtml), ensaio: entregas.some(e => e.ensaio),
+  });
+}
+$('chat').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-html-chat]');
+  if (!b) return;
+  const item = chats[gestorAtual].find(m => m.quem === 'chefe' && String(m.quando) === b.dataset.quando);
+  if (!item) return;
+  const html = htmlDoChat(item, gestorAtual);
+  if (b.dataset.htmlChat === 'abrir') abrirHtml(html);
+  else baixarHtml(html, `relatorio-rbtech-${gestorAtual}-${new Date(item.quando).toISOString().slice(0, 16).replace(/[:T]/g, '-')}.html`);
+});
 // links de relatório dentro do chat
 $('chat').addEventListener('click', ev => {
   const a = ev.target.closest('[data-relatorio]');
@@ -792,7 +827,7 @@ const agencia = criarAgencia({
         if (ev.estado === 'pensando') focarAuto(cameraDe(g));
         break;
       case 'chefeTexto':
-        adicionarChat(canal, { quem: 'chefe', titulo: canal === 'reuniao' ? (PESSOAS[g].cargo ? `${nome(g)} · ${PESSOAS[g].cargo}` : nome(g)) : undefined, texto: ev.texto });
+        adicionarChat(canal, { quem: 'chefe', titulo: canal === 'reuniao' ? (PESSOAS[g].cargo ? `${nome(g)} · ${PESSOAS[g].cargo}` : nome(g)) : undefined, texto: ev.texto, final: !!ev.final });
         if (ev.final) { cena.comemorar(g); focarAuto(cameraDe(g)); voz.falar(g, ev.texto); }
         else cena.fala(g, ev.texto.split('\n')[0].replace(/[*_#`]/g, '').slice(0, 46));
         break;
@@ -892,7 +927,7 @@ function mostrarRotina(r, nova) {
   const quando = hora(r.inicio);
   const titulo = `${nome(r.gestor)} · rotina ${r.origem === 'manual' ? 'manual' : 'automática'} de ${quando}`;
   if (r.status !== 'ok') adicionarChat(r.gestor, { quem: 'aviso', texto: `Rotina de ${quando} falhou: ${r.erro || 'erro desconhecido'}` });
-  else adicionarChat(r.gestor, { quem: 'chefe', titulo, texto: r.relatorio || '(sem relatório)' });
+  else adicionarChat(r.gestor, { quem: 'chefe', titulo, texto: r.relatorio || '(sem relatório)', final: true });
   if (nova) cena.reviverRotina(r);
 }
 async function sincronizar(inicial = false) {

@@ -331,6 +331,9 @@ body.modo-video .ent .tag { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .quadro-nome::before { animation: none; } }
 
+.msg-acoes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--linha); }
+.msg-acoes button { font-size: 12.5px; padding: 5px 10px; border-radius: 8px; }
+
 /* ---------- aba SaaS (ReparoSimples) ---------- */
 .kpis-saas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 10px 0 8px; }
 .kpi-saas { background: var(--painel-2); border: 1px solid var(--linha); border-radius: 10px; padding: 10px; min-width: 0; }
