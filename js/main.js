@@ -286,6 +286,9 @@ $('btCopiarGatilho').addEventListener('click', async () => {
   setTimeout(() => { $('btCopiarGatilho').textContent = 'Copiar SQL'; }, 1800);
 });
 
+// crédito dos dados do bairro real (OpenStreetMap, Microsoft, SRTM)
+$('cena3d').addEventListener('bairro', e => { $('creditoMapa').textContent = e.detail.fonte; $('creditoMapa').hidden = false; });
+
 // ---------- câmeras ----------
 const autoCam = $('autoCam');
 let timerCam = null;

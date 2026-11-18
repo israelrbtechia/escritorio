@@ -36,6 +36,8 @@ export const CAMERAS = [
   C('predio', 'predio_rua', 'Da rua', 0, [5, 1.6, 23], [1, 5.5, 0], { abs: true, limite: 3, largura: 1.1 }),
   C('predio', 'predio_lateral', 'Lateral e elevador', 0, [32, 9, -8], [7, 6.5, -1], { abs: true, limite: 3, largura: 1.2 }),
   C('predio', 'predio_aerea', 'Aérea', 0, [6, 50, 20], [0, 7, 0], { abs: true, limite: 3, largura: 1.2 }),
+  C('predio', 'bairro', 'Bairro (Colônia Santana)', 0, [170, 140, 290], [0, 6, 0], { abs: true, limite: 3, largura: 1.2 }),
+  C('predio', 'sc281', 'Chegando pela SC-281', 0, [-64, 2.2, 22.6], [0, 5.5, 6], { abs: true, limite: 3, largura: 1.1 }),
   // 1º andar · loja
   C('loja', 'loja', 'Visão geral', 0, [17, 15, 19], [0, 0, -0.5], { largura: 1.5, alvoEmPe: [0.7, 0, -1], nome: 'LOJA RB TECH' }),
   C('loja', 'loja_porta', 'Entrada', 0, [0, 3.0, 13], [0, 1.3, 1.5]),
@@ -98,12 +100,12 @@ export function criarEscritorio(container, camada) {
   container.appendChild(renderer.domElement);
 
   const cena = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
+  const camera = new THREE.PerspectiveCamera(36, 1, 0.3, 6000); // longe: os morros de Colônia Santana
   const controles = new OrbitControls(camera, renderer.domElement);
   controles.enableDamping = true;
   controles.maxPolarAngle = 1.45;
   controles.minDistance = 3;
-  controles.maxDistance = 160;
+  controles.maxDistance = 1400; // dá para afastar e ver o bairro inteiro
   // Toque: 1 dedo arrasta a visão. 2 dedos: o primeiro movimento decide o gesto (como nos mapas), e ele não se mistura:
   //   pinça = zoom · girar os dedos = gira o prédio · arrastar os dois para cima/baixo = inclina.
   // Mouse: esquerdo arrasta, direito (ou Ctrl/Shift + esquerdo) gira, rodinha = zoom.
@@ -179,7 +181,13 @@ export function criarEscritorio(container, camada) {
   cena.add(sol);
 
   // ---------- prédio ----------
-  montarRua(cena);
+  const rua = montarRua(cena);
+  // o bairro real em volta da loja (SC-281, Colônia Santana): carrega depois, sem travar o prédio
+  import('./vizinhanca.js').then(m => m.montarVizinhanca(cena)).then(v => {
+    if (!v) return;
+    for (const o of rua.genericos) o.visible = false;
+    container.dispatchEvent(new CustomEvent('bairro', { detail: { fonte: v.fonte, loja: v.loja } }));
+  }).catch(e => console.warn('bairro:', e));
   const predio = grupo(0, 0, 0, cena);
   const telas = {};
   const andares = [0, 1, 2, 3].map(i => grupo(0, i * ALT, 0, predio));
@@ -851,7 +859,7 @@ export function criarEscritorio(container, camada) {
       const x = r.left - tela.left, y = tela.bottom - r.bottom, w = r.width, h = r.height;
       if (w < 4 || h < 4) continue;
       let camQuadro = mosaico.cams.get(cam.id);
-      if (!camQuadro) mosaico.cams.set(cam.id, (camQuadro = new THREE.PerspectiveCamera(40, 1, 0.1, 400)));
+      if (!camQuadro) mosaico.cams.set(cam.id, (camQuadro = new THREE.PerspectiveCamera(40, 1, 0.3, 6000)));
       camQuadro.aspect = w / h;
       camQuadro.updateProjectionMatrix();
       const [pos, alvo] = posicaoCamera(cam, camQuadro.aspect);

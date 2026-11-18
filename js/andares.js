@@ -585,17 +585,21 @@ export function montarTerraco(g, telas) {
 // ======================================================================
 // Rua, calçada e o elevador de vidro
 // ======================================================================
+/** Calçada, postes e árvores da frente. O chão e a rua genéricos somem quando o bairro real (js/vizinhanca.js) carrega. */
 export function montarRua(cena) {
-  caixa(120, 0.2, 120, 0x2c2f33, 0, -0.62, 0, cena).castShadow = false;
+  const genericos = [];
+  const g = (o) => { o.castShadow = false; genericos.push(o); return o; };
+  g(caixa(120, 0.2, 120, 0x2c2f33, 0, -0.62, 0, cena));
   caixa(34, 0.12, 4, 0x9a9a96, 2, -0.06, 10.2, cena).castShadow = false;
-  caixa(60, 0.1, 9, 0x232528, 0, -0.52, 16.6, cena).castShadow = false;
-  for (let i = -6; i <= 6; i++) caixa(1.6, 0.02, 0.18, AMARELO, i * 4, -0.46, 16.6, cena).castShadow = false;
+  g(caixa(60, 0.1, 9, 0x232528, 0, -0.52, 16.6, cena));
+  for (let i = -6; i <= 6; i++) g(caixa(1.6, 0.02, 0.18, AMARELO, i * 4, -0.46, 16.6, cena));
   for (const x of [-14, 18]) {
     caixa(0.18, 5, 0.18, 0x333333, x, 2.0, 11.9, cena);
     caixa(1.0, 0.15, 0.3, 0x333333, x - 0.4, 4.5, 11.9, cena);
     caixa(0.4, 0.1, 0.3, 0xfff3c4, x - 0.8, 4.4, 11.9, cena, { emissive: 0xfff0b0, emissiveIntensity: 0.8 });
   }
   for (const x of [-17, 17, 22]) { caixa(0.3, 1.6, 0.3, 0x5a3a20, x, 0.75, 11.8, cena); caixa(1.6, 1.4, 1.6, 0x3f8f3a, x, 2.2, 11.8, cena); }
+  return { genericos };
 }
 export function montarElevador(predio) {
   const { x, z } = ELEVADOR;

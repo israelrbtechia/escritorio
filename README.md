@@ -108,6 +108,20 @@ Variáveis na Vercel (projeto do prédio):
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
 
+## O bairro real em volta do prédio (Colônia Santana, São José/SC)
+O prédio fica no lugar da loja, na **Rodovia SC-281, 7955** (no mapa: Rodovia Eugênio Raulino Koerich), de frente para a rodovia. Em volta, no mesmo estilo de blocos, está o que existe de verdade:
+- **casas:** 669, nos lugares e tamanhos reais (contorno por satélite), com telhado de 4 águas e 1 ou 2 andares conforme o tamanho; galpões com telhado de metal;
+- **ruas e rios:** a SC-281 com faixa amarela, as ruas do bairro (asfalto ou terra), os rios e córregos;
+- **relevo e mata:** os morros reais em volta do vale, até 319 m, com Mata Atlântica, e céu de dia.
+
+Câmeras: **Prédio → Bairro (Colônia Santana)** e **Chegando pela SC-281**. Dá para afastar o zoom até ver o bairro inteiro.
+
+Sobre a posição: o número 7955 não está no mapa. Ele foi estimado pelo CEP (o trecho de Colônia Santana começa no 6001) e pelo comprimento da rodovia, do lado ímpar. Para usar o ponto exato do Google Maps:
+1. Troque `LOJA` em `scripts/gerar-vizinhanca.py`.
+2. Rode o script com os dados baixados (ele explica como).
+
+Dados: © OpenStreetMap contributors (ODbL) · Microsoft Global ML Building Footprints (ODbL) · relevo SRTM. O crédito aparece no canto da tela 3D.
+
 ## Ações no ReparoSimples depois do seu ok (igual ao RB Central)
 A equipe da loja **lê à vontade** o mesmo que o RB Central:
 - OS com valor, previsão, técnico e cliente;
