@@ -550,22 +550,76 @@ function trocarGestor(g, focarCamera = true) {
 }
 const CODIGOS = /\b(?:R[a-z0-9]+-)?E\d+\b/g; // códigos das entregas (E1, E2… e os das rotinas)
 const temHtml = item => item.quem === 'chefe' && (item.final || (item.texto || '').length > 500 || /\b(?:R[a-z0-9]+-)?E\d+\b/.test(item.texto || ''));
-function elementoMsg(item, gestor) {
+// Chat estilo WhatsApp: só a última resposta de cada chefe fica aberta; as anteriores ficam recolhidas
+// (uma prévia de 2 linhas, toque para abrir). Os passos da equipe (chamou, entregou...) viram uma linha só.
+const abertas = new Set(); // mensagens antigas que você abriu, e grupos de passos abertos
+const textoPuro = md => String(md || '').replace(/```[\s\S]*?```/g, ' ').replace(/[#*_`>|]/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/\s+/g, ' ').trim();
+const chaveMsg = (gestor, item) => `${gestor}:${item.quando}`;
+function botoesHtml(item) {
+  return temHtml(item) ? `<div class="msg-acoes"><button type="button" data-html-chat="abrir" data-quando="${item.quando}">📄 Abrir em HTML</button><button type="button" class="bt-sec" data-html-chat="baixar" data-quando="${item.quando}">⬇️ Baixar</button></div>` : '';
+}
+function elementoMsg(item, gestor, { ultima = true } = {}) {
   const el = document.createElement('div');
   el.className = 'msg ' + item.quem;
-  if (item.quem === 'chefe') el.innerHTML = `<div class="quem">${item.titulo || nome(gestor)}</div>${markdown(item.texto)}${temHtml(item) ? `<div class="msg-acoes"><button type="button" data-html-chat="abrir" data-quando="${item.quando}">📄 Abrir em HTML</button><button type="button" class="bt-sec" data-html-chat="baixar" data-quando="${item.quando}">⬇️ Baixar</button></div>` : ''}`;
-  else if (item.html) el.innerHTML = item.texto;
+  if (item.quem === 'chefe') {
+    const chave = chaveMsg(gestor, item);
+    const quem = `<div class="quem">${item.titulo || nome(gestor)}${item.quando ? ` <small>${hora(item.quando)}</small>` : ''}</div>`;
+    const curta = textoPuro(item.texto).length <= 160 && !/\n\s*[-*#\d]/.test(item.texto || '');
+    if (!ultima && !abertas.has(chave) && !curta) {
+      const previa = textoPuro(item.texto);
+      el.classList.add('recolhida');
+      el.innerHTML = `${quem}<div class="previa">${esc(previa.length > 220 ? previa.slice(0, 218) + '…' : previa)}</div><button type="button" class="bt-recolher" data-alternar="${esc(chave)}">ver tudo ▾</button>`;
+    } else {
+      el.innerHTML = `${quem}${markdown(item.texto)}${botoesHtml(item)}${ultima || curta ? '' : `<button type="button" class="bt-recolher" data-alternar="${esc(chave)}">recolher ▴</button>`}`;
+    }
+  } else if (item.html) el.innerHTML = item.texto;
   else el.textContent = item.texto;
   return el;
 }
-function desenharChat() {
+/** Vários passos seguidos da equipe viram uma linha (o último aparece); toque para ver todos. */
+function grupoDePassos(itens, gestor) {
+  if (itens.length === 1) return elementoMsg(itens[0], gestor);
+  const chave = `passos:${gestor}:${itens[0].quando}`;
+  const g = document.createElement('details');
+  g.className = 'msg evento passos';
+  g.open = abertas.has(chave);
+  const ultimo = itens[itens.length - 1];
+  const s = document.createElement('summary');
+  s.innerHTML = `<span class="conta-passos">${itens.length} passos</span> ${ultimo.html ? ultimo.texto : esc(ultimo.texto)}`;
+  g.appendChild(s);
+  const lista = document.createElement('div');
+  lista.className = 'lista-passos';
+  for (const it of itens.slice(0, -1)) lista.appendChild(elementoMsg(it, gestor));
+  g.appendChild(lista);
+  g.addEventListener('toggle', () => { if (g.open) abertas.add(chave); else abertas.delete(chave); });
+  return g;
+}
+function desenharChat({ manterRolagem = false } = {}) {
   const c = $('chat');
+  const deBaixo = c.scrollHeight - c.scrollTop;
   c.innerHTML = '';
   indicador = null;
-  if (!chats[gestorAtual].length) adicionarChat(gestorAtual, { quem: gestorAtual === 'reuniao' ? 'evento' : 'chefe', texto: canalInfo(gestorAtual).boasVindas });
-  else for (const m of chats[gestorAtual]) c.appendChild(elementoMsg(m, gestorAtual));
+  const lista = chats[gestorAtual];
+  if (!lista.length) { adicionarChat(gestorAtual, { quem: gestorAtual === 'reuniao' ? 'evento' : 'chefe', texto: canalInfo(gestorAtual).boasVindas }); return; }
+  // a última resposta de cada chefe (no canal da reunião, de cada um que falou)
+  const ultimas = new Set();
+  const vistos = new Set();
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const m = lista[i];
+    if (m.quem !== 'chefe') continue;
+    const autor = m.titulo || gestorAtual;
+    if (!vistos.has(autor)) { vistos.add(autor); ultimas.add(m); }
+  }
+  for (let i = 0; i < lista.length; i++) {
+    const m = lista[i];
+    if (m.quem === 'evento') {
+      const grupo = [m];
+      while (lista[i + 1]?.quem === 'evento') grupo.push(lista[++i]);
+      c.appendChild(grupoDePassos(grupo, gestorAtual));
+    } else c.appendChild(elementoMsg(m, gestorAtual, { ultima: ultimas.has(m) }));
+  }
   if (canalOcupado(gestorAtual)) mostrarDigitando(true);
-  c.scrollTop = c.scrollHeight;
+  c.scrollTop = manterRolagem ? c.scrollHeight - deBaixo : c.scrollHeight;
   atualizarSugestoes();
 }
 function adicionarChat(gestor, item) {
@@ -575,11 +629,15 @@ function adicionarChat(gestor, item) {
   if (lista.length > 300) lista.splice(0, lista.length - 300);
   gravar(chaveChat(gestor), lista);
   if (gestor !== gestorAtual) { desenharSeletor(); return; }
-  const c = $('chat');
-  c.insertBefore(elementoMsg(item, gestor), indicador);
-  c.scrollTop = c.scrollHeight;
-  atualizarSugestoes();
+  desenharChat(); // recolhe a resposta anterior do mesmo chefe e junta os passos
 }
+$('chat').addEventListener('click', ev => {
+  const b = ev.target.closest('[data-alternar]');
+  if (!b) return;
+  const k = b.dataset.alternar;
+  if (abertas.has(k)) abertas.delete(k); else abertas.add(k);
+  desenharChat({ manterRolagem: true });
+});
 function mostrarDigitando(ligar) {
   if (ligar && !indicador) {
     indicador = document.createElement('div');

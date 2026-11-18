@@ -2,8 +2,21 @@
 // Na Vercel: Storage → Marketplace → Upstash (Redis). Ele cria KV_REST_API_URL e KV_REST_API_TOKEN sozinho.
 // Também aceita UPSTASH_REDIS_REST_URL e UPSTASH_REDIS_REST_TOKEN.
 
-const url = () => process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const tok = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// A Vercel deixa escolher um prefixo ao ligar o Redis (ex.: PREDIO_REST_API_URL em vez de KV_REST_API_URL).
+// Aceita os nomes padrão e qualquer prefixo: acha o endereço do Upstash e a chave com o mesmo prefixo.
+function acharRedis() {
+  if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) return [process.env.KV_REST_API_URL, process.env.KV_REST_API_TOKEN];
+  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) return [process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN];
+  for (const [nome, valor] of Object.entries(process.env)) {
+    const m = nome.match(/^(.*)_(REST_API_URL|REDIS_REST_URL)$/);
+    if (!m || !/^https:\/\/[^/]+\.upstash\.io/.test(valor || '')) continue;
+    const token = process.env[`${m[1]}_${m[2].replace('URL', 'TOKEN')}`];
+    if (token) return [valor, token];
+  }
+  return [undefined, undefined];
+}
+const url = () => acharRedis()[0];
+const tok = () => acharRedis()[1];
 const CHAVE = 'agencia:rotinas';
 const GUARDAR = 40;
 

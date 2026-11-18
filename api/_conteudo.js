@@ -20,7 +20,7 @@ export const FUSO = 'America/Sao_Paulo';
 export class ErroConteudo extends Error {}
 
 const exigirArmazem = () => {
-  if (!armazemLigado()) throw new ErroConteudo('Ligue o Redis (Upstash) na Vercel: a central de conteúdo guarda tudo nele.');
+  if (!armazemLigado()) throw new ErroConteudo('Falta ligar o Redis na Vercel: no projeto do prédio, abra Storage → Create Database → Upstash for Redis → crie e conecte ao projeto (marque Production) → depois Deployments → Redeploy.');
 };
 const exigirInstagram = () => {
   if (!metaLigado().instagram) throw new ErroConteudo('O Instagram da RBTech não está ligado (faltam META_ACCESS_TOKEN e META_IG_USER_ID na Vercel).');
@@ -278,7 +278,9 @@ const formatarCurto = d => new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, da
 const TIPOS_IMAGEM = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 export const TAMANHO_MAXIMO = 3 * 1024 * 1024;
 const MAX_PRINTS = 30;
-const blobLigado = () => !!process.env.BLOB_READ_WRITE_TOKEN;
+/** Chave do Blob: BLOB_READ_WRITE_TOKEN ou outra que a Vercel criou com prefixo (sempre começa com vercel_blob_rw_). */
+export const tokenBlob = () => process.env.BLOB_READ_WRITE_TOKEN || Object.values(process.env).find(v => String(v || '').startsWith('vercel_blob_rw_'));
+const blobLigado = () => !!tokenBlob();
 const printsNaMemoria = [];
 export const tipoAceito = t => !!t && t in TIPOS_IMAGEM;
 
@@ -290,7 +292,7 @@ export async function salvarPrint(dados, tipo, agora = new Date()) {
     printsNaMemoria.push({ caminho, url });
     return url;
   }
-  const b = await put(caminho, dados, { access: 'public', contentType: tipo, addRandomSuffix: false });
+  const b = await put(caminho, dados, { access: 'public', contentType: tipo, addRandomSuffix: false, token: tokenBlob() });
   return b.url;
 }
 
@@ -305,7 +307,7 @@ export async function listarPrints(dias) {
     }
     let cursor;
     do {
-      const pagina = await list({ prefix: prefixo, cursor });
+      const pagina = await list({ prefix: prefixo, cursor, token: tokenBlob() });
       for (const b of pagina.blobs) saida.push({ url: b.url, dia, enviadoEm: Number(b.pathname.split('/').pop().split('-')[0]) || 0 });
       cursor = pagina.hasMore ? pagina.cursor : undefined;
     } while (cursor);
@@ -322,7 +324,7 @@ export async function apagarPrint(url) {
   let u;
   try { u = new URL(url); } catch { return false; }
   if (!u.hostname.endsWith('.public.blob.vercel-storage.com') || !u.pathname.startsWith('/conteudo/prints/')) return false;
-  await del(url);
+  await del(url, { token: tokenBlob() });
   return true;
 }
 
