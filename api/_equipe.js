@@ -137,7 +137,7 @@ const PEDIR_MIDIA = {
 const CRIAR_ARTE = {
   name: 'criar_arte',
   description: 'Cria a arte de um post, carrossel, stories ou reels da RBTech. Você escreve o conteúdo e escolhe layout, tema, efeito visual e emojis de cada tela; o app desenha no padrão da marca (preto, amarelo #FFD60A, fonte Poppins e a logo RB Tech Celulares em todas as telas): JPG 1080×1350 no feed e 1080×1920 no stories. Reels (e stories com movimento) viram vídeo MP4 animado: o texto entra deslizando, os emojis estalam, o fundo se mexe e as telas trocam com uma passagem amarela. O Israel vê a arte no chat e publica com um toque. Se na mensagem dele o Israel pediu para publicar, marque publicar_agora: o app publica sozinho, com 10 segundos para ele cancelar. Devolve o código do pedido (P1, P2...).',
-  strict: true,
+  strict: false, // formato grande demais para o modo estrito (somado às outras ferramentas da Helena); o app confere tudo em limparArte
   input_schema: {
     type: 'object', additionalProperties: false, required: ['tipo', 'titulo', 'legenda', 'quando_publicar', 'publicar_agora', 'movimento', 'logo', 'slides'],
     properties: {
