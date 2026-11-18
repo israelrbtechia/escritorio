@@ -22,8 +22,7 @@ export const VOZES = {
   revisor: 'dxIMMSJYSsbUSMhioLNb',             // Juliana Moreira
   especialista: 'urYO2UqU0Q6zAxYEYEYV',        // Gabriel
   atendimento: 'RPK3rjRcGgrmLKag7pHZ',         // Viviane
-  estoque: 'EyPnkQPpWceKpqcMOSpZ',             // Leandro
-  posvenda: '44fUMcpIJ6WAyoptgPuM',            // Rayane
+  tecnico: 'EyPnkQPpWceKpqcMOSpZ',             // Leandro
   sdr: '8KoOqokYEtaOaWYjC7vp',                 // Dhieider
   closer: 'jyRzzBWbHll8EUfOjmhe',              // Fernando Machado
   sucesso: 'YLbVGkIB1qwI47brsSiF',             // Mônica

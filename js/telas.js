@@ -145,7 +145,7 @@ export function desenharBoss(tela, pendentes = 0, cafes = 0) {
 const NOME_TELA = {
   chefe: 'Tráfego', analista: 'Analista', copywriter: 'Copy', roteirista: 'Roteiro', revisor: 'Revisão',
   gerente_crescimento: 'Crescimento', especialista: 'Instagram', estagiario: 'Estagiário',
-  gerente_loja: 'Loja', estoque: 'Estoque', head_vendas: 'Vendas', sdr: 'Prospecção', closer: 'Propostas',
+  gerente_loja: 'Loja', atendimento: 'Atendimento', tecnico: 'Reparo', head_vendas: 'Vendas', sdr: 'Prospecção', closer: 'Propostas',
   sucesso: 'Clientes', produto: 'Produto', israel: 'Diretoria',
 };
 export function desenharMonitor(tela, papel, modo, tempo) {
@@ -172,7 +172,7 @@ export function desenharMonitor(tela, papel, modo, tempo) {
   const tipo = {
     copywriter: 'texto', chefe: 'texto', gerente_loja: 'texto', head_vendas: 'texto', sdr: 'lista', closer: 'texto', sucesso: 'lista',
     roteirista: 'story', analista: 'grafico', gerente_crescimento: 'grafico', especialista: 'insta', estoque: 'lista',
-    revisor: 'check', israel: 'check', produto: 'codigo', estagiario: 'texto',
+    revisor: 'check', israel: 'check', tecnico: 'check', atendimento: 'lista', produto: 'codigo', estagiario: 'texto',
   }[papel] || 'texto';
   if (tipo === 'texto' || tipo === 'lista') {
     g.fillStyle = '#fbfbf7'; g.fillRect(0, 0, W, H);
@@ -217,8 +217,10 @@ export function desenharMonitor(tela, papel, modo, tempo) {
     for (let i = 0; i < linhas; i++) { g.fillStyle = cores[i % 5]; g.fillRect(10 + (i % 4) * 10, 8 + i * 10, 40 + ((i * 41) % 150), 5); }
   } else {
     g.fillStyle = '#fbfbf7'; g.fillRect(0, 0, W, H);
-    g.fillStyle = '#111'; g.font = `700 12px ${FONTE}`; g.fillText(papel === 'israel' ? 'Auditoria' : 'Revisão', 10, 16);
-    const itens = papel === 'israel' ? ['Decisão clara', 'Motivo com números', 'Risco medido', 'Cabe no caixa', 'Aprovar?'] : ['Preço e condições', 'Regras do Meta', 'Clareza do gancho', 'Chamada WhatsApp', 'Português'];
+    g.fillStyle = '#111'; g.font = `700 12px ${FONTE}`; g.fillText(papel === 'israel' ? 'Auditoria' : papel === 'tecnico' ? 'Diagnóstico do aparelho' : 'Revisão', 10, 16);
+    const itens = papel === 'israel' ? ['Decisão clara', 'Motivo com números', 'Risco medido', 'Cabe no caixa', 'Aprovar?']
+      : papel === 'tecnico' ? ['Bateria', 'Tela e touch', 'Face ID', 'Câmeras', 'Carga e áudio']
+      : ['Preço e condições', 'Regras do Meta', 'Clareza do gancho', 'Chamada WhatsApp', 'Português'];
     g.font = `500 12px ${FONTE}`;
     itens.forEach((t, i) => {
       const ok = ciclo * 6 > i + 1;

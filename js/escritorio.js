@@ -10,14 +10,14 @@ import {
 import { desenharPlacar, desenharMonitor, desenharSeguidores, desenharSaas, desenharBoss } from './telas.js';
 
 const NOMES = {
-  gerente_loja: 'Rael · Loja', atendimento: 'Consultor', vendedor: 'Vendedor', posvenda: 'Pós-venda', estoque: 'Estoque',
+  gerente_loja: 'Rael · Loja', atendimento: 'Atendimento', tecnico: 'Técnico',
   chefe: 'Pamella · Tráfego', analista: 'Analista', copywriter: 'Copywriter', roteirista: 'Roteirista', revisor: 'Revisor',
   gerente_crescimento: 'Helena · Crescimento', especialista: 'Especialista', estagiario: 'Estagiário',
   head_vendas: 'Head de vendas', sdr: 'SDR', closer: 'Closer', sucesso: 'Sucesso', produto: 'Produto',
   israel: 'Israel · Boss', peter: 'Peter', bibi: 'Bibi', cliente: 'Cliente',
 };
 const GESTOR_DE = {
-  atendimento: 'gerente_loja', posvenda: 'gerente_loja', estoque: 'gerente_loja',
+  atendimento: 'gerente_loja', tecnico: 'gerente_loja',
   analista: 'chefe', copywriter: 'chefe', roteirista: 'chefe', revisor: 'chefe',
   especialista: 'gerente_crescimento', sdr: 'head_vendas', closer: 'head_vendas', sucesso: 'head_vendas', produto: 'head_vendas',
 };
@@ -27,7 +27,8 @@ const CHEFES = ['gerente_loja', 'chefe', 'gerente_crescimento', 'head_vendas'];
 export const CAMERAS = [
   { id: 'predio',      nome: 'CAM 00 · PRÉDIO RBTECH',     botao: 'Prédio',      andar: 0, limite: 3, pos: [34, 22, 42], alvo: [0, 6.5, 0], largura: 1.3, alvoEmPe: [0, 7, 0] },
   { id: 'loja',        nome: 'CAM 01 · LOJA RB TECH',      botao: '1º Loja',     andar: 0, limite: 0, pos: [17, 15, 19], alvo: [0, 0, -0.5], largura: 1.5, alvoEmPe: [0.7, 0, -1] },
-  { id: 'balcao',      nome: 'CAM 02 · BALCÃO',            botao: 'Balcão',      andar: 0, limite: 0, pos: [1, 4.6, 4.6], alvo: [0, 1.2, -4.6] },
+  { id: 'balcao',      nome: 'CAM 02 · BALCÃO',            botao: 'Balcão',      andar: 0, limite: 0, pos: [1, 4.4, 4.4], alvo: [0, 1.2, -4.2] },
+  { id: 'reparo',      nome: 'CAM 02 · REPARO',            botao: 'Reparo',      andar: 0, limite: 0, pos: [2.8, 6.4, -3.8], alvo: [0, 0.9, -7.0] },
   { id: 'geral',       nome: 'CAM 03 · AGÊNCIA',           botao: '2º Agência',  andar: 1, limite: 1, pos: [17, 15, 19], alvo: [0, 0, -0.5], largura: 1.5, alvoEmPe: [0.7, 0, -1] },
   { id: 'chefe',       nome: 'CAM 04 · SALA DO TRÁFEGO',   botao: 'Tráfego',     andar: 1, limite: 1, pos: [7.4, 4.4, 2.4], alvo: [8, 1.3, -5.6] },
   { id: 'crescimento', nome: 'CAM 05 · SALA DO CRESCIMENTO', botao: 'Crescimento', andar: 1, limite: 1, pos: [-7.6, 4.4, 2.4], alvo: [-8.2, 1.3, -5.6] },
@@ -39,8 +40,9 @@ export const CAMERAS = [
   { id: 'boss',        nome: 'CAM 11 · SALA DO ISRAEL',    botao: 'Boss',        andar: 3, limite: 3, pos: [2.5, 4.6, 3.6], alvo: [2.5, 1.2, -5.4] },
   { id: 'caes',        nome: 'CAM 12 · PETER E BIBI',      botao: 'Peter e Bibi', segue: true },
 ];
+CAMERAS.forEach((c, i) => { c.nome = `CAM ${String(i).padStart(2, '0')} · ${c.nome.replace(/^CAM \d+ · /, '')}`; });
 const CAM_DE = {
-  gerente_loja: 'loja', atendimento: 'balcao', vendedor: 'balcao', posvenda: 'loja', estoque: 'loja',
+  gerente_loja: 'loja', atendimento: 'balcao', tecnico: 'reparo',
   chefe: 'chefe', analista: 'analise', copywriter: 'criacao', roteirista: 'criacao', revisor: 'analise',
   gerente_crescimento: 'crescimento', especialista: 'analise', head_vendas: 'vendas', sdr: 'vendas', closer: 'vendas',
   sucesso: 'vendas', produto: 'saas', israel: 'boss',
@@ -493,40 +495,90 @@ export function criarEscritorio(container, camada) {
       await esperar(4000 + Math.random() * 9000);
     }
   })());
+  /** Um cliente entra pela porta automática e faz uma visita: café, vitrine, balcão e compra, troca ou reparo. */
   async function visitaDeCliente(c) {
     const sx = (Math.random() < 0.5 ? -1 : 1) * (4 + Math.random() * 6);
+    const dx = (c.indice - 1) * 0.5;
     c.raiz.position.set(sx, 0, 10.8);
     c.sacola.visible = false;
     c.emCasa = false; c.trilha = null; c.andar = 0;
     c.ativo = true;
+    const atendente = pessoas.atendimento, tecnico = pessoas.tecnico, rael = pessoas.gerente_loja;
+    const livre = q => q.emCasa && !q.andando;
+    await c.caminhar([[sx, 9.4], [dx, 9.3], [dx, 6.4]]);
+    if (Math.random() < 0.35) { // café do cliente e espera nas cadeiras
+      await c.caminhar([[-3.4 + dx * 0.5, 6.3]]);
+      c.rotAlvo = 0; c.bebendo = true;
+      c.falar(sortear(['☕ cafezinho da casa!', '☕ que gentileza']), 2400);
+      await esperar(3000);
+      c.bebendo = false;
+      await c.caminhar([[-5.8 - c.indice * 1.2, 6.2]]);
+      c.rotAlvo = PI;
+      c.falar('📱 esperando ser atendido', 2400);
+      await esperar(3500);
+    }
     const lado = Math.random() < 0.5 ? -1 : 1;
-    const vit = lado * 4 + (Math.random() - 0.5) * 2.2;
-    await c.caminhar([[sx, 9.0], [lado * 1.4, 6.6], [vit, 3.45]]);
+    const vx = lado * (3.6 + (Math.random() - 0.5) * 2.4);
+    await c.caminhar([[vx, -2.5]]);
     c.rotAlvo = PI;
-    c.falar(sortear(['😍 olha esse!', '📱 que cor linda', '🤔 qual eu levo?']), 2400);
+    c.falar(sortear(['😍 olha esse!', '📱 que cor linda', '🤔 qual eu levo?', '🎧 tem fone também?']), 2400);
     await esperar(2800);
-    const vendedor = lado < 0 ? pessoas.atendimento : pessoas.vendedor;
-    const bx = vendedor.posto.assento[0] + (c.indice - 1) * 0.5;
-    await c.caminhar([[lado * 1.6, 3.45], [lado * 1.6, 0], [bx, -3.6]]);
+    const bx = dx * 1.4;
+    await c.caminhar([[bx, -2.55]]);
     c.rotAlvo = PI;
-    c.falar(sortear(['Tem o 15 em azul?', 'Quero trocar meu celular', 'Como está a bateria desse?', 'Posso ver o Pro?']), 2600);
-    await esperar(1400);
-    if (vendedor.emCasa && !vendedor.andando) vendedor.falar(sortear(['Tenho sim! 📦', 'Bora ver! 📱', 'Te mostro já! ✨', 'Faço uma avaliação do seu 🔎']), 2600);
-    await esperar(3200);
-    if (Math.random() < 0.7) {
-      await c.caminhar([[bx, -2.6], [7.9, -2.6], [7.9, -4.2]]);
-      c.rotAlvo = PI / 2;
+    const r = Math.random();
+    if (r < 0.45) { // compra
+      c.falar(sortear(['Tem o 15 em azul?', 'Posso ver o Pro?', 'Quero uma capinha também']), 2600);
+      await esperar(1300);
+      if (livre(atendente)) atendente.falar(sortear(['Tenho sim! 📦', 'Bora ver! 📱', 'Te mostro já! ✨']), 2600);
+      await esperar(3000);
       c.falar(sortear(['💳 Pix!', '💳 no cartão', '🛍️ vou levar!']), 2400);
-      await esperar(1200);
-      if (pessoas.posvenda.emCasa && !pessoas.posvenda.andando) pessoas.posvenda.falar(sortear(['⭐ Avalia a gente no Google?', '🎁 Indica um amigo!', '💛 Obrigado!']), 2600);
+      await esperar(1300);
+      if (livre(atendente)) atendente.falar(sortear(['⭐ Avalia a gente no Google?', '🎁 Indica um amigo!', '💛 Obrigado!']), 2600);
       c.sacola.visible = true;
-      await esperar(2600);
+      await esperar(2500);
       c.falar('🛍️ Valeu, RB Tech!', 2200);
-      await c.caminhar([[7.9, -2.6], [6.2, 0], [6.2, 6.6], [6.2, 9.0], [sx, 10.8]]);
+    } else if (r < 0.65) { // troca do usado na mesa de negociação
+      c.falar('Quero trocar meu celular ⇄', 2600);
+      await esperar(1300);
+      if (livre(atendente)) atendente.falar('O Rael avalia seu usado 🔎', 2600);
+      await esperar(2000);
+      await c.caminhar([[bx, 0], [-7.4, 0], [-7.4, 2.6]]);
+      c.rotAlvo = -PI / 2;
+      if (livre(rael)) rael.falar(sortear(['🔎 deixa eu avaliar seu usado', '📱 bateria e tela, vamos ver']), 2800);
+      await esperar(3500);
+      c.falar(sortear(['Fechado! ⇄', 'Vou pensar 🤔']), 2400);
+      if (livre(rael)) rael.falar('🤝 boa troca!', 2200);
+      await esperar(2500);
+      await c.caminhar([[-7.4, 0]]);
+    } else if (r < 0.85) { // reparo
+      c.falar(sortear(['📱 minha tela quebrou', '🔋 a bateria não segura', '🔌 não carrega mais']), 2600);
+      await esperar(1300);
+      if (livre(atendente)) atendente.falar('🔧 vou chamar o técnico', 2400);
+      if (livre(tecnico) && !tecnico.trabalhando && !tecnico.pendentes) {
+        tecnico.enfileirar(async () => {
+          const ida = [[5.6, -6.6], [7.0, -6.6], [6.2, -4.75], [1.0, -4.75]];
+          await tecnico.caminhar(ida); tecnico.emCasa = false; tecnico.rotAlvo = 0;
+          tecnico.falar('🔧 deixa comigo!', 2400);
+          await esperar(2600);
+          await tecnico.caminhar([...ida.slice(0, -1).reverse(), [0, -6.6]]);
+          tecnico.sentarJa();
+          tecnico.digitando = true; tecnico.status = '🔧 consertando';
+          telaModo('tecnico', 'trabalhando');
+          await esperar(9000);
+          tecnico.digitando = false; tecnico.status = '';
+          telaModo('tecnico', 'pronto');
+          tecnico.falar('✅ aparelho pronto', 2400);
+          setTimeout(() => telaModo('tecnico', 'livre'), 6000);
+        });
+      }
+      await esperar(5000);
+      c.falar('👍 volto pra buscar', 2200);
     } else {
       c.falar('Vou pensar 🤔', 2000);
-      await c.caminhar([[bx, -2.6], [0.3, 0], [0.3, 6.6], [0.3, 9.0], [sx, 10.8]]);
     }
+    await esperar(1200);
+    await c.caminhar([[dx, c.raiz.position.z > 0 ? c.raiz.position.z : 0], [dx, 6.4], [dx, 9.3], [sx, 10.8]]);
   }
 
   // ---------- balões e etiquetas ----------
@@ -543,7 +595,7 @@ export function criarEscritorio(container, camada) {
   const visivel = e => e.ativo !== false && andarVisual(e) <= limite;
 
   // ---------- telas ----------
-  const MONITORES = ['gerente_loja', 'estoque', 'chefe', 'analista', 'copywriter', 'roteirista', 'revisor', 'gerente_crescimento', 'especialista', 'head_vendas', 'sdr', 'closer', 'sucesso', 'produto', 'israel'];
+  const MONITORES = ['gerente_loja', 'atendimento', 'tecnico', 'chefe', 'analista', 'copywriter', 'roteirista', 'revisor', 'gerente_crescimento', 'especialista', 'head_vendas', 'sdr', 'closer', 'sucesso', 'produto', 'israel'];
   const estadoTela = Object.fromEntries(MONITORES.map(k => [k, { modo: 'livre', desde: 0 }]));
   const telaModo = (papel, modo) => { if (estadoTela[papel]) estadoTela[papel] = { modo, desde: agora() }; };
   let sinos = 0, cafesDoBoss = 0, pendentesBoss = 0, reunioes = 0;
@@ -698,18 +750,27 @@ export function criarEscritorio(container, camada) {
       await esperar(1500);
       return p.voltarAoPosto();
     }
-    if (p.id === 'estoque' && Math.random() < 0.5) {
-      await p.irPara(0, [[-10.6, 0], [-10.6, -5.6]], -PI / 2);
-      p.falar('📦 conferindo a prateleira', 2600);
-      await esperar(3000);
-      return p.voltarAoPosto();
-    }
-    if ((p.id === 'atendimento') && Math.random() < 0.5) {
+    if (p.id === 'atendimento' && Math.random() < 0.5) { // busca no painel atrás do balcão
       const [x, z] = p.posto.assento;
-      await p.caminhar([[x, -7.3]]); p.emCasa = false; p.rotAlvo = PI;
-      p.falar('📦 buscando um aparelho', 2200);
+      await p.caminhar([[x + (Math.random() - 0.5) * 3, -5.0]]); p.emCasa = false; p.rotAlvo = PI;
+      p.falar(sortear(['📦 pegando uma capinha', '📦 buscando o aparelho no estoque', '🎧 separando um fone']), 2200);
       await esperar(2400);
       await p.caminhar([[x, z]]); p.sentarJa();
+      return;
+    }
+    if (p.id === 'tecnico' && Math.random() < 0.65) { // na bancada
+      p.digitando = true; p.status = sortear(['🔧 trocando a tela', '🔬 diagnóstico', '🔋 trocando a bateria', '🧪 testando o Face ID']);
+      telaModo('tecnico', 'trabalhando');
+      await esperar(8000 + Math.random() * 6000);
+      p.digitando = false; p.status = '';
+      telaModo('tecnico', 'livre');
+      return;
+    }
+    if (p.id === 'gerente_loja' && Math.random() < 0.5) {
+      p.digitando = true; telaModo('gerente_loja', 'trabalhando');
+      p.falar(sortear(['📊 conferindo as vendas do dia', '⇄ simulando uma troca', '📲 respondendo cliente']), 2600);
+      await esperar(6000);
+      p.digitando = false; telaModo('gerente_loja', 'livre');
       return;
     }
     return pausa(p);
@@ -726,21 +787,9 @@ export function criarEscritorio(container, camada) {
       p.enfileirar(() => acaoDoAndar(p));
     }
   }, 2500);
-  // o vendedor de enfeite também se mexe
-  setInterval(() => {
-    const v = pessoas.vendedor;
-    if (v.pendentes || Math.random() < 0.5) return;
-    v.enfileirar(async () => {
-      const [x, z] = v.posto.assento;
-      await v.caminhar([[x, -7.3]]); v.emCasa = false; v.rotAlvo = PI;
-      v.falar('📦 pegando no estoque', 2000);
-      await esperar(2200);
-      await v.caminhar([[x, z]]); v.sentarJa();
-    });
-  }, 12000);
-
   // ---------- laço de animação ----------
   let ultimoDesenho = 0;
+  let aberturaPorta = 0;
   function quadro() {
     const dt = Math.min(relogio.getDelta(), 0.05);
     const t = relogio.elapsedTime;
@@ -751,6 +800,13 @@ export function criarEscritorio(container, camada) {
       cabine.position.y += Math.sign(d) * Math.min(Math.abs(d), passo);
     } else if (elevador.aoChegar) { cabine.position.y = elevador.alvo; const cb = elevador.aoChegar; elevador.aoChegar = null; cb(); }
     for (const e of entidades) { e.raiz.visible = visivel(e); e.atualizar(dt, t); }
+    // porta automática da loja: abre quando alguém chega perto
+    if (telas.portas) {
+      const perto = entidades.some(e => e.ativo !== false && e.andar === 0 && !e.noElevador && Math.abs(e.raiz.position.x) < 2.2 && Math.abs(e.raiz.position.z - 7.85) < 2.0);
+      aberturaPorta = suave(aberturaPorta, perto ? 1 : 0, Math.min(1, dt * 5));
+      telas.portas[0].position.x = -0.63 - 1.2 * aberturaPorta;
+      telas.portas[1].position.x = 0.63 + 1.2 * aberturaPorta;
+    }
     if (telas.leds) telas.leds.forEach((l, i) => { l.visible = Math.sin(t * 3 + i * 1.7) > -0.6; });
 
     if (transicao) {
@@ -951,11 +1007,9 @@ export function criarEscritorio(container, camada) {
 }
 
 const FRASES = {
-  gerente_loja: ['Loja cheia hoje! 🛍️', 'Bora bater a meta 💪', 'Cadê o estoque do 15? 📦'],
-  atendimento: ['Posso ajudar? 😊', 'Esse sai muito! 📱', 'Te passo no WhatsApp 💬'],
-  vendedor: ['Olha esse azul! 💙', 'Bateria 100% 🔋'],
-  posvenda: ['Avalia a gente! ⭐', 'Cliente feliz volta 💛'],
-  estoque: ['Chegou mercadoria! 📦', 'IMEI conferido ✅'],
+  gerente_loja: ['Loja cheia hoje! 🛍️', 'Bora bater a meta 💪', 'Traz o usado que eu avalio ⇄'],
+  atendimento: ['Posso ajudar? 😊', 'Esse sai muito! 📱', 'Te passo no WhatsApp 💬', 'Avalia a gente! ⭐'],
+  tecnico: ['Tela nova em 1 hora 🔧', 'IMEI conferido ✅', 'Bateria 100% 🔋', 'Microscópio é vida 🔬'],
   chefe: ['Bora vender iPhone! 📈', 'Cadê o revisor? 👀', 'Meta do dia batida?'],
   analista: ['O CTR subiu! 📊', 'Planilha é vida.'],
   copywriter: ['Tenho um gancho novo ✍️', 'Primeira frase é tudo.'],

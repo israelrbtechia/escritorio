@@ -5,9 +5,8 @@
 export const PESSOAS = {
   // 1º andar · Loja RB TECH
   gerente_loja: { nome: 'Rael', cargo: 'gerente da loja', andar: 0, gestor: true },
-  atendimento:  { nome: 'Consultor de vendas', andar: 0, tarefa: '💬 escrevendo o atendimento' },
-  estoque:      { nome: 'Compras e estoque', andar: 0, tarefa: '📦 conferindo o estoque' },
-  posvenda:     { nome: 'Pós-venda', andar: 0, tarefa: '⭐ cuidando dos clientes' },
+  atendimento:  { nome: 'Atendimento', andar: 0, tarefa: '💬 preparando o atendimento' },
+  tecnico:      { nome: 'Técnico', andar: 0, tarefa: '🔧 na bancada' },
   // 2º andar · Agência RBTech
   chefe:        { nome: 'Pamella', cargo: 'chefe de tráfego', andar: 1, gestor: true },
   analista:     { nome: 'Analista', andar: 1, tarefa: '📊 analisando os números' },
@@ -29,9 +28,9 @@ export const EQUIPE = PESSOAS; // nomes usados pela interface
 
 export const GESTORES = {
   gerente_loja: {
-    titulo: '1º · Rael · Loja', equipe: ['atendimento', 'estoque', 'posvenda'], rotina: 'loja',
-    boasVindas: 'Oi, Israel! Aqui é Rael, da loja RB TECH no 1º andar. Cuido do balcão, do WhatsApp, do estoque e do pós-venda com a equipe. O que você precisa?',
-    sugestoes: ['Monta o roteiro de atendimento do balcão e do WhatsApp', 'Como pedir mais avaliações no Google?', 'O que eu preciso controlar no estoque?'],
+    titulo: '1º · Rael · Loja', equipe: ['atendimento', 'tecnico'], rotina: 'loja',
+    boasVindas: 'Oi, Israel! Aqui é Rael, da loja RB TECH no 1º andar. Fico na mesa de negociação; no balcão está o atendimento e, no reparo, o técnico. O que você precisa?',
+    sugestoes: ['Monta o roteiro de atendimento do balcão e do WhatsApp', 'Checklist para avaliar iPhone usado na troca', 'Mensagens para clientes do conserto'],
   },
   chefe: {
     titulo: '2º · Pamella · Tráfego', equipe: ['analista', 'copywriter', 'roteirista', 'revisor'], rotina: 'trafego', placar: true,
@@ -301,7 +300,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   const PLANO_ENSAIO = {
     chefe: [['analista'], ['copywriter', 'roteirista'], ['revisor'], ['israel']],
     gerente_crescimento: [['meta:ler_metricas_instagram', 'especialista'], ['midia'], ['israel']],
-    gerente_loja: [['atendimento', 'posvenda'], ['estoque'], ['israel']],
+    gerente_loja: [['atendimento', 'tecnico'], ['israel']],
     head_vendas: [['sdr', 'produto'], ['closer', 'sucesso'], ['israel']],
   };
   async function simular(corpo) {

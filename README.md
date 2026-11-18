@@ -4,13 +4,14 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 
 | Andar | Chefe | Equipe |
 |---|---|---|
-| 1º · Loja RB TECH | **Rael** | Consultor de vendas, Compras e estoque, Pós-venda e reputação (e os clientes entrando pela rua) |
+| 1º · Loja RB TECH | **Rael** (na mesa de negociação) | Atendimento (vendas, pós-venda e estoque) e Técnico (reparo e avaliação de usados) |
 | 2º · Agência RBTech (tráfego) | **Pamella** | Analista, Copywriter, Roteirista, Revisor |
 | 2º · Agência RBTech (crescimento) | **Helena** | Especialista de crescimento |
 | 3º · Vendas e SaaS | Head de vendas e produtos | Prospecção (SDR), Executivo de vendas, Sucesso do cliente, Gestor de produto |
 | Terraço · Diretoria | **Israel (Boss)** | audita toda decisão; tem a própria máquina de espresso |
 
-- Cada chefe tem sala fechada de vidro com notebook. Cada andar tem copa; o terraço tem área de lazer (sofás, videogame, pebolim) e a copa do prédio.
+- A loja tem porta automática, café e cadeiras do cliente na entrada, parede de grama com quadros e a mesa de negociação, balcão central com vitrines dos dois lados, painel de acessórios e estoque e, atrás dele, o setor de reparo com a bancada do técnico. Na parede de vidro da direita: neon RB TECH, ponto de selfie e estação para carregar o celular.
+- Os chefes da agência e de vendas têm sala fechada de vidro com notebook. Cada andar tem copa; o terraço tem área de lazer (sofás, videogame, pebolim) e a copa do prédio.
 - A equipe está sempre em movimento: pausas para o café, conversas, lazer no terraço. Pessoas e cachorros (Peter e Bibi) trocam de andar pelo elevador de vidro, um por vez: ninguém fica em dois lugares ao mesmo tempo.
 - **Chefes**: escolha com qual chefe falar. Ele chama a equipe (em paralelo quando dá), lê as métricas da Meta e manda as decisões para o Israel.
 - **Reunião geral**: o Israel escreve a pauta; os chefes sobem para a mesa do terraço e cada um responde pelo seu andar.
