@@ -564,13 +564,19 @@ function elementoMsg(item, gestor, { ultima = true } = {}) {
   if (item.quem === 'chefe') {
     const chave = chaveMsg(gestor, item);
     const quem = `<div class="quem">${item.titulo || nome(gestor)}${item.quando ? ` <small>${hora(item.quando)}</small>` : ''}</div>`;
-    const curta = textoPuro(item.texto).length <= 160 && !/\n\s*[-*#\d]/.test(item.texto || '');
-    if (!ultima && !abertas.has(chave) && !curta) {
-      const previa = textoPuro(item.texto);
+    const puro = textoPuro(item.texto);
+    const curta = puro.length <= 160 && !/\n\s*[-*#\d]/.test(item.texto || '');
+    // grande: mais de ~6 linhas de texto (como o "Ler mais" do WhatsApp)
+    const grande = puro.length > 360 || (item.texto || '').split('\n').filter(l => l.trim()).length > 6;
+    const aberta = abertas.has(chave);
+    if (!ultima && !aberta && !curta) {
       el.classList.add('recolhida');
-      el.innerHTML = `${quem}<div class="previa">${esc(previa.length > 220 ? previa.slice(0, 218) + '…' : previa)}</div><button type="button" class="bt-recolher" data-alternar="${esc(chave)}">ver tudo ▾</button>`;
+      el.innerHTML = `${quem}<div class="previa">${esc(puro.length > 220 ? puro.slice(0, 218) + '…' : puro)}</div><button type="button" class="bt-recolher" data-alternar="${esc(chave)}">ver tudo ▾</button>`;
+    } else if (ultima && grande && !aberta) {
+      // a última resposta também aparece curta: o começo, um degradê e "ver tudo"
+      el.innerHTML = `${quem}<div class="corpo-cortado">${markdown(item.texto)}</div><button type="button" class="bt-recolher" data-alternar="${esc(chave)}">ver tudo ▾</button>${botoesHtml(item)}`;
     } else {
-      el.innerHTML = `${quem}${markdown(item.texto)}${botoesHtml(item)}${ultima || curta ? '' : `<button type="button" class="bt-recolher" data-alternar="${esc(chave)}">recolher ▴</button>`}`;
+      el.innerHTML = `${quem}${markdown(item.texto)}${botoesHtml(item)}${curta || (ultima && !grande) ? '' : `<button type="button" class="bt-recolher" data-alternar="${esc(chave)}">recolher ▴</button>`}`;
     }
   } else if (item.html) el.innerHTML = item.texto;
   else el.textContent = item.texto;

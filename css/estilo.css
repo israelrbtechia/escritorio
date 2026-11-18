@@ -371,3 +371,6 @@ body.modo-video .ent .tag { font-size: 12px; }
 .msg.evento.passos[open] .conta-passos { color: var(--amarelo); border-color: var(--amarelo); }
 .lista-passos { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
 .lista-passos .msg { max-width: 100%; }
+
+.msg .corpo-cortado { max-height: 9.5em; overflow: hidden; position: relative; }
+.msg .corpo-cortado::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3em; background: linear-gradient(to bottom, rgba(32, 32, 32, 0), var(--painel-2)); pointer-events: none; }
