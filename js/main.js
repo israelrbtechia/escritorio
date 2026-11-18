@@ -144,6 +144,9 @@ async function sincronizarOs() {
         $('contadorOs').textContent = `🔧 Rodada da loja: faltam ${c.faltam} de ${c.aCada} atualizações de OS (${c.total} contadas). ${c.gatilho ? 'Contagem em tempo real pelo Supabase.' : 'Sem o gatilho do Supabase, conta só enquanto o app está aberto.'}`;
         $('btGatilhoOs').hidden = !!c.gatilho;
       }
+      $('statusCentral').textContent = r.central
+        ? '⚙️ Ações aprovadas ligadas: quando você aprova uma decisão do Rael, o prédio manda o WhatsApp e altera a OS no ReparoSimples.'
+        : '⚙️ Ações aprovadas desligadas: para os chefes mandarem WhatsApp e alterarem OS depois do seu ok, crie REPARO_CENTRAL_URL e REPARO_CENTRAL_TOKEN na Vercel do prédio (veja o README).';
       if (r.rodadaDaLoja) adicionarChat('gerente_loja', { quem: 'evento', html: true, texto: '🔧 <b>10 atualizações de OS no ReparoSimples</b>: Rael chamou a equipe para uma rodada. O relatório chega em alguns minutos.' });
     } else {
       $('statusReparo').textContent = 'Não ligado: crie REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY na Vercel. Enquanto isso o laboratório mostra OS de exemplo.';
@@ -822,6 +825,14 @@ $('chat').addEventListener('click', ev => {
 });
 
 // ---------- diretoria: auditoria do Israel ----------
+const NOME_STATUS_OS = { analise: 'Em análise', peca: 'Aguardando peça', servico: 'Em serviço', concluido: 'Concluído', interrompido: 'Interrompido' };
+function descreverAcao(a) {
+  if (a.tipo === 'avisar_cliente') return `📲 WhatsApp para o cliente da OS ${a.os}: "${a.mensagem}"`;
+  if (a.tipo === 'aviso_pronto') return `📲 Aviso de aparelho pronto (link e garantia) para o cliente da OS ${a.os}`;
+  if (a.tipo === 'mudar_status') return `🔁 OS ${a.os} → ${NOME_STATUS_OS[a.status] || a.status}`;
+  if (a.tipo === 'editar_os') return `✏️ OS ${a.os}: ${(a.campos || []).map(c => `${c.campo.replace('_', ' ')} = ${c.valor || '(apagar)'}`).join(', ')}`;
+  return `${a.tipo} · OS ${a.os}`;
+}
 function desenharDiretoria() {
   const lista = agencia.decisoes();
   const pendentes = lista.filter(d => !d.status || d.status === 'pendente').length;
@@ -844,21 +855,40 @@ function desenharDiretoria() {
       </div>
       <h4 class="decisao-titulo"></h4>
       <div class="entrega-texto"><p><b>Decisão:</b> <span data-c="decisao"></span></p><p><b>Motivo:</b> <span data-c="motivo"></span></p><p><b>Riscos e medida:</b> <span data-c="riscos"></span></p></div>
+      <div class="decisao-acoes"></div>
       <div class="decisao-auditoria"></div>`;
     card.querySelector('.entrega-id').textContent = d.id;
     card.querySelector('.entrega-quem').textContent = nome(d.gestor);
     card.querySelector('.entrega-hora').textContent = hora(d.quando);
     card.querySelector('.decisao-titulo').textContent = d.titulo;
     for (const k of ['decisao', 'motivo', 'riscos']) card.querySelector(`[data-c="${k}"]`).textContent = d[k] || '–';
+    const acoes = Array.isArray(d.acoes) ? d.acoes : [];
+    const caixaAcoes = card.querySelector('.decisao-acoes');
+    if (acoes.length) {
+      // o que acontece no ReparoSimples quando você aprovar (e, depois, o resultado de cada ação)
+      const titulo = d.execucao ? '⚙️ Ações executadas no ReparoSimples' : `⚙️ Ao aprovar, o prédio faz no ReparoSimples (${acoes.length})`;
+      const itens = d.execucao
+        ? d.execucao.map(r => `<li class="${r.ok ? 'ok' : 'falhou'}">${r.ok ? '✅' : '⚠️'} ${esc(r.acao)}<br><small>${esc(r.detalhe || '')}</small>${r.link ? ` <a href="${esc(r.link)}" target="_blank" rel="noopener">enviar pelo WhatsApp</a>` : ''}</li>`).join('')
+        : acoes.map(a => `<li>${esc(descreverAcao(a))}</li>`).join('');
+      const aviso = d.execucao || st !== 'pendente' ? '' : d.ensaio ? '<small>Ensaio: nada é executado de verdade.</small>'
+        : agencia.centralLigada() ? '<small>Confira os textos: as mensagens vão direto para os clientes.</small>'
+        : '<small>⚠️ As ações precisam da API do RB Central ligada no prédio (Ajustes → ReparoSimples).</small>';
+      caixaAcoes.innerHTML = `<details class="lista-acoes" ${st === 'pendente' || d.execucao ? 'open' : ''}><summary>${titulo}</summary><ul>${itens}</ul>${aviso}</details>`;
+    }
     const aud = card.querySelector('.decisao-auditoria');
     if (st === 'pendente') {
+      const rotuloAprovar = acoes.length && !d.ensaio ? `✓ Aprovar e executar (${acoes.length})` : '✓ Aprovar';
       aud.innerHTML = `<textarea rows="2" placeholder="Comentário do Israel (opcional)"></textarea>
-        <div class="entrega-acoes"><button type="button" data-s="aprovada">✓ Aprovar</button><button type="button" class="bt-perigo" data-s="recusada">✕ Recusar</button></div>`;
+        <div class="entrega-acoes"><button type="button" data-s="aprovada">${rotuloAprovar}</button><button type="button" class="bt-perigo" data-s="recusada">✕ Recusar</button></div>`;
       for (const b of aud.querySelectorAll('button')) {
         b.addEventListener('click', async () => {
-          await agencia.auditar(d.id, b.dataset.s, aud.querySelector('textarea').value.trim());
+          for (const x of aud.querySelectorAll('button')) x.disabled = true;
+          if (b.dataset.s === 'aprovada' && acoes.length && !d.ensaio) b.textContent = 'Executando…';
+          const r = await agencia.auditar(d.id, b.dataset.s, aud.querySelector('textarea').value.trim());
           cena.auditada(d.id, b.dataset.s, d.gestor);
-          adicionarChat(d.gestor, { quem: 'evento', html: true, texto: `🏛️ Israel <b>${b.dataset.s === 'aprovada' ? 'aprovou' : 'recusou'}</b> a decisão <b>${d.id}</b>` });
+          const exec = r?.execucao;
+          const resumo = exec ? ` · ${exec.filter(x => x.ok).length} de ${exec.length} ações feitas no ReparoSimples` : '';
+          adicionarChat(d.gestor, { quem: 'evento', html: true, texto: `🏛️ Israel <b>${b.dataset.s === 'aprovada' ? 'aprovou' : 'recusou'}</b> a decisão <b>${d.id}</b>${resumo}` });
           desenharDiretoria();
         });
       }

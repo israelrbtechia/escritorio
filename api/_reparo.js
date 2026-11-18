@@ -82,6 +82,21 @@ export async function lerOrdensAbertas({ detalhes = false } = {}) {
 
 /** Ferramenta da equipe da loja (Rael e técnico): as OS abertas com defeito, serviço e previsão. */
 export async function ferramentaOrdens() {
+  const { centralLigada, listarOsCentral } = await import('./_central.js');
+  if (centralLigada()) {
+    const nomesC = { analise: 'em análise', peca: 'aguardando peça', servico: 'em reparo', concluido: 'pronta para retirada', interrompido: 'interrompida' };
+    const hojeC = new Date(Date.now() - 3 * 36e5).toISOString().slice(0, 10);
+    const todas = (await listarOsCentral({ limite: 100 })).filter(o => o.status !== 'pago');
+    return {
+      fonte: 'ReparoSimples, API do RB Central (loja RB Tech)',
+      aviso: 'Ações (WhatsApp ao cliente, status, previsão, técnico, valor) vão em "acoes" de uma decisão para o Israel aprovar.',
+      total: todas.length,
+      porStatus: Object.fromEntries(Object.entries(nomesC).map(([k, n]) => [n, todas.filter(o => o.status === k).length])),
+      atrasadas: todas.filter(o => o.previsao && o.previsao < hojeC && o.status !== 'concluido').map(o => o.os),
+      prontasValorParado: todas.filter(o => o.status === 'concluido').reduce((s, o) => s + (Number(o.valor) || 0), 0),
+      ordens: todas.map(o => ({ ...o, status: nomesC[o.status] || o.status })),
+    };
+  }
   const ordens = await lerOrdensAbertas({ detalhes: true });
   const nomes = { analise: 'em análise', peca: 'aguardando peça', servico: 'em reparo', concluido: 'pronta para retirada' };
   const hoje = new Date().toISOString().slice(0, 10);

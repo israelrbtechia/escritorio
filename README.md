@@ -108,6 +108,29 @@ Variáveis na Vercel (projeto do prédio):
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
 
+## Ações no ReparoSimples depois do seu ok (WhatsApp ao cliente e alterações nas OS)
+O Rael (e os outros chefes, quando for da loja) pode colocar **ações** dentro de uma decisão. Elas aparecem na Diretoria e só acontecem quando você toca em **Aprovar e executar**:
+- **WhatsApp ao cliente da OS:** com o texto que ele escreveu, que você confere antes.
+- **Aviso oficial de aparelho pronto:** com o link de acompanhamento e a garantia.
+- **Mudar status:** análise, peça, serviço, concluído ou interrompido. Nunca pago.
+- **Editar a OS:** previsão de entrega, técnico, observações, serviço, defeito, valor, garantia ou acessórios.
+
+Depois da execução, a decisão mostra o resultado de cada ação. Se o WhatsApp não sair, aparece um link para você enviar à mão. Pagamento e exclusão de OS ficam com a loja.
+
+Tudo passa pela **API do RB Central** do ReparoSimples, a mesma que segue as regras da tela "Editar OS" e só enxerga a loja RB Tech. Para ligar:
+1. **No projeto do ReparoSimples na Vercel:**
+   - `CENTRAL_LOJA`: o id da loja RB Tech;
+   - `CENTRAL_API_TOKEN`: uma senha longa, com 40 caracteres ou mais.
+
+   Se o RB Central já estiver ligado, essas variáveis já existem.
+2. **No projeto do prédio:**
+   - `REPARO_CENTRAL_URL`: o endereço do site do ReparoSimples;
+   - `REPARO_CENTRAL_TOKEN`: o mesmo valor do `CENTRAL_API_TOKEN`.
+3. **WhatsApp:** no ReparoSimples, em Configurações → WhatsApp, conecte a **API oficial da Meta**. As mensagens saem por esse número.
+4. Faça **Redeploy** nos dois projetos.
+
+Com o RB Central ligado, a leitura das OS da equipe também passa a trazer valor, previsão, técnico e nome do cliente (nunca o telefone).
+
 ## Central de conteúdo do Instagram (antigo Agente de Reels e Stories)
 O antigo agente (repositório `agente-`) agora roda dentro do prédio. As rotinas são as mesmas, só que feitas pelos times:
 - **Stories do dia:** todo dia antes das 9h, o **Especialista de crescimento** (time da Helena) entrega o roteiro dos stories do dia. Ele usa a época, os posts de ontem das lojas de referência, os prints que você subiu, os stories da RBTech e o estoque.

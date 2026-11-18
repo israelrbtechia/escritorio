@@ -67,10 +67,10 @@ const POSTS = {
 };
 const ISRAEL = {
   name: 'enviar_para_israel',
-  description: 'Envia uma decisão sua para a sala do Israel (o Boss, dono da RBTech) no terraço. Ele audita toda decisão: aprova, recusa ou comenta. Use para tudo que muda algo na empresa (publicar, investir, mudar preço, processo, contratar, priorizar). Devolve o código da decisão (D1, D2...).',
+  description: 'Envia uma decisão sua para a sala do Israel (o Boss, dono da RBTech) no terraço. Ele audita toda decisão: aprova, recusa ou comenta. Use para tudo que muda algo na empresa (publicar, investir, mudar preço, processo, contratar, priorizar). Em "acoes" vão as ações no sistema da loja RB Tech (ReparoSimples) que acontecem sozinhas quando ele aprovar: mandar WhatsApp ao cliente de uma OS, aviso de aparelho pronto, mudar status ou editar campos da OS. Devolve o código da decisão (D1, D2...).',
   strict: true,
   input_schema: {
-    type: 'object', additionalProperties: false, required: ['titulo', 'decisao', 'motivo', 'riscos', 'urgencia', 'entregas'],
+    type: 'object', additionalProperties: false, required: ['titulo', 'decisao', 'motivo', 'riscos', 'urgencia', 'entregas', 'acoes'],
     properties: {
       titulo: { type: 'string', description: 'Título curto da decisão (até 70 caracteres).' },
       decisao: { type: 'string', description: 'O que você decidiu ou recomenda fazer, de forma executável.' },
@@ -78,6 +78,29 @@ const ISRAEL = {
       riscos: { type: 'string', description: 'O que pode dar errado e como medir se deu certo.' },
       urgencia: { type: 'string', enum: ['baixa', 'media', 'alta'] },
       entregas: { type: 'array', items: { type: 'string' }, description: 'Códigos das entregas que embasam a decisão (ex.: ["E2"]).' },
+      acoes: {
+        type: 'array',
+        description: 'Ações no sistema da loja RB Tech que acontecem quando o Israel aprovar. Lista vazia se a decisão não mexe em OS. Uma ação por OS e por tipo; no máximo 30.',
+        items: {
+          type: 'object', additionalProperties: false, required: ['tipo', 'os', 'mensagem', 'status', 'campos'],
+          properties: {
+            tipo: { type: 'string', enum: ['avisar_cliente', 'aviso_pronto', 'mudar_status', 'editar_os'], description: 'avisar_cliente: WhatsApp com o texto de "mensagem" ao cliente da OS. aviso_pronto: o aviso oficial de aparelho pronto, com link de acompanhamento e garantia (OS concluída). mudar_status: muda o status (nunca para pago). editar_os: muda campos da OS.' },
+            os: { type: 'string', description: 'Número da OS (ex.: "371").' },
+            mensagem: { type: 'string', description: 'Só em avisar_cliente: o texto exato para o cliente, curto e no tom da loja. Vazio nos outros tipos.' },
+            status: { type: 'string', description: 'Só em mudar_status: analise, peca, servico, concluido ou interrompido. Vazio nos outros tipos.' },
+            campos: {
+              type: 'array', description: 'Só em editar_os: os campos a mudar. Lista vazia nos outros tipos.',
+              items: {
+                type: 'object', additionalProperties: false, required: ['campo', 'valor'],
+                properties: {
+                  campo: { type: 'string', enum: ['previsao_entrega', 'tecnico', 'observacoes', 'servico', 'defeito', 'valor', 'garantia_dias', 'acessorios'] },
+                  valor: { type: 'string', description: 'Novo valor. previsao_entrega em AAAA-MM-DD; valor em reais (ex.: "350"); tecnico com o nome cadastrado na loja.' },
+                },
+              },
+            },
+          },
+        },
+      },
     },
   },
 };
@@ -88,6 +111,7 @@ O Israel, dono da RBTech, audita toda decisão dos chefes numa sala no terraço 
 - Toda decisão que muda algo (publicar, investir, mudar preço ou processo, priorizar, contratar) vai para ele pela ferramenta enviar_para_israel, uma decisão por chamada, antes do relatório final. Nada é executado antes da aprovação dele.
 - A mensagem do dono pode trazer um bloco [AUDITORIA] com as últimas decisões auditadas. Respeite o que ele recusou e os comentários dele; não reenvie a mesma decisão recusada sem mudar o que ele criticou.
 - No relatório final, liste os códigos das decisões enviadas (D1, D2...).
+- Quando a decisão pede algo no sistema da loja RB Tech (mandar mensagem ao cliente de uma OS, mudar status, ajustar previsão, técnico, valor ou observação), coloque cada passo em "acoes": o app executa sozinho quando o Israel aprovar. Não peça para o Israel fazer à mão o que pode ir em "acoes". Pagamento e exclusão de OS não estão disponíveis: ficam com a loja.
 `;
 
 // ---------- ferramentas do departamento de crescimento (Instagram) ----------
@@ -371,7 +395,15 @@ Porta automática de vidro; café e cadeiras para o cliente na entrada; parede d
 ## Como você trabalha
 - Conversa rápida: responda você mesmo. Trabalho maior: acione quem precisa, em paralelo quando não houver dependência.
 - Os funcionários não lembram de nada: cada pedido precisa ter todo o contexto. Use "anexos" para passar entregas anteriores.
-- Relatório final curto: **Resumo** · **O que a equipe entregou** · **Decisões enviadas ao Israel** · **Próximo passo**.`,
+- Relatório final curto: **Resumo** · **O que a equipe entregou** · **Decisões enviadas ao Israel** · **Próximo passo**.
+
+## Agir no ReparoSimples (depois do ok do Israel)
+Você pode propor ações no sistema da loja dentro de uma decisão (campo "acoes" de enviar_para_israel). Elas acontecem sozinhas quando o Israel aprovar:
+- **avisar_cliente**: WhatsApp para o cliente da OS, com o texto que você escrever (curto, com o nome do cliente e o aparelho, sem prometer preço ou prazo que a loja não informou). Para várias OS, uma ação por OS.
+- **aviso_pronto**: o aviso oficial de "aparelho pronto", com link de acompanhamento e garantia (para OS já concluída).
+- **mudar_status**: análise, peça, serviço, concluído ou interrompido (nunca pago).
+- **editar_os**: previsão de entrega, técnico, observações, serviço, defeito, valor, garantia ou acessórios.
+Leia as OS (ler_ordens_de_servico) antes, para usar o número certo. Mande uma decisão por assunto (ex.: "mutirão de avisos das OS prontas", "previsão e técnico nas OS sem prazo"), com todas as ações daquele assunto.`,
 };
 const ATENDIMENTO = {
   nome: 'Atendimento', esforco: 'medium',

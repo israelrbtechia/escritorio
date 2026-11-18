@@ -24,6 +24,9 @@
     },
     "api/os.js": {
       "maxDuration": 300
+    },
+    "api/decisoes.js": {
+      "maxDuration": 300
     }
   },
   "crons": [

@@ -79,6 +79,7 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
   let edicoesServidor = [];
   let entregasRotina = [];
   let decisoesServidor = [];
+  let centralLigada = false; // ações no ReparoSimples (API do RB Central) ligadas no servidor
   let gasto = ler(CHAVE.gasto, { usd: 0 });
   const ocupados = new Set();
   const emitir = (tipo, dados = {}) => aoEvento({ tipo, ...dados });
@@ -236,13 +237,14 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
         const d = {
           id: proximo(decisoes, 'D'), gestor: papel, andar: PESSOAS[papel].andar,
           titulo: String(ent.titulo || 'Decisão').slice(0, 140), decisao: ent.decisao || '', motivo: ent.motivo || '', riscos: ent.riscos || '',
-          urgencia: ent.urgencia || 'media', entregas: ent.entregas || [], status: 'pendente', comentario: '', quando: Date.now(), origem: 'app', ensaio: !!ensaio(),
+          urgencia: ent.urgencia || 'media', entregas: ent.entregas || [], acoes: Array.isArray(ent.acoes) ? ent.acoes.slice(0, 30) : [],
+          status: 'pendente', comentario: '', quando: Date.now(), origem: 'app', ensaio: !!ensaio(),
         };
         decisoes.push(d);
         salvar();
         emitir('decisao', { gestor: papel, decisao: d });
         if (!ensaio()) api('/api/decisoes', { acao: 'salvar', decisao: d }).catch(() => {});
-        return { type: 'tool_result', tool_use_id: b.id, content: `Decisão ${d.id} entregue na sala do Israel, no terraço. Status: pendente de auditoria. Não execute nada antes da aprovação; siga com o relatório.` };
+        return { type: 'tool_result', tool_use_id: b.id, content: `Decisão ${d.id} entregue na sala do Israel, no terraço${d.acoes.length ? `, com ${d.acoes.length} ação(ões) no ReparoSimples que acontecem quando ele aprovar` : ''}. Status: pendente de auditoria. Não execute nada antes da aprovação; siga com o relatório.` };
       }
       if (b.name.startsWith('ler_')) {
         emitir('meta', { papel, tipo: b.name });
@@ -296,7 +298,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
     if (ensaio()) return { rotinas: [], armazem: null };
     const [rot, dec, ins] = await Promise.allSettled([api('/api/rotina', null, 'GET'), api('/api/decisoes', null, 'GET'), api('/api/instagram', null, 'GET')]);
     const rotinas = rot.status === 'fulfilled' ? rot.value.rotinas || [] : [];
-    if (dec.status === 'fulfilled') decisoesServidor = dec.value.decisoes || [];
+    if (dec.status === 'fulfilled') { decisoesServidor = dec.value.decisoes || []; centralLigada = !!dec.value.central; }
     if (ins.status === 'fulfilled') { pedidosServidor = ins.value.pedidos || []; edicoesServidor = ins.value.edicoes || []; }
     for (const r of rotinas) {
       for (const p of r.pedidos || []) if (!pedidosServidor.some(x => x.id === p.id)) pedidosServidor.push(p);
@@ -309,12 +311,20 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   async function rodarRotina(equipe) {
     return api(`/api/rotina?equipe=${encodeURIComponent(equipe)}&executar=1`, {});
   }
+  /** Aprova ou recusa. Aprovada com ações: o servidor executa no ReparoSimples e devolve o resultado de cada uma. */
   async function auditar(id, status, comentario) {
-    const local = decisoes.find(d => d.id === id);
+    let local = decisoes.find(d => d.id === id);
     if (local) Object.assign(local, { status, comentario, auditadaEm: Date.now() });
-    else decisoes.push({ ...(decisoesServidor.find(d => d.id === id) || { id }), status, comentario, auditadaEm: Date.now() });
+    else { local = { ...(decisoesServidor.find(d => d.id === id) || { id }), status, comentario, auditadaEm: Date.now() }; decisoes.push(local); }
     salvar();
-    if (!ensaio()) await api('/api/decisoes', { acao: 'auditar', id, status, comentario }).catch(() => {});
+    if (ensaio() || local.ensaio) return local;
+    try {
+      const r = await api('/api/decisoes', { acao: 'auditar', id, status, comentario, decisao: local });
+      if (r?.decisao?.execucao) { Object.assign(local, { execucao: r.decisao.execucao, executadaEm: r.decisao.executadaEm }); salvar(); }
+    } catch (e) {
+      if (status === 'aprovada' && local.acoes?.length) { local.execucao = [{ acao: 'Executar as ações', ok: false, detalhe: e.message }]; salvar(); }
+    }
+    return local;
   }
 
   // ---------- modo ensaio: respostas de mentira para ver a animação sem gastar créditos ----------
@@ -322,7 +332,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   const PLANO_ENSAIO = {
     chefe: [['analista'], ['copywriter', 'roteirista'], ['revisor'], ['israel']],
     gerente_crescimento: [['meta:ler_metricas_instagram', 'especialista'], ['midia'], ['israel']],
-    gerente_loja: [['atendimento', 'tecnico'], ['israel']],
+    gerente_loja: [['meta:ler_ordens_de_servico', 'atendimento', 'tecnico'], ['israel']],
     head_vendas: [['sdr', 'produto'], ['closer', 'sucesso'], ['israel']],
   };
   async function simular(corpo) {
@@ -349,7 +359,11 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
     if (etapa < plano.length) {
       const blocos = plano[etapa].map(item => {
         if (item === 'israel') {
-          return { type: 'tool_use', id: id(), name: 'enviar_para_israel', input: { titulo: 'Testar a sugestão da equipe por 7 dias (ensaio)', decisao: 'Aplicar a melhoria principal sugerida pela equipe e medir por 7 dias.', motivo: 'Entregas da equipe nesta reunião (ensaio).', riscos: 'Nenhum dado real ainda: é um ensaio.', urgencia: 'media', entregas: entregas.slice(-2).map(e => e.id) } };
+          const acoes = papel === 'gerente_loja' ? [
+            { tipo: 'avisar_cliente', os: '371', mensagem: 'Oi! Aqui é da RB Tech: seu iPhone já está pronto para retirada. Quando passar, te esperamos! (ensaio)', status: '', campos: [] },
+            { tipo: 'editar_os', os: '408', mensagem: '', status: '', campos: [{ campo: 'previsao_entrega', valor: '2026-11-22' }] },
+          ] : [];
+          return { type: 'tool_use', id: id(), name: 'enviar_para_israel', input: { titulo: papel === 'gerente_loja' ? 'Mutirão de avisos das OS prontas (ensaio)' : 'Testar a sugestão da equipe por 7 dias (ensaio)', decisao: 'Aplicar a melhoria principal sugerida pela equipe e medir por 7 dias.', motivo: 'Entregas da equipe nesta reunião (ensaio).', riscos: 'Nenhum dado real ainda: é um ensaio.', urgencia: 'media', entregas: entregas.slice(-2).map(e => e.id), acoes } };
         }
         if (item === 'midia') {
           return { type: 'tool_use', id: id(), name: 'pedir_midia', input: { tipo: 'reels', titulo: 'Unboxing do iPhone 15 na loja (ensaio)', briefing: 'Grave 20 segundos na vertical: a mão abrindo a caixa, o aparelho girando na luz da janela e você dizendo "chegou na RB Tech!". Termine apontando para a câmera.', legenda: 'Chegou na RB Tech 📦✨ Qual cor você levaria? Comenta aqui 👇 e chama no WhatsApp para saber condições. #iphone #florianopolis #rbtech', quando_publicar: 'quinta às 19h (horário de mais alcance nos últimos posts)' } };
@@ -387,6 +401,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   function metaDeEnsaio(nome) {
     const base = { ensaio: true, aviso: 'Números de ENSAIO, não são reais.' };
     if (nome === 'ler_metricas_anuncios') return { ...base, linhas: [{ investimento: 180, conversasWhatsApp: 23, custoPorConversa: 7.83, ctr: 1.9, cpm: 21.4, frequencia: 1.6 }] };
+    if (nome === 'ler_ordens_de_servico') return { ...base, total: 3, ordens: [{ os: '371', status: 'pronta para retirada', modelo: 'iPhone 13', cliente: 'Cliente Exemplo', valor: 350 }] };
     if (nome === 'ler_sorteios_no_instagram') return { ...base, perfisCitados: [{ perfil: '@loja_exemplo', posts: 2, exemplo: 'https://instagram.com/p/exemplo' }], posts: [], avisos: [] };
     if (nome === 'ler_central_de_conteudo') return { ...base, storiesDeHoje: { estrategia: { estrategiaDoDia: 'Aquecer a Black Friday (exemplo).' } }, ultimoRelatorioDeReels: 'nenhum ainda', estoqueDaSemana: '13 128 seminovo (exemplo)' };
     if (nome === 'ler_saas_reparo') return { ...base, lojas: 64, ativas: 31, emTeste: 18, pagantes: 27, receitaMensal: { reais: 1880 }, novasNoMes: 9, recentes: [{ nome: 'Assistência Exemplo', plano: 'Pro', situacao: 'teste' }] };
@@ -396,6 +411,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
 
   return {
     enviar, reuniao, sincronizar, rodarRotina, auditar,
+    centralLigada: () => centralLigada,
     ocupado: g => (g ? ocupados.has(g) : ocupados.size > 0),
     entregas: () => todasEntregas().sort((a, b) => a.quando - b.quando),
     decisoes: todasDecisoes,

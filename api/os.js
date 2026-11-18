@@ -11,6 +11,7 @@ import {
   registrarAtualizacoesOs, compararComRetrato, estadoContadorOs, textoUltimasAtualizacoes, sqlDoGatilho,
 } from './_reparo.js';
 import { gravarValor, travar, soltar } from './_armazem.js';
+import { centralLigada } from './_central.js';
 
 const CHAVE_GATILHO = () => chaveDerivada('reparo-os');
 
@@ -54,7 +55,7 @@ export default async function handler(req, res) {
       const { disparar } = await registrarAtualizacoesOs(await compararComRetrato(ordens));
       if (disparar) { emSegundoPlano(); rodadaDaLojaIniciada = true; }
     } catch (e) { console.error('contador de OS:', e); }
-    return responder(res, 200, { configurado: true, loja: (await lojaRbTech()).nome, ordens, contador: await estadoContadorOs().catch(() => null), rodadaDaLoja: rodadaDaLojaIniciada });
+    return responder(res, 200, { configurado: true, loja: (await lojaRbTech()).nome, ordens, contador: await estadoContadorOs().catch(() => null), rodadaDaLoja: rodadaDaLojaIniciada, central: centralLigada() });
   } catch (e) {
     if (!(e instanceof ErroReparo)) console.error(e);
     return responder(res, e instanceof ErroReparo ? 422 : 502, { erro: e.message || 'Erro ao ler o ReparoSimples.' });

@@ -2,6 +2,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { PAPEIS, EQUIPES } from './_equipe.js';
 import { executarFerramentaMeta } from './_meta.js';
+import { limparAcoes } from './_central.js';
 import { salvarDecisao, salvarItem } from './_armazem.js';
 
 const client = new Anthropic();
@@ -189,6 +190,7 @@ export async function reuniaoNoServidor(gestor, pedido, { prazo, idRotina }) {
         const decisao = {
           id: `${idRotina}-D${registro.decisoes.length + 1}`, gestor: papel, titulo: d.titulo, decisao: d.decisao, motivo: d.motivo,
           riscos: d.riscos, urgencia: d.urgencia, entregas: (d.entregas || []).map(e => `${idRotina}-${e}`),
+          acoes: limparAcoes(d.acoes),
           status: 'pendente', comentario: '', quando: Date.now(), origem: 'rotina',
         };
         registro.decisoes.push(decisao);
