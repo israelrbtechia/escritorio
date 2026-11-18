@@ -50,6 +50,7 @@ export function limparArte(entrada = {}, tipo = 'carrossel') {
       imagem_url: /^\/api\/imagem\?u=https%3A%2F%2F[\w.%-]+$/i.test(url) ? url : '',
       imagem_lado: LADOS_IMAGEM.includes(s?.imagem_lado) ? s.imagem_lado : 'direita',
       imagem_cor: s?.imagem_cor === 'dourado' ? 'dourado' : 'natural',
+      svg_tela: limparSvg(s?.svg_tela), // a tela desenhada pelo diretor de arte (Claude), quando houver
     };
   });
   return {
@@ -57,6 +58,76 @@ export function limparArte(entrada = {}, tipo = 'carrossel') {
     perfil: txt(entrada.perfil || 'RB Tech Celulares', 40), arroba: txt(entrada.arroba, 40).replace(/^([^@])/, '@$1'),
     movimento, slides,
   };
+}
+
+// ---------- telas desenhadas pelo diretor de arte (SVG escrito pelo Claude) ----------
+/** Tira do SVG tudo que não é desenho (scripts, eventos, links de fora). Imagens só por {{logo}}, {{imagem:N}} ou #id. */
+export function limparSvg(svg) {
+  let s = String(svg || '').trim();
+  if (!/^<svg[\s>]/i.test(s) || !/<\/svg>\s*$/i.test(s) || s.length > 150_000) return '';
+  s = s.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<foreignObject[\s\S]*?<\/foreignObject>/gi, '')
+    .replace(/\son[a-z]+\s*=\s*("[^"]*"|'[^']*')/gi, '')
+    .replace(/((?:xlink:)?href\s*=\s*)("|')(?!\{\{(?:logo|imagem:\d+)\}\}|#)[^"']*\2/gi, '$1$2#$2')
+    .replace(/url\(\s*(['"]?)(?!#)[^)]*\1\s*\)/gi, 'none');
+  return s;
+}
+const paraDataUrl = blob => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
+let cssFontes = null;
+/** As fontes vão dentro do SVG (uma imagem SVG não enxerga as fontes da página). */
+function fontesParaSvg() {
+  cssFontes ||= (async () => {
+    try {
+      const css = await (await fetch('https://fonts.googleapis.com/css2?family=Anton&family=Allison&family=Poppins:wght@400;500;600;700;800&display=block')).text();
+      const blocos = css.split('/*').slice(1).map(b => b.split('*/')).filter(([nome]) => /^\s*latin(-ext)?\s*$/.test(nome));
+      const regras = await Promise.all(blocos.map(async ([, regra]) => {
+        const m = regra.match(/url\((https:[^)]+)\)/);
+        if (!m) return '';
+        return regra.trim().replace(m[1], await paraDataUrl(await (await fetch(m[1])).blob()));
+      }));
+      return regras.join('\n');
+    } catch { return ''; }
+  })();
+  return cssFontes;
+}
+async function imagemDaTelaSvg(svg, geral) {
+  const css = await fontesParaSvg();
+  // imagem pedida que não existe (ou link que a limpeza tirou): some o elemento inteiro, sem ícone de imagem quebrada
+  let s = svg.replace(/<image\b[^>]*?(?:xlink:)?href\s*=\s*("|')(\{\{imagem:(\d+)\}\}|#)\1[^>]*?(?:\/>|>\s*<\/image>)/gi, (m, _q, ref, n) => (ref === '#' || !geral.imagemUrl[Number(n)] ? '' : m));
+  s = s.replace(/\{\{logo\}\}/g, geral.logoUrl || '#').replace(/\{\{imagem:(\d+)\}\}/g, (_, n) => geral.imagemUrl[Number(n)] || '#');
+  if (!/xmlns=/.test(s)) s = s.replace(/<svg/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  if (!/xmlns:xlink=/.test(s) && /xlink:/.test(s)) s = s.replace(/<svg/i, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+  s = s.replace(/<svg[^>]*>/i, m => `${m}<style>${css}</style>`);
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => res(img);
+    img.onerror = () => res(null);
+    img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
+  });
+}
+/** O que o diretor de arte precisa saber: conteúdo, tamanhos das imagens e o que atravessa de uma tela para a outra. */
+export async function planoDoDesigner(arte, tipo) {
+  const geral = await prepararArte(arte, tipo);
+  const [largura, altura] = tamanhoDa(tipo);
+  return {
+    tipo, tamanho: [largura, altura], perfil: arte.perfil, arroba: arte.arroba,
+    logo: [geral.logoImg?.width || 450, geral.logoImg?.height || 480],
+    imagens: arte.slides.map((s, i) => (geral.imagem[i] ? { w: geral.imagem[i].width, h: geral.imagem[i].height, descricao: s.imagem || 'iPhone em 3D' } : null)),
+    fixos: tipo === 'carrossel' ? geral.painel.filter(e => e.tipo === 'imagem' && e.lado === 'atravessa' && e.tela < arte.slides.length - 1)
+      .map(e => ({ imagem: e.tela, x: e.x, y: e.y, w: e.w, h: e.h, telas: [e.tela, e.tela + 1] })) : [],
+    slides: arte.slides.map(({ layout, tema, efeito, chamada, titulo, texto, destaque, assinatura, emoji, rodape, imagem_lado }) => ({ layout, tema, efeito, chamada, titulo, texto, destaque, assinatura, emoji, rodape, imagem_lado })),
+  };
+}
+/** A tela em JPEG (para o revisor visual olhar). Devolve null se o SVG não abrir. */
+export async function fotoDaTela(arte, tipo, indice, largura = 720) {
+  const prep = await preparar(arte, tipo, indice);
+  if (arte.slides[indice].svg_tela && !prep.svgImg) return null;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = prep.H;
+  compor(c.getContext('2d'), prep, arte, tipo, Infinity);
+  const m = document.createElement('canvas');
+  m.width = largura; m.height = Math.round(largura * c.height / c.width);
+  m.getContext('2d').drawImage(c, 0, 0, m.width, m.height);
+  return m.toDataURL('image/jpeg', 0.82);
 }
 
 // ---------- recursos ----------
@@ -654,7 +725,8 @@ async function prepararArte(arte, tipo) {
       return blocoTitulo(medidor, s.titulo, { x: M - 10, y, largura: W - 2 * M + 20, alturaMax: H * 0.36, medir: true });
     });
     const painel = montarPainel(arte, tipo, H, { imagem, temas, fimTitulo });
-    return { H, logoImg, imagem, painel };
+    const comoUrl = el => { try { const c = document.createElement('canvas'); c.width = el.width; c.height = el.height; c.getContext('2d').drawImage(el, 0, 0); return c.toDataURL(el instanceof HTMLImageElement && /\.jpe?g/i.test(el.src) ? 'image/jpeg' : 'image/png'); } catch { return ''; } };
+    return { H, logoImg, imagem, painel, logoUrl: logoImg ? comoUrl(logoImg) : '', imagemUrl: imagem.map(el => (el ? comoUrl(el) : '')) };
   })();
   cacheArte.set(arte, { tipo, pronto });
   return pronto;
@@ -673,6 +745,7 @@ async function preparar(arte, tipo, indice) {
     if (vizinha) prep.ladoImagem = vizinha.cx < x0 + W / 2 ? 'esquerda' : 'direita';
   }
   if (prep.ladoImagem === 'atravessa') prep.ladoImagem = 'direita';
+  if (s.svg_tela) { prep.svgImg = await imagemDaTelaSvg(s.svg_tela, geral); if (prep.svgImg) return prep; } // tela do diretor de arte; se não abrir, usa o molde
   const camada = document.createElement('canvas');
   camada.width = W; camada.height = H;
   conteudo(camada.getContext('2d'), prep, arte);
@@ -682,6 +755,12 @@ async function preparar(arte, tipo, indice) {
 /** Desenha a tela no instante t (segundos desde que ela entrou; Infinity = imagem parada, já completa). */
 function compor(g, prep, arte, tipo, t) {
   const parado = !Number.isFinite(t), H = prep.H, x0 = prep.indice * W;
+  if (prep.svgImg) { // tela do diretor de arte: no vídeo, entra com um zoom lento
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+    const z = parado ? 1 : 1.05 - 0.05 * ease(t / 3);
+    g.drawImage(prep.svgImg, (W - W * z) / 2, (H - H * z) / 2, W * z, H * z);
+    return;
+  }
   fundo(g, prep, t);
   const visiveis = prep.geral.painel.filter(e => {
     const largura = e.tipo === 'cursiva' ? e.tam * e.texto.length * 0.6 + 200 : e.w;

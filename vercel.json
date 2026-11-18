@@ -30,6 +30,9 @@
     },
     "api/imagem.js": {
       "maxDuration": 180
+    },
+    "api/arte.js": {
+      "maxDuration": 300
     }
   },
   "crons": [

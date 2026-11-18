@@ -1166,6 +1166,9 @@ const agencia = criarAgencia({
         adicionarChat(g, { quem: 'evento', html: true, texto: `📎 ${esc(nome(ev.pedido.solicitante))} pediu um <b>${esc(NOME_TIPO[ev.pedido.tipo] || ev.pedido.tipo)}</b>: “${esc(ev.pedido.titulo)}” · <a href="${esc(linkUpload(ev.pedido))}" target="_blank" rel="noopener">abrir página de upload</a>` });
         desenharInstagram();
         break;
+      case 'passoArte':
+        adicionarChat(g, { quem: 'evento', texto: ev.texto });
+        break;
       case 'arte':
         adicionarChat(g, { quem: 'arte', pedido: ev.pedido.id, autor: ev.pedido.solicitante, tipo: ev.pedido.tipo, telas: ev.pedido.arte.slides.length, titulo: ev.pedido.titulo, movimento: !!ev.pedido.arte.movimento });
         desenharInstagram();

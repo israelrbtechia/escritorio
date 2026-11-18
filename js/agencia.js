@@ -1,7 +1,7 @@
 // Conduz as reuniões do prédio RBTech: cada chefe de andar conversa com o dono, chama a equipe (em paralelo
 // quando dá), lê as métricas da Meta e manda as decisões para a auditoria do Israel, no terraço.
 // O navegador executa as ferramentas; assim o 3D acompanha cada passo.
-import { limparArte } from './arte.js';
+import { limparArte, limparSvg, planoDoDesigner, fotoDaTela } from './arte.js';
 
 export const PESSOAS = {
   // 1º andar · Loja RB TECH
@@ -187,6 +187,35 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
     return { texto: '', limite: true };
   }
 
+  /** Cada tela: o diretor de arte desenha (SVG), o app renderiza, o revisor olha a imagem e corrige. Devolve quantas falharam. */
+  async function dirigirArte(arte, tipo, gestor) {
+    let plano;
+    try { plano = await planoDoDesigner(arte, tipo); } catch { return arte.slides.length; }
+    let falhas = 0, prontas = 0;
+    await Promise.all(arte.slides.map(async (s, i) => {
+      try {
+        const d = await api('/api/arte', { acao: 'desenhar', plano, indice: i });
+        s.svg_tela = limparSvg(d.svg);
+        let foto = s.svg_tela ? await fotoDaTela(arte, tipo, i) : null;
+        if (!foto) throw new Error('a tela não abriu');
+        const r = await api('/api/arte', { acao: 'revisar', plano, indice: i, svg: s.svg_tela, imagem: foto });
+        const revisado = limparSvg(r.svg);
+        if (revisado && revisado !== s.svg_tela) {
+          const antes = s.svg_tela;
+          s.svg_tela = revisado;
+          foto = await fotoDaTela(arte, tipo, i);
+          if (!foto) s.svg_tela = antes; // a versão revisada não abriu: fica a primeira
+        }
+        emitir('passoArte', { gestor, texto: `✅ Tela ${i + 1} desenhada e revisada (${++prontas} de ${arte.slides.length})` });
+      } catch (e) {
+        s.svg_tela = '';
+        falhas++;
+        emitir('passoArte', { gestor, texto: `⚠️ Tela ${i + 1}: ${e.message}. Ela fica no molde padrão.` });
+      }
+    }));
+    return falhas;
+  }
+
   async function executar(papel, b, ctx) {
     const erro = msg => ({ type: 'tool_result', tool_use_id: b.id, is_error: true, content: msg });
     const ent = b.input || {};
@@ -243,6 +272,12 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
             feitas.forEach((r, k) => { if (r.status === 'fulfilled' && r.value?.url) pedidas[k].imagem_url = r.value.url; else falhas.push(r.reason?.message || 'erro'); });
             notaImagens = falhas.length ? ` ${pedidas.length - falhas.length} de ${pedidas.length} imagens geradas; nas outras entrou o iPhone 3D (${falhas[0]}).` : ` ${pedidas.length} imagem(ns) de destaque gerada(s).`;
           }
+        }
+        // diretor de arte (Claude): desenha cada tela; o revisor olha a tela pronta e corrige
+        if (!ensaio()) {
+          emitir('passoArte', { gestor: ctx.gestor, texto: `🎨 O diretor de arte está desenhando as ${arte.slides.length} telas e o revisor vai conferir cada uma (leva 1 a 3 minutos).` });
+          const falhas = await dirigirArte(arte, tipo, ctx.gestor);
+          notaImagens += falhas ? ` ${falhas} tela(s) ficaram no molde padrão porque o diretor de arte falhou.` : ' Todas as telas foram desenhadas pelo diretor de arte e conferidas pelo revisor visual.';
         }
         const pedido = {
           id: proximo(pedidos, 'P'), tipo, titulo: String(ent.titulo || 'Arte').slice(0, 140), briefing: `Arte criada por ${PESSOAS[papel].nome}: ${arte.slides.length} tela(s)${arte.movimento ? ', animada (vídeo)' : ''}, desenhada pelo app com a logo da RB Tech.`,
