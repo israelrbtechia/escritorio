@@ -75,7 +75,7 @@ A equipe só **lê** métricas: não publica, não edita posts e não mexe em or
   - Sem isso, o prédio só conta enquanto o app está aberto (compara as OS a cada minuto).
 - **Para mudar quais rodam sozinhas:** crie `ROTINAS_ATIVAS` na Vercel (ex.: `stories,reels,trafego` ou `todas`). Os botões "Rodar …" da aba Ajustes funcionam sempre.
 
-No plano Hobby da Vercel, cada rotina roda uma vez por dia, e o horário pode variar dentro da hora.
+No plano Hobby da Vercel, cada horário é um agendamento separado (16 ao todo), e o horário pode variar dentro da hora.
 
 ## Instagram: publicar, aplicar à mão e relatórios de ideias
 - **Pedidos de mídia**: quando a Helena precisa de um vídeo ou foto, ela deixa no chat um link para `/upload.html`. Lá você vê o briefing, sobe o MP4 ou a foto, revisa a legenda e clica em **Aprovar e publicar**. O app publica pela API oficial (reels, post, carrossel ou stories). Nada é publicado sem esse clique.
