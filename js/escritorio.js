@@ -104,6 +104,39 @@ export function criarEscritorio(container, camada) {
   controles.maxPolarAngle = 1.45;
   controles.minDistance = 3;
   controles.maxDistance = 160;
+  // Toque: 1 dedo arrasta a visão; 2 dedos: pinça = zoom, girar os dedos = gira o prédio, arrastar os dois juntos = inclina.
+  // Mouse: esquerdo arrasta, direito (ou Ctrl/Shift + esquerdo) gira, rodinha = zoom.
+  controles.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  controles.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+  controles.screenSpacePanning = true;
+  let aoMexer = null;
+  controles.addEventListener('start', () => { transicao = null; aoMexer?.(); });
+  {
+    // girar com os dois dedos (como num mapa): a câmera dá a volta no ponto que está olhando
+    const toques = new Map();
+    const EIXO_Y = new THREE.Vector3(0, 1, 0);
+    let anguloAnterior = null;
+    const el = renderer.domElement;
+    el.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') { toques.set(e.pointerId, [e.clientX, e.clientY]); anguloAnterior = null; } });
+    el.addEventListener('pointermove', e => {
+      if (e.pointerType !== 'touch' || !toques.has(e.pointerId)) return;
+      toques.set(e.pointerId, [e.clientX, e.clientY]);
+      if (toques.size !== 2) { anguloAnterior = null; return; }
+      const [[x1, y1], [x2, y2]] = [...toques.values()];
+      const a = Math.atan2(y2 - y1, x2 - x1);
+      if (anguloAnterior != null) {
+        let d = a - anguloAnterior;
+        if (d > Math.PI) d -= 2 * Math.PI;
+        if (d < -Math.PI) d += 2 * Math.PI;
+        const off = camera.position.clone().sub(controles.target).applyAxisAngle(EIXO_Y, d);
+        camera.position.copy(controles.target).add(off);
+      }
+      anguloAnterior = a;
+    });
+    const soltar = e => { toques.delete(e.pointerId); anguloAnterior = null; };
+    el.addEventListener('pointerup', soltar);
+    el.addEventListener('pointercancel', soltar);
+  }
 
   cena.add(new THREE.HemisphereLight(0xfff6e5, 0x3a3226, 1.35));
   const sol = new THREE.DirectionalLight(0xfff1d6, 1.8);
@@ -1081,6 +1114,9 @@ export function criarEscritorio(container, camada) {
     mosaicoAberto: () => !!mosaico,
     irParaCamera,
     cameraAtual: () => camAtual,
+    estadoCamera: () => ({ pos: camera.position.toArray(), alvo: controles.target.toArray() }),
+    /** Avisa o app quando você mexe na câmera com o dedo ou o mouse. */
+    aoMexerNaCamera(fn) { aoMexer = fn; },
     cameraDe: papel => CAM_DE[papel] || 'predio',
 
     gestor(g, estado) {

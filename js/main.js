@@ -296,7 +296,10 @@ function focar(id, atraso = 0) {
   ultimoFoco = Date.now() + atraso;
   timerCam = setTimeout(() => { if (escritorio) marcarCamera(escritorio.irParaCamera(id)); }, atraso);
 }
-const focarAuto = (id, atraso = 0) => { if (autoCam.checked) focar(id, atraso); };
+if (new URLSearchParams(location.search).has('debug')) window.predio = escritorio; // só para testes
+let mexeuAte = 0; // depois que você mexe na câmera, a câmera automática espera um pouco antes de trocar
+const focarAuto = (id, atraso = 0) => { if (autoCam.checked && Date.now() > mexeuAte) focar(id, atraso); };
+escritorio?.aoMexerNaCamera?.(() => { mexeuAte = Date.now() + 20_000; ultimoFoco = Date.now(); clearTimeout(timerCam); });
 const cameraDe = papel => (escritorio?.cameraDe ? escritorio.cameraDe(papel) : { analista: 'analise', revisor: 'analise', copywriter: 'criacao', roteirista: 'criacao', chefe: 'chefe' }[papel] || 'geral');
 if (escritorio) {
   for (const setor of escritorio.setores) {
