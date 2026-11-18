@@ -80,6 +80,70 @@ O Israel, dono da RBTech, audita toda decisão dos chefes numa sala no terraço 
 - No relatório final, liste os códigos das decisões enviadas (D1, D2...).
 `;
 
+// ---------- ferramentas do departamento de crescimento (Instagram) ----------
+const PEDIR_MIDIA = {
+  name: 'pedir_midia',
+  description: 'Pede ao Israel o arquivo de um post para publicar no Instagram da RBTech (reels, post de foto, carrossel ou stories). O app gera um link de upload: o Israel sobe o arquivo, revisa a legenda e aprova a publicação. Devolve o código do pedido (P1, P2...).',
+  strict: true,
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['tipo', 'titulo', 'briefing', 'legenda', 'quando_publicar'],
+    properties: {
+      tipo: { type: 'string', enum: ['reels', 'post', 'carrossel', 'stories'] },
+      titulo: { type: 'string', description: 'Nome curto do conteúdo (até 70 caracteres).' },
+      briefing: { type: 'string', description: 'O que o Israel precisa gravar ou criar: cenas, falas, duração, formato 9:16, o que mostrar.' },
+      legenda: { type: 'string', description: 'Legenda pronta para publicar (com chamada e hashtags). Vazia para stories.' },
+      quando_publicar: { type: 'string', description: 'Melhor dia e horário, com o motivo (ex.: "quinta às 19h, horário de mais alcance").' },
+    },
+  },
+};
+const EDICAO_MANUAL = {
+  name: 'sugerir_edicao_manual',
+  description: 'Registra uma edição que precisa ser feita à mão no app do Instagram, porque a API não permite (bio, link da bio, legenda de post já publicado, destaques, post fixado, capa de reels). Vira um card para o Israel copiar e aplicar.',
+  strict: true,
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['onde', 'link', 'texto_atual', 'texto_novo', 'motivo'],
+    properties: {
+      onde: { type: 'string', enum: ['bio', 'link_bio', 'legenda', 'destaques', 'fixado', 'capa', 'outro'] },
+      link: { type: 'string', description: 'Link do post (permalink) quando a edição for num post; vazio se for no perfil.' },
+      texto_atual: { type: 'string', description: 'Como está hoje (vazio se não souber).' },
+      texto_novo: { type: 'string', description: 'O texto exato para colar, ou a instrução exata.' },
+      motivo: { type: 'string', description: 'Por que mudar, com o número que sustenta.' },
+    },
+  },
+};
+const IDEIAS = {
+  name: 'entregar_ideias',
+  description: 'Entrega as ideias de crescimento de forma organizada. O app transforma isso num relatório HTML para o Israel. Use uma vez por entrega, antes do texto final.',
+  strict: true,
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['titulo', 'resumo', 'numeros_chave', 'ideias'],
+    properties: {
+      titulo: { type: 'string', description: 'Título do relatório.' },
+      resumo: { type: 'string', description: 'Leitura geral em 3 a 5 linhas.' },
+      numeros_chave: {
+        type: 'array', description: 'Os números que embasam as ideias (de 3 a 8).',
+        items: { type: 'object', additionalProperties: false, required: ['nome', 'valor', 'leitura'],
+          properties: { nome: { type: 'string' }, valor: { type: 'string' }, leitura: { type: 'string', description: 'O que esse número quer dizer.' } } },
+      },
+      ideias: {
+        type: 'array', description: 'De 3 a 10 ideias concretas.',
+        items: {
+          type: 'object', additionalProperties: false, required: ['titulo', 'tipo', 'prioridade', 'gancho', 'como_fazer', 'por_que', 'como_medir'],
+          properties: {
+            titulo: { type: 'string' },
+            tipo: { type: 'string', enum: ['reels', 'post', 'carrossel', 'stories', 'edicao', 'engajamento', 'parceria', 'outro'] },
+            prioridade: { type: 'string', enum: ['alta', 'media', 'baixa'] },
+            gancho: { type: 'string', description: 'Primeira frase ou primeiro segundo (vazio se não se aplicar).' },
+            como_fazer: { type: 'string', description: 'Passo a passo prático.' },
+            por_que: { type: 'string', description: 'O número ou padrão que sustenta a ideia.' },
+            como_medir: { type: 'string', description: 'Qual métrica acompanhar e a meta.' },
+          },
+        },
+      },
+    },
+  },
+};
+
 function acionar(equipe, descricoes) {
   return {
     name: 'acionar_funcionario',
@@ -188,7 +252,7 @@ const GERENTE_CRESCIMENTO = {
   nome: 'Gerente de crescimento', esforco: 'medium',
   ferramentas: [
     acionar(['especialista'], 'especialista (Especialista de crescimento: estuda os posts e as métricas a fundo e propõe melhorias).'),
-    INSTAGRAM, POSTS, ANUNCIOS, ISRAEL,
+    INSTAGRAM, POSTS, ANUNCIOS, ISRAEL, PEDIR_MIDIA, EDICAO_MANUAL, IDEIAS,
   ],
   sistema: `Você é a Helena, gerente de crescimento da agência interna da RBTech. Seu departamento existe só para fazer a RBTech crescer no Instagram: ganhar seguidores, conquistar o engajamento do público e melhorar o que já está publicado.
 Você fica no 2º andar do prédio RBTech. Você conversa com o dono, lê as métricas, comanda o **Especialista de crescimento** e aprova (ou devolve) o trabalho dele.
@@ -206,12 +270,17 @@ ${LOJA}${SOBRE_METRICAS}${AUDITORIA}
 - Confira a entrega do especialista: se faltar número, se a sugestão for genérica ou não der para executar, devolva uma vez dizendo o que melhorar (com o código da entrega em "anexos").
 - Toda sugestão precisa vir com: o que fazer, por quê (qual número sustenta) e como medir na semana seguinte.
 
+## Ferramentas do Instagram
+- **pedir_midia**: quando um conteúdo novo estiver aprovado no plano e precisar do vídeo ou da foto do Israel, peça com briefing claro e a legenda pronta. O Israel sobe o arquivo pelo link e aprova; o app publica pela API oficial. Nunca diga que já publicou.
+- **sugerir_edicao_manual**: para o que a API não deixa mudar (bio, link da bio, legenda de post antigo, destaques, fixado, capa). Uma chamada por edição, com o texto exato.
+- **entregar_ideias**: quando você mesma entregar ideias (sem o especialista), use para o relatório organizado. As ideias do especialista já vêm organizadas.
+
 ## Relatório final para o dono
 Curto, em markdown: **Como estamos** (seguidores e engajamento, com números e fonte) · **O que a equipe entregou** (códigos E1, E2...) · **Faça hoje** (até 3 ações concretas) · **Decisões enviadas ao Israel** · **Próximo passo**.`,
 };
 
 const ESPECIALISTA = {
-  nome: 'Especialista de crescimento', esforco: 'medium', ferramentas: [INSTAGRAM, POSTS],
+  nome: 'Especialista de crescimento', esforco: 'medium', ferramentas: [INSTAGRAM, POSTS, EDICAO_MANUAL, IDEIAS],
   sistema: `Você é o Especialista de crescimento da agência interna da RBTech. Quem chefia o seu departamento é a Helena.
 Seu trabalho: estudar a fundo os números e os posts do Instagram da RBTech e propor melhorias concretas para ganhar seguidores e engajamento.
 ${LOJA}${SOBRE_METRICAS}
@@ -222,7 +291,11 @@ ${LOJA}${SOBRE_METRICAS}
 4. **Próximos conteúdos**: 3 a 5 ideias de posts, reels ou stories, cada uma com gancho, formato e por que deve funcionar para a RBTech.
 5. **Engajamento**: como puxar comentários, compartilhamentos e salvamentos (perguntas, enquetes, respostas a comentários).
 6. **Como medir**: qual número acompanhar em cada sugestão.
-Sempre cite os números que sustentam cada sugestão. Nada genérico do tipo "poste com frequência": diga o quê, quando e por quê.`,
+Sempre cite os números que sustentam cada sugestão. Nada genérico do tipo "poste com frequência": diga o quê, quando e por quê.
+
+## Ferramentas
+- Entregue as ideias pela ferramenta **entregar_ideias** (uma vez, com tudo organizado); depois escreva só um resumo curto em texto.
+- Cada edição que precisa ser feita à mão no Instagram (bio, legenda antiga, fixado, capa, destaques) vai também pela **sugerir_edicao_manual**, uma por chamada, com o texto exato.`,
 };
 
 

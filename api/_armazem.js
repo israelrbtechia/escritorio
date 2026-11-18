@@ -67,3 +67,22 @@ export function resumoAuditoria(decisoes, gestor) {
   return '[AUDITORIA]\n' + minhas.map(d =>
     `- ${d.id} "${d.titulo}": ${d.status === 'aprovada' ? 'APROVADA' : 'RECUSADA'}${d.comentario ? ` — comentário do Israel: ${d.comentario}` : ''}`).join('\n') + '\n[/AUDITORIA]\n\n';
 }
+
+// ---------- itens genéricos (pedidos de mídia, edições manuais) ----------
+export async function salvarItem(colecao, item) {
+  if (!armazemLigado()) return false;
+  await comando('HSET', `agencia:${colecao}`, item.id, JSON.stringify(item));
+  return true;
+}
+export async function lerItem(colecao, id) {
+  if (!armazemLigado()) return null;
+  const v = await comando('HGET', `agencia:${colecao}`, id);
+  try { return v ? JSON.parse(v) : null; } catch { return null; }
+}
+export async function lerItens(colecao, limite = 200) {
+  if (!armazemLigado()) return [];
+  const plano = (await comando('HGETALL', `agencia:${colecao}`)) || [];
+  const lista = [];
+  for (let i = 1; i < plano.length; i += 2) { try { lista.push(JSON.parse(plano[i])); } catch { /* ignora */ } }
+  return lista.sort((a, b) => (b.quando || 0) - (a.quando || 0)).slice(0, limite);
+}

@@ -1,23 +1,52 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["gru1"],
+  "regions": [
+    "gru1"
+  ],
   "functions": {
-    "api/agente.js": { "maxDuration": 300 },
-    "api/rotina.js": { "maxDuration": 300 },
-    "api/meta.js": { "maxDuration": 60 }
+    "api/agente.js": {
+      "maxDuration": 300
+    },
+    "api/rotina.js": {
+      "maxDuration": 300
+    },
+    "api/meta.js": {
+      "maxDuration": 60
+    },
+    "api/instagram.js": {
+      "maxDuration": 300
+    }
   },
   "crons": [
-    { "path": "/api/rotina?equipe=loja&executar=1", "schedule": "7 11 * * *" },
-    { "path": "/api/rotina?equipe=trafego&executar=1", "schedule": "17 11 * * *" },
-    { "path": "/api/rotina?equipe=crescimento&executar=1", "schedule": "27 12 * * *" },
-    { "path": "/api/rotina?equipe=vendas&executar=1", "schedule": "37 12 * * *" }
+    {
+      "path": "/api/rotina?equipe=loja&executar=1",
+      "schedule": "7 11 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=trafego&executar=1",
+      "schedule": "17 11 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=crescimento&executar=1",
+      "schedule": "27 12 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=vendas&executar=1",
+      "schedule": "37 12 * * *"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        }
       ]
     }
   ]

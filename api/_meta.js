@@ -24,14 +24,14 @@ export class ErroMeta extends Error {
   constructor(msg, codigo) { super(msg); this.codigo = codigo; }
 }
 
-async function graph(caminho, params = {}) {
+async function graph(caminho, params = {}, metodo = 'GET') {
   const u = new URL(`https://graph.facebook.com/${versao()}/${caminho}`);
   for (const [k, v] of Object.entries(params)) if (v != null) u.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
   u.searchParams.set('access_token', token());
   if (process.env.META_APP_SECRET) {
     u.searchParams.set('appsecret_proof', crypto.createHmac('sha256', process.env.META_APP_SECRET).update(token()).digest('hex'));
   }
-  const r = await fetch(u, { signal: AbortSignal.timeout(25000) });
+  const r = await fetch(u, { method: metodo, signal: AbortSignal.timeout(25000) });
   const j = await r.json().catch(() => ({}));
   if (j.error) {
     const m = j.error.message || 'erro desconhecido';
@@ -214,4 +214,54 @@ export async function executarFerramentaMeta(nome, entrada = {}) {
   if (nome === 'ler_metricas_instagram') return lerInstagram(entrada);
   if (nome === 'ler_posts_instagram') return lerPosts(entrada);
   throw new ErroMeta(`Ferramenta desconhecida: ${nome}`);
+}
+
+// ---------- publicar no Instagram (Content Publishing API) ----------
+// A Meta baixa a mídia de um endereço público: por isso o arquivo sobe antes para o Blob da Vercel.
+const esperar = ms => new Promise(r => setTimeout(r, ms));
+
+async function esperarContainer(id, prazo) {
+  for (;;) {
+    const st = await graph(id, { fields: 'status_code,status' });
+    if (st.status_code === 'FINISHED') return 'pronto';
+    if (st.status_code === 'ERROR' || st.status_code === 'EXPIRED') throw new ErroMeta(`A Meta não aceitou a mídia: ${st.status || st.status_code}`);
+    if (Date.now() > prazo) return 'processando';
+    await esperar(4000);
+  }
+}
+
+/**
+ * Publica um post, carrossel, reels ou stories. Vídeos podem demorar para a Meta processar:
+ * se o prazo acabar, devolve { status: 'processando', container } e a publicação continua numa próxima chamada.
+ */
+export async function publicarNoInstagram({ tipo, midias, legenda, container }, { prazo }) {
+  if (!metaLigado().instagram) throw new ErroMeta('O Instagram da RBTech ainda não está ligado (faltam META_ACCESS_TOKEN e META_IG_USER_ID).');
+  const ig = contaInstagram();
+  const ehVideo = m => /video/.test(m.tipo || '') || /\.(mp4|mov)(\?|$)/i.test(m.url);
+  let id = container;
+  if (!id) {
+    if (!midias?.length) throw new ErroMeta('Nenhuma mídia para publicar.');
+    if (tipo === 'carrossel') {
+      if (midias.length < 2) throw new ErroMeta('O carrossel precisa de pelo menos 2 arquivos.');
+      const filhos = [];
+      for (const m of midias.slice(0, 10)) {
+        const f = await graph(`${ig}/media`, ehVideo(m) ? { media_type: 'VIDEO', video_url: m.url, is_carousel_item: true } : { image_url: m.url, is_carousel_item: true }, 'POST');
+        filhos.push(f.id);
+      }
+      for (const f of filhos) if ((await esperarContainer(f, prazo)) !== 'pronto') return { status: 'processando', aviso: 'Os vídeos do carrossel ainda estão processando. Tente publicar de novo em 1 minuto.' };
+      id = (await graph(`${ig}/media`, { media_type: 'CAROUSEL', children: filhos.join(','), caption: legenda }, 'POST')).id;
+    } else {
+      const m = midias[0];
+      let params;
+      if (tipo === 'reels') params = { media_type: 'REELS', video_url: m.url, caption: legenda, share_to_feed: true };
+      else if (tipo === 'stories') params = ehVideo(m) ? { media_type: 'STORIES', video_url: m.url } : { media_type: 'STORIES', image_url: m.url };
+      else params = ehVideo(m) ? { media_type: 'REELS', video_url: m.url, caption: legenda, share_to_feed: true } : { image_url: m.url, caption: legenda };
+      id = (await graph(`${ig}/media`, params, 'POST')).id;
+    }
+  }
+  if ((await esperarContainer(id, prazo)) !== 'pronto') return { status: 'processando', container: id };
+  const publicado = await graph(`${ig}/media_publish`, { creation_id: id }, 'POST');
+  let permalink = null;
+  try { permalink = (await graph(publicado.id, { fields: 'permalink' })).permalink; } catch { /* sem link, segue */ }
+  return { status: 'publicado', midiaId: publicado.id, permalink };
 }

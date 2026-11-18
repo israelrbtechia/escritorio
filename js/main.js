@@ -1,7 +1,8 @@
 // Liga o prédio 3D, os chats com os chefes de cada andar, as entregas, a diretoria (auditoria do Israel),
 // o placar, a Meta e as rotinas automáticas.
-import { criarAgencia, PESSOAS, GESTORES, ler, gravar } from './agencia.js';
+import { criarAgencia, PESSOAS, GESTORES, ler, gravar, linkUpload } from './agencia.js';
 import { markdown } from './markdown.js';
+import { abrirRelatorio, baixarRelatorio } from './relatorio.js';
 import { criarVoz } from './voz.js';
 
 const $ = id => document.getElementById(id);
@@ -341,13 +342,15 @@ function desenharEntregas() {
       </div>
       <details><summary>Pedido</summary><div class="entrega-pedido"></div></details>
       <div class="entrega-texto">${markdown(e.texto)}</div>
-      <div class="entrega-acoes"><button type="button" class="bt-sec">Copiar texto</button></div>`;
+      <div class="entrega-acoes"><button type="button" class="bt-sec">Copiar texto</button>${e.ideias ? '<button type="button" data-html="abrir">📄 Abrir relatório HTML</button><button type="button" class="bt-sec" data-html="baixar">⬇️ Baixar HTML</button>' : ''}</div>`;
     card.querySelector('.entrega-id').textContent = e.id;
     card.querySelector('.entrega-quem').textContent = nome(e.papel);
     card.querySelector('.entrega-hora').textContent = hora(e.quando);
     const ped = card.querySelector('.entrega-pedido');
     ped.textContent = `${nome(e.gestor || 'chefe')} pediu: ${e.pedido}${e.anexos?.length ? `\n\nAnexos: ${e.anexos.join(', ')}` : ''}`;
     ped.style.whiteSpace = 'pre-wrap';
+    card.querySelector('[data-html="abrir"]')?.addEventListener('click', () => abrirRelatorio(e, opcoesRelatorio(e)));
+    card.querySelector('[data-html="baixar"]')?.addEventListener('click', () => baixarRelatorio(e, opcoesRelatorio(e)));
     const bt = card.querySelector('button');
     bt.addEventListener('click', async () => {
       try { await navigator.clipboard.writeText(e.texto); bt.textContent = 'Copiado ✓'; } catch { bt.textContent = 'Não deu para copiar'; }
@@ -356,6 +359,85 @@ function desenharEntregas() {
     box.appendChild(card);
   }
 }
+
+// ---------- Instagram: pedidos de mídia, edições manuais e relatórios de ideias ----------
+const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const opcoesRelatorio = e => ({ autor: e.papel === 'gerente_crescimento' ? 'Helena · gerente de crescimento' : `${nome(e.papel)} · time da Helena`, usuario: metaStatus?.instagram?.usuario || '' });
+const NOME_TIPO = { reels: '🎬 Reels', post: '🖼️ Post', carrossel: '🗂️ Carrossel', stories: '⏱️ Stories' };
+const STATUS_PEDIDO = { aguardando_midia: ['AGUARDANDO SEU ARQUIVO', 'pendente'], midia_recebida: ['ARQUIVO RECEBIDO', 'pendente'], processando: ['META PROCESSANDO', 'pendente'], publicado: ['PUBLICADO', 'aprovada'] };
+const ONDE = { bio: 'Bio do perfil', link_bio: 'Link da bio', legenda: 'Legenda de post', destaques: 'Destaques', fixado: 'Post fixado', capa: 'Capa de reels', outro: 'Outro' };
+function desenharInstagram() {
+  agencia.recarregarLocal();
+  const pedidos = agencia.pedidos();
+  const edicoes = agencia.edicoes();
+  const relatorios = agencia.entregas().filter(e => e.ideias).reverse();
+  const pendentes = pedidos.filter(p => p.status !== 'publicado').length + edicoes.filter(e => !e.feito).length;
+  $('numInsta').textContent = pendentes;
+  $('numInsta').classList.toggle('alerta', pendentes > 0);
+
+  const bp = $('listaPedidos');
+  bp.innerHTML = pedidos.length ? '' : '<div class="vazio-lista">Nenhum pedido de mídia. Quando a Helena precisar de um vídeo ou foto, o link aparece aqui.</div>';
+  for (const p of pedidos) {
+    const [st, cls] = STATUS_PEDIDO[p.status] || STATUS_PEDIDO.aguardando_midia;
+    const card = document.createElement('article');
+    card.className = 'entrega';
+    card.innerHTML = `<div class="entrega-topo"><span class="entrega-id">${esc(p.id)}</span><span class="entrega-quem">${NOME_TIPO[p.tipo] || esc(p.tipo)}</span><span class="selo selo-${cls}">${st}</span>${p.ensaio ? '<span class="selo">ENSAIO</span>' : ''}<span class="entrega-hora">${hora(p.quando)}</span></div>
+      <h4 class="decisao-titulo">${esc(p.titulo)}</h4>
+      <div class="entrega-texto"><p>${esc(p.briefing).replace(/\n/g, '<br>')}</p>${p.quando_publicar ? `<p><b>Quando:</b> ${esc(p.quando_publicar)}</p>` : ''}</div>
+      <div class="entrega-acoes">${p.status === 'publicado'
+        ? (p.permalink ? `<a class="bt-link" href="${esc(p.permalink)}" target="_blank" rel="noopener">Ver no Instagram</a>` : '')
+        : `<a class="bt-link primario" href="${esc(linkUpload(p))}" target="_blank" rel="noopener">⬆️ Abrir página de upload</a><button type="button" class="bt-sec">Copiar link</button>`}</div>`;
+    card.querySelector('button')?.addEventListener('click', async ev => {
+      try { await navigator.clipboard.writeText(linkUpload(p)); ev.target.textContent = 'Copiado ✓'; } catch { ev.target.textContent = 'Não deu para copiar'; }
+    });
+    bp.appendChild(card);
+  }
+
+  const be = $('listaEdicoes');
+  be.innerHTML = edicoes.length ? '' : '<div class="vazio-lista">Nenhuma edição manual sugerida ainda.</div>';
+  const perfil = metaStatus?.instagram?.usuario ? `https://www.instagram.com/${metaStatus.instagram.usuario}/` : 'https://www.instagram.com/';
+  for (const e of edicoes) {
+    const card = document.createElement('article');
+    card.className = 'entrega edicao' + (e.feito ? ' feita' : '');
+    card.innerHTML = `<div class="entrega-topo"><span class="entrega-id">${esc(e.id)}</span><span class="entrega-quem">✍️ ${esc(ONDE[e.onde] || e.onde)}</span>${e.feito ? '<span class="selo selo-aprovada">FEITO</span>' : '<span class="selo selo-pendente">APLICAR</span>'}${e.ensaio ? '<span class="selo">ENSAIO</span>' : ''}<span class="entrega-hora">${hora(e.quando)}</span></div>
+      <p class="dica" style="margin:6px 0">${esc(e.motivo)}</p>
+      ${e.texto_atual ? `<details><summary>Como está hoje</summary><div class="texto-colar antigo">${esc(e.texto_atual)}</div></details>` : ''}
+      <div class="texto-colar">${esc(e.texto_novo)}</div>
+      <div class="entrega-acoes"><button type="button" data-a="copiar">📋 Copiar texto novo</button><a class="bt-link" href="${esc(e.link || perfil)}" target="_blank" rel="noopener">Abrir no Instagram</a>
+        <label class="chave" style="margin-left:auto"><input type="checkbox" ${e.feito ? 'checked' : ''}><span>Feito</span></label></div>`;
+    card.querySelector('[data-a="copiar"]').addEventListener('click', async ev => {
+      try { await navigator.clipboard.writeText(e.texto_novo); ev.target.textContent = 'Copiado ✓'; } catch { ev.target.textContent = 'Não deu para copiar'; }
+      setTimeout(() => { ev.target.textContent = '📋 Copiar texto novo'; }, 1800);
+    });
+    card.querySelector('input').addEventListener('change', ev => { agencia.marcarEdicao(e.id, ev.target.checked); desenharInstagram(); });
+    be.appendChild(card);
+  }
+
+  const br = $('listaRelatorios');
+  br.innerHTML = relatorios.length ? '' : '<div class="vazio-lista">Os relatórios de ideias do time da Helena aparecem aqui.</div>';
+  for (const e of relatorios) {
+    const card = document.createElement('article');
+    card.className = 'entrega';
+    const n = e.ideias.ideias?.length || 0;
+    card.innerHTML = `<div class="entrega-topo"><span class="entrega-id">${esc(e.id)}</span><span class="entrega-quem">📄 ${esc(e.ideias.titulo || 'Ideias de crescimento')}</span>${e.ensaio ? '<span class="selo">ENSAIO</span>' : ''}<span class="entrega-hora">${hora(e.quando)}</span></div>
+      <p class="dica" style="margin:6px 0">${n} ideias · ${esc(nome(e.papel))}</p>
+      <div class="entrega-acoes"><button type="button" data-a="abrir">Abrir relatório HTML</button><button type="button" class="bt-sec" data-a="baixar">⬇️ Baixar</button></div>`;
+    card.querySelector('[data-a="abrir"]').addEventListener('click', () => abrirRelatorio(e, opcoesRelatorio(e)));
+    card.querySelector('[data-a="baixar"]').addEventListener('click', () => baixarRelatorio(e, opcoesRelatorio(e)));
+    br.appendChild(card);
+  }
+}
+// a página de upload grava o andamento no navegador: atualiza a aba quando ela mudar
+addEventListener('storage', ev => { if (ev.key === 'agencia.pedidos') desenharInstagram(); });
+addEventListener('focus', () => desenharInstagram());
+// links de relatório dentro do chat
+$('chat').addEventListener('click', ev => {
+  const a = ev.target.closest('[data-relatorio]');
+  if (!a) return;
+  ev.preventDefault();
+  const e = agencia.entregas().find(x => x.id === a.dataset.relatorio);
+  if (e) abrirRelatorio(e, opcoesRelatorio(e));
+});
 
 // ---------- diretoria: auditoria do Israel ----------
 function desenharDiretoria() {
@@ -472,12 +554,22 @@ const agencia = criarAgencia({
       }
       case 'entrega':
         cena.entregar(ev.entrega.papel, ev.entrega.id);
-        adicionarChat(g, { quem: 'evento', html: true, texto: `📄 <b>${nome(ev.entrega.papel)}</b> entregou <b>${ev.entrega.id}</b>` });
+        adicionarChat(g, { quem: 'evento', html: true, texto: `📄 <b>${nome(ev.entrega.papel)}</b> entregou <b>${ev.entrega.id}</b>${ev.entrega.ideias ? ` · <a href="#" data-relatorio="${esc(ev.entrega.id)}">abrir relatório de ideias</a>` : ''}` });
         desenharEntregas();
+        if (ev.entrega.ideias) desenharInstagram();
         focarAuto(cameraDe(ev.entrega.papel));
         break;
       case 'meta':
         cena.consultar(ev.papel, ev.tipo);
+        break;
+      case 'pedido':
+        cena.fala(ev.pedido.solicitante, `📎 pedi um ${ev.pedido.tipo} pro Israel`);
+        adicionarChat(g, { quem: 'evento', html: true, texto: `📎 ${esc(nome(ev.pedido.solicitante))} pediu um <b>${esc(NOME_TIPO[ev.pedido.tipo] || ev.pedido.tipo)}</b>: “${esc(ev.pedido.titulo)}” · <a href="${esc(linkUpload(ev.pedido))}" target="_blank" rel="noopener">abrir página de upload</a>` });
+        desenharInstagram();
+        break;
+      case 'edicao':
+        adicionarChat(g, { quem: 'evento', html: true, texto: `✍️ Card para aplicar à mão no Instagram: <b>${esc(ONDE[ev.edicao.onde] || ev.edicao.onde)}</b> (aba Instagram)` });
+        desenharInstagram();
         break;
       case 'decisao':
         cena.levarDecisao(g, ev.decisao.id);
@@ -567,6 +659,7 @@ async function sincronizar(inicial = false) {
     : `Última rotina: ${rotinas[0] ? hora(rotinas[0].inicio) + ' · ' + nome(rotinas[0].gestor) : 'nenhuma ainda'}`;
   desenharEntregas();
   desenharDiretoria();
+  desenharInstagram();
 }
 for (const b of document.querySelectorAll('[data-rotina]')) {
   b.addEventListener('click', async () => {
@@ -624,5 +717,6 @@ $('gasto').textContent = 'US$ ' + agencia.gasto().toFixed(2).replace('.', ',');
 trocarGestor(gestorAtual, false);
 desenharEntregas();
 desenharDiretoria();
+desenharInstagram();
 if (!semServidor) { verificarMeta(); sincronizar(true); }
 setInterval(() => { if (!document.hidden) sincronizar(); }, 5 * 60 * 1000);

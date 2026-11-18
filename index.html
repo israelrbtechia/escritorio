@@ -52,6 +52,7 @@
       <div class="abas" role="tablist">
         <button role="tab" class="aba-bt ativa" data-aba="chefe" type="button">Chefes</button>
         <button role="tab" class="aba-bt" data-aba="diretoria" type="button">Diretoria <span id="numDecisoes" class="contador">0</span></button>
+        <button role="tab" class="aba-bt" data-aba="instagram" type="button">Insta <span id="numInsta" class="contador">0</span></button>
         <button role="tab" class="aba-bt" data-aba="entregas" type="button">Entregas <span id="numEntregas" class="contador">0</span></button>
         <button role="tab" class="aba-bt" data-aba="placar" type="button">Placar</button>
         <button role="tab" class="aba-bt" data-aba="ajustes" type="button">Ajustes</button>
@@ -71,6 +72,17 @@
       <section class="aba" id="aba-diretoria">
         <p class="dica">Sala do Israel, no terraço. Toda decisão dos chefes chega aqui. Nada é executado antes da sua auditoria, e os chefes leem o que você aprovou ou recusou antes de decidir de novo.</p>
         <div id="listaDecisoes"></div>
+      </section>
+
+      <section class="aba" id="aba-instagram">
+        <p class="dica">O que o time da Helena preparou para o Instagram. Publicar só acontece quando você aprova na página de upload.</p>
+        <h3 class="titulo-secao">📎 Pedidos de mídia</h3>
+        <div id="listaPedidos"></div>
+        <h3 class="titulo-secao">✍️ Aplicar à mão</h3>
+        <p class="dica">A API do Instagram não deixa mudar bio, legendas antigas, destaques, fixados e capas. Copie, cole no app e marque como feito.</p>
+        <div id="listaEdicoes"></div>
+        <h3 class="titulo-secao">📄 Relatórios de ideias</h3>
+        <div id="listaRelatorios"></div>
       </section>
 
       <section class="aba" id="aba-entregas">

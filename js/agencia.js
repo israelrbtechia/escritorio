@@ -50,7 +50,14 @@ export const GESTORES = {
   },
 };
 
-const CHAVE = { entregas: 'agencia.entregas', decisoes: 'agencia.decisoes', token: 'agencia.token', gasto: 'agencia.gasto' };
+const CHAVE = { entregas: 'agencia.entregas', decisoes: 'agencia.decisoes', token: 'agencia.token', gasto: 'agencia.gasto', pedidos: 'agencia.pedidos', edicoes: 'agencia.edicoes' };
+
+/** Link da página de upload: leva o pedido no próprio endereço (funciona em qualquer aparelho). */
+export function linkUpload(pedido) {
+  const dados = { id: pedido.id, tipo: pedido.tipo, titulo: pedido.titulo, briefing: pedido.briefing, legenda: pedido.legenda, quando_publicar: pedido.quando_publicar, solicitante: pedido.solicitante, quando: pedido.quando };
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(dados)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${location.origin}/upload.html?p=${b64}`;
+}
 const chaveConversa = g => (g === 'chefe' ? 'agencia.conversa' : 'agencia.conversa.' + g);
 const PRECO = { entrada: 4, saida: 20 }; // por milhão de tokens (estimativa)
 
@@ -66,6 +73,10 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
   for (const g of Object.keys(GESTORES)) conversas[g] = ler(chaveConversa(g), []);
   let entregas = ler(CHAVE.entregas, []);
   let decisoes = ler(CHAVE.decisoes, []);
+  let pedidos = ler(CHAVE.pedidos, []);
+  let edicoes = ler(CHAVE.edicoes, []);
+  let pedidosServidor = [];
+  let edicoesServidor = [];
   let entregasRotina = [];
   let decisoesServidor = [];
   let gasto = ler(CHAVE.gasto, { usd: 0 });
@@ -76,6 +87,8 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
     for (const g of Object.keys(conversas)) gravar(chaveConversa(g), conversas[g]);
     gravar(CHAVE.entregas, entregas);
     gravar(CHAVE.decisoes, decisoes);
+    gravar(CHAVE.pedidos, pedidos);
+    gravar(CHAVE.edicoes, edicoes);
     gravar(CHAVE.gasto, gasto);
   };
   function somarGasto(u) {
@@ -163,13 +176,40 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
         emitir('acionar', { gestor: papel, papel: func, pedido: ent.pedido, anexos: anexos.map(a => a.id) });
         const pedido = ent.pedido + (anexos.length
           ? '\n\n---\n## Anexos\n' + anexos.map(a => `### ${a.id} — ${PESSOAS[a.papel]?.nome || a.papel}\n${a.texto}`).join('\n\n') : '');
-        const r = await rodar(func, [{ role: 'user', content: pedido }], { ...ctx, persistir: false });
+        const coleta = {};
+        const r = await rodar(func, [{ role: 'user', content: pedido }], { ...ctx, persistir: false, coleta });
         if (!r.texto) throw new Error(r.limite ? 'passou do limite de rodadas' : 'a resposta veio vazia');
-        const entrega = { id: proximo(entregas, 'E'), papel: func, gestor: papel, pedido: ent.pedido, anexos: anexos.map(a => a.id), texto: r.texto, quando: Date.now(), ensaio: !!ensaio() };
+        const entrega = { id: proximo(entregas, 'E'), papel: func, gestor: papel, pedido: ent.pedido, anexos: anexos.map(a => a.id), texto: r.texto, quando: Date.now(), ensaio: !!ensaio(), ...(coleta.ideias ? { ideias: coleta.ideias } : {}) };
         entregas.push(entrega);
         salvar();
         emitir('entrega', { gestor: papel, entrega });
         return { type: 'tool_result', tool_use_id: b.id, content: `Entrega ${entrega.id} (${PESSOAS[func].nome}):\n\n${r.texto}` };
+      }
+      if (b.name === 'entregar_ideias') {
+        if (ctx.coleta) ctx.coleta.ideias = ent;
+        else {
+          const entrega = { id: proximo(entregas, 'E'), papel, gestor: papel, pedido: 'Ideias de crescimento', anexos: [], texto: ent.resumo || '', ideias: ent, quando: Date.now(), ensaio: !!ensaio() };
+          entregas.push(entrega);
+          salvar();
+          emitir('entrega', { gestor: papel, entrega });
+        }
+        return { type: 'tool_result', tool_use_id: b.id, content: 'Ideias registradas: o Israel vai ver o relatório organizado em HTML. Agora escreva só um resumo curto.' };
+      }
+      if (b.name === 'pedir_midia') {
+        const pedido = { ...ent, id: proximo(pedidos, 'P'), solicitante: papel, quando: Date.now(), status: 'aguardando_midia', ensaio: !!ensaio() };
+        pedidos.push(pedido);
+        salvar();
+        if (!ensaio()) api('/api/instagram', { acao: 'salvar_pedido', pedido }).catch(() => {});
+        emitir('pedido', { gestor: ctx.gestor, pedido });
+        return { type: 'tool_result', tool_use_id: b.id, content: `Pedido ${pedido.id} criado. O Israel recebeu o link de upload; ele sobe o arquivo, revisa a legenda e aprova a publicação. Não diga que já foi publicado.` };
+      }
+      if (b.name === 'sugerir_edicao_manual') {
+        const edicao = { ...ent, id: proximo(edicoes, 'M'), autor: papel, quando: Date.now(), feito: false, ensaio: !!ensaio() };
+        edicoes.push(edicao);
+        salvar();
+        if (!ensaio()) api('/api/instagram', { acao: 'salvar_edicao', edicao }).catch(() => {});
+        emitir('edicao', { gestor: ctx.gestor, edicao });
+        return { type: 'tool_result', tool_use_id: b.id, content: `Edição ${edicao.id} registrada como card para o Israel aplicar no Instagram.` };
       }
       if (b.name === 'enviar_para_israel') {
         const d = {
@@ -233,9 +273,14 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   // ---------- rotinas e auditoria guardadas no servidor ----------
   async function sincronizar() {
     if (ensaio()) return { rotinas: [], armazem: null };
-    const [rot, dec] = await Promise.allSettled([api('/api/rotina', null, 'GET'), api('/api/decisoes', null, 'GET')]);
+    const [rot, dec, ins] = await Promise.allSettled([api('/api/rotina', null, 'GET'), api('/api/decisoes', null, 'GET'), api('/api/instagram', null, 'GET')]);
     const rotinas = rot.status === 'fulfilled' ? rot.value.rotinas || [] : [];
     if (dec.status === 'fulfilled') decisoesServidor = dec.value.decisoes || [];
+    if (ins.status === 'fulfilled') { pedidosServidor = ins.value.pedidos || []; edicoesServidor = ins.value.edicoes || []; }
+    for (const r of rotinas) {
+      for (const p of r.pedidos || []) if (!pedidosServidor.some(x => x.id === p.id)) pedidosServidor.push(p);
+      for (const e of r.edicoes || []) if (!edicoesServidor.some(x => x.id === e.id)) edicoesServidor.push(e);
+    }
     for (const r of rotinas) for (const d of r.decisoes || []) if (!decisoesServidor.some(x => x.id === d.id)) decisoesServidor.push(d);
     entregasRotina = rotinas.flatMap(r => (r.entregas || []).map(e => ({ ...e, gestor: r.gestor, rotina: r.id })));
     return { rotinas, armazem: rot.status === 'fulfilled' ? rot.value.armazem : null, erro: rot.status === 'rejected' ? rot.reason.message : null };
@@ -255,7 +300,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   const esperar = ms => new Promise(r => setTimeout(r, ms));
   const PLANO_ENSAIO = {
     chefe: [['analista'], ['copywriter', 'roteirista'], ['revisor'], ['israel']],
-    gerente_crescimento: [['meta:ler_metricas_instagram', 'especialista'], ['israel']],
+    gerente_crescimento: [['meta:ler_metricas_instagram', 'especialista'], ['midia'], ['israel']],
     gerente_loja: [['atendimento', 'posvenda'], ['estoque'], ['israel']],
     head_vendas: [['sdr', 'produto'], ['closer', 'sucesso'], ['israel']],
   };
@@ -266,6 +311,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
     if (!PESSOAS[papel].gestor) {
       await esperar(4000 + Math.random() * 4000);
       const leitura = { analista: 'ler_metricas_anuncios', especialista: 'ler_posts_instagram' }[papel];
+      if (papel === 'especialista' && corpo.messages.length === 3) return { stop_reason: 'tool_use', usage: vazio, content: IDEIAS_ENSAIO(id) };
       if (leitura && corpo.messages.length === 1) {
         return { stop_reason: 'tool_use', usage: vazio, content: [{ type: 'tool_use', id: id(), name: leitura, input: leitura === 'ler_posts_instagram' ? { quantidade: 12 } : { periodo: '7dias', nivel: 'conta' } }] };
       }
@@ -284,6 +330,9 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
         if (item === 'israel') {
           return { type: 'tool_use', id: id(), name: 'enviar_para_israel', input: { titulo: 'Testar a sugestão da equipe por 7 dias (ensaio)', decisao: 'Aplicar a melhoria principal sugerida pela equipe e medir por 7 dias.', motivo: 'Entregas da equipe nesta reunião (ensaio).', riscos: 'Nenhum dado real ainda: é um ensaio.', urgencia: 'media', entregas: entregas.slice(-2).map(e => e.id) } };
         }
+        if (item === 'midia') {
+          return { type: 'tool_use', id: id(), name: 'pedir_midia', input: { tipo: 'reels', titulo: 'Unboxing do iPhone 15 na loja (ensaio)', briefing: 'Grave 20 segundos na vertical: a mão abrindo a caixa, o aparelho girando na luz da janela e você dizendo "chegou na RB Tech!". Termine apontando para a câmera.', legenda: 'Chegou na RB Tech 📦✨ Qual cor você levaria? Comenta aqui 👇 e chama no WhatsApp para saber condições. #iphone #florianopolis #rbtech', quando_publicar: 'quinta às 19h (horário de mais alcance nos últimos posts)' } };
+        }
         if (item.startsWith('meta:')) return { type: 'tool_use', id: id(), name: item.slice(5), input: { periodo: '7dias' } };
         return { type: 'tool_use', id: id(), name: 'acionar_funcionario', input: { funcionario: item, pedido: `Tarefa de ensaio para ${PESSOAS[item].nome}.`, anexos: etapa > 0 ? entregas.slice(-2).map(e => e.id) : [] } };
       });
@@ -293,6 +342,26 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
     const minhas = entregas.filter(e => e.gestor === papel).slice(-4).map(e => `- ${e.id}: ${PESSOAS[e.papel].nome}`).join('\n');
     const dec = decisoes.filter(d => d.gestor === papel).slice(-1).map(d => d.id).join(', ');
     return { stop_reason: 'end_turn', usage: vazio, content: [{ type: 'text', text: `**Resumo** (ensaio)\nReunião de mentira, só para ver o prédio funcionando.\n\n**O que a equipe entregou**\n${minhas}\n\n**Decisões enviadas ao Israel**\n- ${dec || 'nenhuma'}\n\n**Próximo passo**\nDesligue o modo ensaio para a equipe trabalhar de verdade.` }] };
+  }
+  function IDEIAS_ENSAIO(id) {
+    return [
+      { type: 'tool_use', id: id(), name: 'entregar_ideias', input: {
+        titulo: 'Plano de crescimento da semana (ensaio)',
+        resumo: 'Relatório de ensaio, com números de mentira, só para mostrar o formato. Reels de bastidores e de unboxing puxam mais alcance; carrosséis de comparação puxam mais salvamentos.',
+        numeros_chave: [
+          { nome: 'Seguidores', valor: '12.000', leitura: 'base atual (ensaio)' },
+          { nome: 'Alcance 7 dias', valor: '31 mil', leitura: '3x os seguidores: reels levando para fora da base' },
+          { nome: 'Salvamentos por carrossel', valor: '22', leitura: 'conteúdo útil é guardado' },
+        ],
+        ideias: [
+          { titulo: 'Unboxing semanal "chegou na RB Tech"', tipo: 'reels', prioridade: 'alta', gancho: 'Olha o que acabou de chegar 👀', como_fazer: 'Toda quinta, 20 s na vertical abrindo a caixa do aparelho da semana.', por_que: 'Reels de produto tiveram o maior alcance do mês (ensaio).', como_medir: 'Alcance e compartilhamentos; meta: 5 mil de alcance.' },
+          { titulo: 'Carrossel "qual iPhone é para você"', tipo: 'carrossel', prioridade: 'alta', gancho: 'Não sabe qual iPhone comprar? Salva esse post.', como_fazer: '6 cards comparando modelos por uso: câmera, bateria, preço [PREÇO].', por_que: 'Carrosséis úteis geram salvamentos.', como_medir: 'Salvamentos; meta: 40.' },
+          { titulo: 'Caixinha de perguntas nos stories', tipo: 'stories', prioridade: 'media', gancho: 'Pergunta qualquer coisa sobre iPhone 📱', como_fazer: 'Toda segunda, responder 5 perguntas com vídeo curto.', por_que: 'Respostas aproximam e puxam DMs.', como_medir: 'Respostas e mensagens no direct.' },
+          { titulo: 'Bio com chamada clara para o WhatsApp', tipo: 'edicao', prioridade: 'alta', gancho: '', como_fazer: 'Trocar a bio pelo texto do card de edição.', por_que: 'A bio é a primeira coisa que o visitante lê.', como_medir: 'Cliques no link da bio.' },
+        ],
+      } },
+      { type: 'tool_use', id: id(), name: 'sugerir_edicao_manual', input: { onde: 'bio', link: '', texto_atual: '', texto_novo: '📱 iPhones e celulares em Florianópolis\n💬 Chama no WhatsApp 👇 [LINK DO WHATSAPP]', motivo: 'Ensaio: a bio precisa dizer o que a loja vende e chamar para o WhatsApp.' } },
+    ];
   }
   function metaDeEnsaio(nome) {
     const base = { ensaio: true, aviso: 'Números de ENSAIO, não são reais.' };
@@ -306,6 +375,24 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
     ocupado: g => (g ? ocupados.has(g) : ocupados.size > 0),
     entregas: () => todasEntregas().sort((a, b) => a.quando - b.quando),
     decisoes: todasDecisoes,
+    pedidos() {
+      const mapa = new Map(pedidosServidor.map(p => [p.id, p]));
+      for (const p of pedidos) mapa.set(p.id, { ...p, ...(mapa.get(p.id) || {}), ...(p.status === 'publicado' ? p : {}) });
+      return [...mapa.values()].sort((a, b) => b.quando - a.quando);
+    },
+    edicoes() {
+      const mapa = new Map(edicoesServidor.map(e => [e.id, e]));
+      for (const e of edicoes) mapa.set(e.id, { ...(mapa.get(e.id) || {}), ...e });
+      return [...mapa.values()].sort((a, b) => b.quando - a.quando);
+    },
+    marcarEdicao(id, feito) {
+      const local = edicoes.find(e => e.id === id);
+      if (local) local.feito = feito;
+      else edicoes.push({ ...(edicoesServidor.find(e => e.id === id) || { id }), feito });
+      salvar();
+      if (!ensaio()) api('/api/instagram', { acao: 'marcar_edicao', id, feito }).catch(() => {});
+    },
+    recarregarLocal() { pedidos = ler(CHAVE.pedidos, []); edicoes = ler(CHAVE.edicoes, []); },
     gasto: () => gasto.usd,
     zerarGasto() { gasto = { usd: 0 }; salvar(); emitir('gasto', { usd: 0 }); },
     novaReuniao(g) { if (!ocupados.has(g)) { conversas[g] = []; salvar(); } },

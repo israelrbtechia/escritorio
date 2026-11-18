@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Enviar mídia · Prédio RBTech</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#0f0f0f">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/estilo.css">
+  <style>
+    body.pagina-upload { display: block; overflow: auto; min-height: 100%; }
+    .up { max-width: 720px; margin: 0 auto; padding: 20px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
+    .up-topo { display: flex; align-items: center; gap: 10px; }
+    .up-topo strong { font-size: 17px; }
+    .cartao { background: var(--painel); border: 1px solid var(--linha); border-radius: 14px; padding: 16px; }
+    .cartao h1 { font-size: 22px; margin: 6px 0 4px; line-height: 1.25; }
+    .cartao h2 { font-size: 15px; margin: 0 0 8px; }
+    .rotulos { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rotulo { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--painel-2); border: 1px solid var(--linha); }
+    .rotulo.amarelo { background: var(--amarelo); color: var(--preto); border-color: var(--amarelo); }
+    .briefing { white-space: pre-wrap; color: var(--texto); }
+    .dica { color: var(--texto-2); font-size: 13px; margin: 6px 0 0; }
+    .soltar { display: block; border: 2px dashed var(--linha); border-radius: 14px; padding: 26px 16px; text-align: center; cursor: pointer; transition: border-color .15s; }
+    .soltar.em-cima, .soltar:focus-within { border-color: var(--amarelo); }
+    .soltar input { display: none; }
+    .previas { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 12px; }
+    .previa { position: relative; background: #000; border-radius: 10px; overflow: hidden; aspect-ratio: 9 / 16; }
+    .previa video, .previa img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .previa small { position: absolute; left: 6px; bottom: 6px; background: rgba(0,0,0,.7); padding: 1px 6px; border-radius: 6px; font-size: 11px; }
+    textarea.legenda { width: 100%; min-height: 140px; background: var(--painel-2); border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; resize: vertical; font-size: 14px; }
+    .contador-legenda { text-align: right; font-size: 12px; color: var(--texto-2); }
+    .progresso { height: 10px; background: var(--painel-2); border-radius: 999px; overflow: hidden; }
+    .progresso i { display: block; height: 100%; width: 0; background: var(--amarelo); transition: width .2s; }
+    .botoes-up { display: flex; gap: 10px; flex-wrap: wrap; }
+    .botoes-up button { flex: 1; min-width: 200px; padding: 12px; font-size: 15px; }
+    .aviso-up { padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+    .aviso-up.ok { background: #123a24; color: #b8f5d0; } .aviso-up.erro { background: #3a1616; color: #ffb3b3; } .aviso-up.info { background: #33300f; color: #ffe98a; }
+    .aviso-up a { color: inherit; font-weight: 700; }
+  </style>
+</head>
+<body class="pagina-upload">
+  <div class="up">
+    <div class="up-topo"><span class="logo">RB</span><div><strong>Prédio RBTech</strong><br><small class="dica">Enviar mídia para o Instagram</small></div></div>
+
+    <section class="cartao" id="cartaoPedido" hidden>
+      <div class="rotulos"><span class="rotulo amarelo" id="pTipo"></span><span class="rotulo" id="pCodigo"></span><span class="rotulo" id="pQuem"></span></div>
+      <h1 id="pTitulo"></h1>
+      <p class="dica" id="pQuando"></p>
+      <h2 style="margin-top:14px">O que gravar ou criar</h2>
+      <p class="briefing" id="pBriefing"></p>
+    </section>
+
+    <section class="cartao" id="cartaoArquivo" hidden>
+      <h2>1. Arquivo</h2>
+      <label class="soltar" id="zona">
+        <input type="file" id="arquivo">
+        <div style="font-size:30px">⬆️</div>
+        <strong id="zonaTexto">Toque para escolher o arquivo ou arraste aqui</strong>
+        <p class="dica" id="zonaDica"></p>
+      </label>
+      <div class="previas" id="previas"></div>
+      <p class="dica" id="avisosArquivo"></p>
+    </section>
+
+    <section class="cartao" id="cartaoLegenda" hidden>
+      <h2>2. Legenda</h2>
+      <textarea class="legenda" id="legenda" maxlength="2200"></textarea>
+      <div class="contador-legenda"><span id="contLegenda">0</span>/2200</div>
+    </section>
+
+    <section class="cartao" id="cartaoPublicar" hidden>
+      <h2>3. Enviar e aprovar</h2>
+      <div class="progresso" id="barra" hidden><i></i></div>
+      <p class="dica" id="statusUp"></p>
+      <div class="botoes-up">
+        <button type="button" class="bt-sec" id="btSubir" disabled>Subir arquivo</button>
+        <button type="button" id="btPublicar" disabled>✓ Aprovar e publicar no Instagram</button>
+      </div>
+      <p class="dica">Nada vai para o Instagram antes de você clicar em “Aprovar e publicar”.</p>
+    </section>
+
+    <div class="aviso-up" id="aviso" hidden></div>
+  </div>
+
+  <div class="tela-login" id="telaLogin" hidden>
+    <form class="caixa-login" id="formLogin" autocomplete="on">
+      <span class="logo">RB</span>
+      <h1>Prédio RBTech</h1>
+      <p>Faça login para enviar a mídia.</p>
+      <label>Usuário<input id="loginUsuario" name="username" type="text" autocomplete="username" autocapitalize="off" spellcheck="false" required></label>
+      <label>Senha<input id="loginSenha" name="password" type="password" autocomplete="current-password" required></label>
+      <p class="erro" id="loginErro" role="alert"></p>
+      <button type="submit" id="btEntrar">Entrar</button>
+    </form>
+  </div>
+  <script type="module" src="js/upload.js"></script>
+</body>
+</html>

@@ -62,6 +62,16 @@ A equipe só **lê** métricas: não publica, não edita posts e não mexe em or
 
 No plano Hobby da Vercel, cada rotina roda uma vez por dia, e o horário pode variar dentro da hora.
 
+## Instagram: publicar, aplicar à mão e relatórios de ideias
+- **Pedidos de mídia**: quando a Helena precisa de um vídeo ou foto, ela deixa no chat um link para `/upload.html`. Lá você vê o briefing, sobe o MP4 ou a foto, revisa a legenda e clica em **Aprovar e publicar**. O app publica pela API oficial (reels, post, carrossel ou stories). Nada é publicado sem esse clique.
+- **Aplicar à mão**: o que a API não deixa mudar (bio, link da bio, legenda de post antigo, destaques, fixado, capa) vira um card na aba **Insta**, com o texto pronto, botão de copiar, link e "Feito".
+- **Relatórios de ideias**: cada entrega de ideias do time da Helena vira um relatório HTML organizado (resumo, números-chave, ideias por prioridade, filtros, imprimir/PDF), para abrir ou baixar.
+
+Para publicar de verdade:
+1. **Storage → Blob → Create** e conecte ao projeto (cria `BLOB_READ_WRITE_TOKEN`). É onde o vídeo fica para a Meta buscar.
+2. No token da Meta, inclua também `instagram_content_publish` (além de `instagram_basic` e `instagram_manage_insights`).
+3. Redeploy.
+
 ## Vozes e perguntas por áudio
 - Botão 🎙️ no chat: você fala, o texto aparece e o **Claude Haiku** corrige nomes e pontuação antes de enviar. O Claude não ouve áudio: quem transcreve é o ElevenLabs (com a chave) ou o próprio navegador (Chrome).
 - Os chefes respondem em texto e em voz. Com `ELEVENLABS_API_KEY`, cada funcionário tem uma voz brasileira própria (lista em `api/voz.js`); sem ela, o app usa a voz do navegador com tom diferente para cada um.

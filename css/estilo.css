@@ -266,3 +266,14 @@ body.modo-video .ent .tag { font-size: 12px; }
   .cams { gap: 4px; }
   .cams button { padding: 3px 7px; font-size: 11px; }
 }
+
+/* ---------- aba Instagram ---------- */
+.titulo-secao { font-size: 15px; margin: 14px 0 8px; }
+.texto-colar { white-space: pre-wrap; background: var(--painel); border: 1px dashed var(--amarelo); border-radius: 10px; padding: 10px 12px; font-size: 14px; margin: 6px 0; }
+.texto-colar.antigo { border-color: var(--linha); color: var(--texto-2); }
+.entrega.edicao.feita { opacity: .6; }
+.bt-link { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 10px; font-size: 13px; font-weight: 600; text-decoration: none; background: var(--painel); color: var(--texto); border: 1px solid var(--linha); }
+.bt-link.primario { background: var(--amarelo); color: var(--preto); border-color: var(--amarelo); font-weight: 700; }
+.entrega-acoes { flex-wrap: wrap; align-items: center; }
+.msg.evento a { color: var(--amarelo); font-weight: 600; }
+.abas .aba-bt { padding: 12px 4px; font-size: 13px; }

@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Agência de tráfego pago da RBTech: escritório 3D com uma equipe de IA",
   "dependencies": {
-    "@anthropic-ai/sdk": "1.10.0"
+    "@anthropic-ai/sdk": "1.10.0",
+    "@vercel/blob": "2.8.2"
   }
 }
