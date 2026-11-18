@@ -6,6 +6,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "1.10.0",
     "@vercel/blob": "2.8.2",
-    "@vercel/functions": "3.11.3"
+    "@vercel/functions": "3.11.3",
+    "redis": "5.12.1"
   }
 }

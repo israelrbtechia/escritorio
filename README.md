@@ -45,7 +45,7 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 | `ELEVENLABS_API_KEY` | opcional: vozes reais para cada funcionário e transcrição das perguntas por áudio |
 | `ELEVENLABS_VOZES` | opcional: troca vozes, em JSON (ex.: `{"chefe":"id-da-voz"}`) |
 
-3. **Storage → Create Database → Upstash for Redis** → crie e conecte ao projeto do prédio (marque Production). Ele cria `KV_REST_API_URL` e `KV_REST_API_TOKEN` sozinho; se você escolher outro prefixo, o prédio acha do mesmo jeito. É onde ficam os relatórios das rotinas, as decisões auditadas, a central de conteúdo e o gestor.
+3. **Storage → Create Database → Upstash for Redis** → crie e conecte ao projeto do prédio (marque Production). Ele cria `KV_REST_API_URL` e `KV_REST_API_TOKEN` sozinho; se você escolher outro prefixo, o prédio acha do mesmo jeito. A integração **Redis** (Redis Cloud), que cria só `REDIS_URL`, também funciona. É onde ficam os relatórios das rotinas, as decisões auditadas, a central de conteúdo e o gestor.
 4. **Deployments → Redeploy** para as variáveis valerem.
 
 Sem `AGENCIA_USUARIO` e `AGENCIA_SENHA`, o site fica aberto: qualquer pessoa com o link gasta seus créditos. Trocar a senha encerra todos os logins.

@@ -17,12 +17,35 @@ function acharRedis() {
 }
 const url = () => acharRedis()[0];
 const tok = () => acharRedis()[1];
+
+// Redis "comum" (integração Redis da Vercel, Redis Cloud...): só cria REDIS_URL, conexão direta (redis:// ou rediss://).
+const urlDireta = () => {
+  const ok = v => /^rediss?:\/\//.test(v || '');
+  if (ok(process.env.REDIS_URL)) return process.env.REDIS_URL;
+  for (const [nome, valor] of Object.entries(process.env)) if (/(^|_)(REDIS_URL|KV_URL)$/.test(nome) && ok(valor)) return valor;
+  return undefined;
+};
+let cliente = null, conectando = null;
+async function conexaoDireta() {
+  if (cliente?.isReady) return cliente;
+  if (!conectando) {
+    conectando = (async () => {
+      const { createClient } = await import('redis');
+      const c = createClient({ url: urlDireta(), socket: { connectTimeout: 10000, reconnectStrategy: n => (n > 5 ? false : Math.min(n * 300, 2000)) } });
+      c.on('error', e => console.error('Redis:', e.message));
+      await c.connect();
+      cliente = c;
+      return c;
+    })().finally(() => { conectando = null; });
+  }
+  return conectando;
+}
 const CHAVE = 'agencia:rotinas';
 const GUARDAR = 40;
 
 // Sem Redis e fora da Vercel (teste no computador), guarda na memória do processo.
-const MEMORIA = !process.env.VERCEL && !(url() && tok());
-export const armazemLigado = () => MEMORIA || !!(url() && tok());
+const MEMORIA = !process.env.VERCEL && !(url() && tok()) && !urlDireta();
+export const armazemLigado = () => MEMORIA || !!(url() && tok()) || !!urlDireta();
 
 const mem = new Map();
 function naMemoria([cmd, chave, ...r]) {
@@ -50,6 +73,7 @@ function naMemoria([cmd, chave, ...r]) {
 
 async function comando(...args) {
   if (MEMORIA) return naMemoria(args);
+  if (!(url() && tok())) return (await conexaoDireta()).sendCommand(args.map(String));
   const r = await fetch(url(), {
     method: 'POST',
     headers: { Authorization: `Bearer ${tok()}`, 'content-type': 'application/json' },

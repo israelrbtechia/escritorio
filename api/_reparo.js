@@ -6,8 +6,9 @@
 //   REPARO_SUPABASE_SERVICE_KEY  chave secreta (service_role ou sb_secret_...) — só no servidor
 //   REPARO_LOJA_ID               (opcional) id da loja RB Tech; sem ele, o prédio acha sozinho a loja com "RB Tech" no nome
 
-const url = () => String(process.env.REPARO_SUPABASE_URL || '').trim().replace(/\/(rest|auth)\/v1.*$/i, '').replace(/\/+$/, '');
-const chave = () => String(process.env.REPARO_SUPABASE_SERVICE_KEY || '').trim();
+// Aceita também os nomes usados no próprio ReparoSimples (SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY).
+const url = () => String(process.env.REPARO_SUPABASE_URL || process.env.SUPABASE_URL || '').trim().replace(/\/(rest|auth)\/v1.*$/i, '').replace(/\/+$/, '');
+const chave = () => String(process.env.REPARO_SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '').trim();
 const loja = () => String(process.env.REPARO_LOJA_ID || '').trim();
 export const reparoConectavel = () => !!(url() && chave());
 export const reparoConfigurado = reparoConectavel;
@@ -25,7 +26,7 @@ async function rest(caminho) {
   const r = await fetch(`${url()}/rest/v1/${caminho}`, { headers: cab, signal: AbortSignal.timeout(15000) });
   if (!r.ok) {
     const txt = await r.text().catch(() => '');
-    if (r.status === 401 || r.status === 403) throw new ErroReparo('O Supabase do ReparoSimples recusou a chave. Confira REPARO_SUPABASE_SERVICE_KEY.');
+    if (r.status === 401 || r.status === 403) throw new ErroReparo('O Supabase do ReparoSimples recusou a chave. Confira REPARO_SUPABASE_SERVICE_KEY (ou SUPABASE_SERVICE_ROLE_KEY).');
     throw new ErroReparo(`ReparoSimples respondeu ${r.status}: ${txt.slice(0, 160)}`);
   }
   return r.json();
@@ -33,7 +34,7 @@ async function rest(caminho) {
 
 /** Lojas cadastradas (para achar o id da RB Tech). */
 export async function listarLojas() {
-  if (!reparoConectavel()) throw new ErroReparo('Faltam REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY na Vercel.');
+  if (!reparoConectavel()) throw new ErroReparo('Faltam o endereço e a chave do Supabase do ReparoSimples na Vercel (REPARO_SUPABASE_URL ou SUPABASE_URL, e REPARO_SUPABASE_SERVICE_KEY ou SUPABASE_SERVICE_ROLE_KEY).');
   const lojas = await rest('lojas?select=id,nome&order=criado_em.asc&limit=200');
   return lojas.map(l => ({ id: l.id, nome: l.nome }));
 }
