@@ -1,4 +1,4 @@
-// Imagens de destaque das artes da Helena (o "herói" da tela: aparelho, estátua, objeto em 3D...).
+// Imagens de destaque das artes da Helena (servidas por /api/arte, também acessível como /api/imagem).
 // O Claude não gera fotos: quando OPENAI_API_KEY existe na Vercel, a descrição que a Helena escreve vira uma imagem
 // recortada (fundo transparente) no gerador de imagens da OpenAI. O PNG fica no Blob da Vercel e o app lê pelo
 // próprio domínio (/api/imagem?u=...), para o navegador poder desenhar e exportar a arte.

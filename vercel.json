@@ -28,9 +28,6 @@
     "api/decisoes.js": {
       "maxDuration": 300
     },
-    "api/imagem.js": {
-      "maxDuration": 180
-    },
     "api/arte.js": {
       "maxDuration": 300
     }
@@ -114,6 +111,12 @@
           "value": "strict-origin-when-cross-origin"
         }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/imagem",
+      "destination": "/api/arte"
     }
   ]
 }
