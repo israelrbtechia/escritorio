@@ -91,11 +91,34 @@ export const esforcoDe = papel => {
 };
 export const modeloDe = papel => (CHEFES.has(papel) ? '' : process.env.AGENCIA_MODELO_EQUIPE) || process.env.AGENCIA_MODELO || 'claude-opus-5-5';
 
+const PENSAMENTO = new Set(['thinking', 'redacted_thinking']);
+/**
+ * Tira os "pensamentos" (thinking) das respostas antigas. Cada pensamento vem assinado e preso ao prompt e às
+ * ferramentas da época: depois de um deploy que muda a equipe, a API recusa a conversa inteira se eles voltarem.
+ * Só o turno atual (desde a última mensagem de verdade do Israel) precisa deles; com `tudo`, tira até desse.
+ */
+export function semPensamentos(messages, tudo = false) {
+  let corte = messages.length;
+  if (!tudo) {
+    corte = 0;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      if (m.role === 'user' && (typeof m.content === 'string' || !m.content?.some?.(b => b.type === 'tool_result'))) { corte = i; break; }
+    }
+  }
+  return messages.map((m, i) => {
+    if (i >= corte || m.role !== 'assistant' || !Array.isArray(m.content) || !m.content.some(b => PENSAMENTO.has(b.type))) return m;
+    const content = m.content.filter(b => !PENSAMENTO.has(b.type));
+    return { ...m, content: content.length ? content : [{ type: 'text', text: '…' }] };
+  });
+}
+const erroDeAssinatura = e => e instanceof Anthropic.BadRequestError && /signature|thinking/i.test(e.message || '');
+
 /** Uma rodada de conversa de um funcionário. */
 export async function rodada(papel, messages) {
   const p = PAPEIS[papel];
   const model = modeloDe(papel);
-  const r = await client.beta.messages.create({
+  const pedir = msgs => client.beta.messages.create({
     model,
     max_tokens: 16000,
     // se o modelo recusar por política de segurança, a própria API tenta de novo num modelo reserva (o Haiku não tem reserva)
@@ -104,8 +127,15 @@ export async function rodada(papel, messages) {
     cache_control: { type: 'ephemeral' },
     system: p.sistema,
     ...(p.ferramentas ? { tools: p.ferramentas } : {}),
-    messages,
+    messages: msgs,
   });
+  let r;
+  try { r = await pedir(semPensamentos(messages)); }
+  catch (e) {
+    // o deploy mudou a equipe no meio de um turno: tenta de novo sem nenhum pensamento antigo
+    if (!erroDeAssinatura(e)) throw e;
+    r = await pedir(semPensamentos(messages, true));
+  }
   return { content: r.content, stop_reason: r.stop_reason, stop_details: r.stop_details ?? null, model: r.model, usage: r.usage };
 }
 
