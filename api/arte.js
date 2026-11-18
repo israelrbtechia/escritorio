@@ -7,11 +7,11 @@
 // /api/imagem é o mesmo endereço (rewrite no vercel.json), para os links antigos continuarem valendo.
 import { responder, responderDemorado, autenticado, lerCorpo, NAO_AUTENTICADO, erroDaApi } from './_agentes.js';
 import { desenharTelaSvg, revisarTelaSvg } from './_designer.js';
-import { gerarImagem, geradorDeImagemLigado, BLOB_DA_ARTE } from './_imagem.js';
+import { gerarImagem, geradorDeImagemLigado, faltaParaImagens, BLOB_DA_ARTE } from './_imagem.js';
 
 async function imagem(req, res) {
   const u = String(req.query?.u || '');
-  if (!u) return responder(res, 200, { ligado: geradorDeImagemLigado() });
+  if (!u) return responder(res, 200, { ligado: geradorDeImagemLigado(), falta: faltaParaImagens() });
   if (!BLOB_DA_ARTE.test(u)) return responder(res, 400, { erro: 'Endereço de imagem inválido.' });
   const r = await fetch(u).catch(() => null);
   if (!r?.ok) return responder(res, 404, { erro: 'Imagem não encontrada.' });

@@ -264,8 +264,12 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
         const pedidas = arte.slides.filter(s => s.imagem && !s.imagem_url);
         if (pedidas.length && !ensaio()) {
           emitir('meta', { gestor: ctx.gestor, papel, tipo: 'imagens' });
-          const ligado = await api('/api/imagem', null, 'GET').then(r => r.ligado).catch(() => false);
-          if (!ligado) notaImagens = ' O gerador de imagens não está ligado (falta OPENAI_API_KEY na Vercel): nas telas com imagem entrou o iPhone 3D desenhado pelo app.';
+          const st = await api('/api/imagem', null, 'GET').catch(e => ({ ligado: false, falta: [`o servidor não respondeu (${e.message})`] }));
+          if (!st.ligado) {
+            const motivo = `O gerador de imagens não está ligado: falta ${(st.falta || ['a chave OPENAI_API_KEY']).join(' e ')}. Nas telas com imagem entrou o iPhone 3D desenhado pelo app.`;
+            notaImagens = ' ' + motivo;
+            emitir('passoArte', { gestor: ctx.gestor, texto: `⚠️ ${motivo}` });
+          }
           else {
             const feitas = await Promise.allSettled(pedidas.map(s => api('/api/imagem', { prompt: s.imagem })));
             const falhas = [];

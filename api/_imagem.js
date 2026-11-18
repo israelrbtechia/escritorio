@@ -6,7 +6,21 @@
 import { put } from '@vercel/blob';
 import { tokenBlob } from './_conteudo.js';
 
-export const geradorDeImagemLigado = () => !!String(process.env.OPENAI_API_KEY || '').trim() && !!tokenBlob();
+/** A chave da OpenAI: OPENAI_API_KEY ou qualquer variável com "OPENAI" no nome que tenha uma chave (sk-...). */
+export function chaveOpenAI() {
+  const direta = String(process.env.OPENAI_API_KEY || '').trim();
+  if (direta) return direta;
+  const [, valor] = Object.entries(process.env).find(([nome, v]) => /openai/i.test(nome) && /^sk-/.test(String(v || '').trim())) || [];
+  return String(valor || '').trim();
+}
+/** O que falta para gerar imagens (vazio = está tudo ligado). */
+export function faltaParaImagens() {
+  const falta = [];
+  if (!chaveOpenAI()) falta.push('a chave OPENAI_API_KEY na Vercel do prédio');
+  if (!tokenBlob()) falta.push('o Blob da Vercel conectado ao projeto (Storage → Blob)');
+  return falta;
+}
+export const geradorDeImagemLigado = () => !faltaParaImagens().length;
 export const BLOB_DA_ARTE = /^https:\/\/[a-z0-9.-]+\.public\.blob\.vercel-storage\.com\/artes\/[\w./-]+$/i;
 
 const estilo = p => `${p}
@@ -14,12 +28,12 @@ const estilo = p => `${p}
 Estilo: imagem de destaque para um carrossel premium de Instagram de uma loja de celulares. Objeto ou personagem único, recortado, sem fundo (transparente), iluminação de estúdio dramática com recorte de luz nas bordas, alto detalhe, foto realista ou render 3D de alta qualidade. Sem texto, sem letras, sem marcas d'água, sem logos de marca.`;
 
 export async function gerarImagem(descricao) {
-  if (!geradorDeImagemLigado()) throw new Error('o gerador de imagens não está ligado (falta OPENAI_API_KEY ou o Blob na Vercel)');
+  if (!geradorDeImagemLigado()) throw new Error(`o gerador de imagens não está ligado: falta ${faltaParaImagens().join(' e ')}`);
   const prompt = String(descricao || '').trim().slice(0, 1500);
   if (!prompt) throw new Error('descrição da imagem vazia');
   const r = await fetch('https://api.openai.com/v1/images/generations', {
     method: 'POST',
-    headers: { authorization: `Bearer ${process.env.OPENAI_API_KEY.trim()}`, 'content-type': 'application/json' },
+    headers: { authorization: `Bearer ${chaveOpenAI()}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       model: process.env.OPENAI_IMAGEM_MODELO || 'gpt-image-1',
       prompt: estilo(prompt), n: 1, size: '1024x1536', background: 'transparent', output_format: 'png',
