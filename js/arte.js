@@ -859,7 +859,7 @@ export function formatoDeVideo() {
   return ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || null;
 }
 /** Grava a animação em MP4 (tempo real: um reels de 7 telas leva uns 24 s). Não troque de aba enquanto grava. */
-export async function gravarVideo(arte, tipo, { aoProgresso = () => {} } = {}) {
+export async function gravarVideo(arte, tipo, { aoProgresso = () => {}, bitsPorSegundo = 10_000_000 } = {}) {
   const formato = formatoDeVideo();
   if (!formato) throw new Error('este navegador não grava vídeo MP4. Use o Chrome ou o Safari atualizados (no iPhone, o Safari grava).');
   const preps = [];
@@ -869,7 +869,7 @@ export async function gravarVideo(arte, tipo, { aoProgresso = () => {} } = {}) {
   const g = canvas.getContext('2d');
   quadroDoVideo(g, preps, arte, tipo, 0);
   const stream = canvas.captureStream(30);
-  const rec = new MediaRecorder(stream, { mimeType: formato, videoBitsPerSecond: 10_000_000 });
+  const rec = new MediaRecorder(stream, { mimeType: formato, videoBitsPerSecond: bitsPorSegundo });
   const pedacosVideo = [];
   rec.ondataavailable = e => { if (e.data?.size) pedacosVideo.push(e.data); };
   const fim = new Promise(res => { rec.onstop = res; });

@@ -1,7 +1,7 @@
 // Publica uma arte da Helena no Instagram: desenha os JPGs aqui no navegador, sobe no Blob da Vercel
 // (a Meta baixa de um endereço público) e pede ao servidor para publicar pela API oficial.
-import { upload } from 'https://cdn.jsdelivr.net/npm/@vercel/blob@2.8.2/client/+esm';
-import { gerarImagens, gravarVideo } from './arte.js';
+import { gerarImagens, gravarVideo, duracaoTotal } from './arte.js';
+import { estadoDoBlob, subirArquivo } from './subir.js';
 
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 
@@ -19,13 +19,15 @@ export async function publicarArte(pedido, { token, aoPasso = () => {} }) {
     return d;
   }
   if (!pedido?.arte?.slides?.length) throw new Error('esta arte não tem telas.');
-  const conf = await fetch('/api/upload', { headers: cab }).then(r => r.json()).catch(() => ({}));
-  if (conf.blob === false) throw new Error('o Blob ainda não está ligado na Vercel (Storage → Blob → conectar ao projeto).');
+  const conf = await estadoDoBlob(token);
+  if (!conf.blob) throw new Error('o Blob ainda não está ligado na Vercel (Storage → Blob → conectar ao projeto e fazer Redeploy).');
 
   let arquivos;
   if (pedido.arte.movimento) {
     aoPasso('🎬 Gravando a animação… (não troque de tela)');
-    const video = await gravarVideo(pedido.arte, pedido.tipo, { aoProgresso: k => aoPasso(`🎬 Gravando a animação: ${Math.round(k * 100)}% (não troque de tela)`) });
+    // Blob sem chave: o vídeo passa pelo servidor (até 4 MB), então a qualidade se ajusta à duração
+    const bits = conf.modo === 'oidc' ? Math.min(10_000_000, Math.floor((3.6 * 1024 * 1024 * 8) / (duracaoTotal(pedido.arte, pedido.tipo) + 0.6))) : 10_000_000;
+    const video = await gravarVideo(pedido.arte, pedido.tipo, { bitsPorSegundo: bits, aoProgresso: k => aoPasso(`🎬 Gravando a animação: ${Math.round(k * 100)}% (não troque de tela)`) });
     arquivos = [{ blob: video, nome: 'video.mp4', tipo: 'video/mp4' }];
   } else {
     aoPasso('🎨 Desenhando as imagens…');
@@ -34,11 +36,8 @@ export async function publicarArte(pedido, { token, aoPasso = () => {} }) {
   const midias = [];
   for (const [i, a] of arquivos.entries()) {
     aoPasso(`⬆️ Subindo ${a.tipo === 'video/mp4' ? 'o vídeo' : `a imagem ${i + 1} de ${arquivos.length}`}…`);
-    const r = await upload(`instagram/${pedido.id}/${Date.now()}-${a.nome}`, a.blob, {
-      access: 'public', handleUploadUrl: '/api/upload', headers: { authorization: `Bearer ${token}` }, contentType: a.tipo,
-      multipart: a.blob.size > 20 * 1024 * 1024,
-    });
-    midias.push({ url: r.url, tipo: a.tipo });
+    const url = await subirArquivo(a.blob, `${pedido.id}-${a.nome}`, a.tipo, { token, estado: conf });
+    midias.push({ url, tipo: a.tipo });
   }
   await instagram({ acao: 'midia_recebida', pedido, midias });
   for (let tentativa = 1; tentativa <= 6; tentativa++) {

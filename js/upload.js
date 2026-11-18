@@ -1,8 +1,8 @@
 // Página de upload: o Israel sobe o vídeo ou a foto pedida pela Helena, revisa a legenda e aprova a publicação.
 // O arquivo vai direto do navegador para o Blob da Vercel (vídeos grandes não passam pelo servidor);
 // depois o servidor pede à Meta para publicar a partir desse endereço.
-import { upload } from 'https://cdn.jsdelivr.net/npm/@vercel/blob@2.8.2/client/+esm';
-import { gerarImagens, gravarVideo, tocarAnimacao } from './arte.js';
+import { gerarImagens, gravarVideo, tocarAnimacao, duracaoTotal } from './arte.js';
+import { estadoDoBlob, subirArquivo } from './subir.js';
 
 const $ = id => document.getElementById(id);
 const ler = (k, p) => { try { const v = localStorage.getItem(k); return v == null ? p : JSON.parse(v); } catch { return p; } };
@@ -147,24 +147,19 @@ async function subir() {
   $('btSubir').disabled = true;
   midias = [];
   try {
-    const conf = await fetch('/api/upload', { headers: cabecalhos() }).then(r => r.json()).catch(() => ({}));
-    if (conf.precisaLogin) { await pedirLogin(); $('btSubir').disabled = false; return; }
-    if (conf.blob === false) throw new Error('o Blob ainda não está ligado na Vercel (Storage → Blob → conectar ao projeto).');
+    const conf = await estadoDoBlob(token());
+    if (!conf.blob) throw new Error('o Blob ainda não está ligado na Vercel (Storage → Blob → conectar ao projeto e fazer Redeploy).');
     $('barra').hidden = false;
     const total = arquivos.reduce((s, f) => s + f.size, 0);
     let enviados = 0;
     for (const [i, f] of arquivos.entries()) {
       $('statusUp').textContent = `Subindo ${i + 1} de ${arquivos.length}: ${f.name}…`;
-      const nome = `instagram/${pedido.id}/${Date.now()}-${f.name.replace(/[^\w.-]+/g, '_')}`;
-      const blob = await upload(nome, f, {
-        access: 'public',
-        handleUploadUrl: '/api/upload',
-        headers: { authorization: `Bearer ${token()}` },
-        multipart: f.size > 20 * 1024 * 1024,
-        onUploadProgress: p => { $('barra').firstElementChild.style.width = `${Math.round(((enviados + p.loaded) / total) * 100)}%`; },
+      const url = await subirArquivo(f, `${pedido.id}-${f.name.replace(/[^\w.-]+/g, '_')}`, f.type, {
+        token: token(), estado: conf,
+        aoProgresso: k => { $('barra').firstElementChild.style.width = `${Math.round(((enviados + k * f.size) / total) * 100)}%`; },
       });
       enviados += f.size;
-      midias.push({ url: blob.url, tipo: f.type });
+      midias.push({ url, tipo: f.type });
     }
     $('barra').firstElementChild.style.width = '100%';
     await api({ acao: 'midia_recebida', pedido: { ...pedido, legenda: $('legenda').value }, midias });
@@ -216,7 +211,9 @@ async function prepararArte() {
     if (arte.movimento) {
       $('arteViva').hidden = false;
       tocarAnimacao(arte, pedido.tipo, $('arteViva').querySelector('canvas'));
-      const video = await gravarVideo(arte, pedido.tipo, { aoProgresso: k => { $('statusUp').textContent = `🎬 Gravando o vídeo da animação: ${Math.round(k * 100)}% (não troque de tela)`; } });
+      const st = await estadoDoBlob(token());
+      const bits = st.modo === 'oidc' ? Math.min(10_000_000, Math.floor((3.6 * 1024 * 1024 * 8) / (duracaoTotal(arte, pedido.tipo) + 0.6))) : 10_000_000;
+      const video = await gravarVideo(arte, pedido.tipo, { bitsPorSegundo: bits, aoProgresso: k => { $('statusUp').textContent = `🎬 Gravando o vídeo da animação: ${Math.round(k * 100)}% (não troque de tela)`; } });
       await escolher([new File([video], `${pedido.id}.mp4`, { type: 'video/mp4' })]);
     } else {
       $('statusUp').textContent = '🎨 Desenhando as imagens…';

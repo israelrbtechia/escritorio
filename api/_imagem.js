@@ -4,7 +4,7 @@
 // próprio domínio (/api/imagem?u=...), para o navegador poder desenhar e exportar a arte.
 // Sem a chave, as artes usam o iPhone 3D desenhado pelo app.
 import { put } from '@vercel/blob';
-import { tokenBlob } from './_conteudo.js';
+import { blobLigado, opcoesBlob } from './_conteudo.js';
 
 /** A chave da OpenAI: OPENAI_API_KEY ou qualquer variável com "OPENAI" no nome que tenha uma chave (sk-...). */
 export function chaveOpenAI() {
@@ -17,7 +17,7 @@ export function chaveOpenAI() {
 export function faltaParaImagens() {
   const falta = [];
   if (!chaveOpenAI()) falta.push('a chave OPENAI_API_KEY na Vercel do prédio');
-  if (!tokenBlob()) falta.push('o Blob da Vercel conectado ao projeto (Storage → Blob)');
+  if (!blobLigado()) falta.push('o Blob da Vercel conectado ao projeto (Storage → Blob)');
   return falta;
 }
 export const geradorDeImagemLigado = () => !faltaParaImagens().length;
@@ -43,7 +43,7 @@ export async function gerarImagem(descricao) {
   const d = await r.json().catch(() => null);
   if (!r.ok || !d?.data?.[0]?.b64_json) throw new Error(d?.error?.message || `o gerador de imagens respondeu ${r.status}`);
   const blob = await put(`artes/${Date.now()}.png`, Buffer.from(d.data[0].b64_json, 'base64'), {
-    access: 'public', contentType: 'image/png', token: tokenBlob(), addRandomSuffix: true,
+    access: 'public', contentType: 'image/png', ...opcoesBlob(), addRandomSuffix: true,
   });
   return `/api/imagem?u=${encodeURIComponent(blob.url)}`;
 }

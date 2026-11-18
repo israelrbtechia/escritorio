@@ -280,7 +280,11 @@ export const TAMANHO_MAXIMO = 3 * 1024 * 1024;
 const MAX_PRINTS = 30;
 /** Chave do Blob: BLOB_READ_WRITE_TOKEN ou outra que a Vercel criou com prefixo (sempre começa com vercel_blob_rw_). */
 export const tokenBlob = () => process.env.BLOB_READ_WRITE_TOKEN || Object.values(process.env).find(v => String(v || '').startsWith('vercel_blob_rw_'));
-const blobLigado = () => !!tokenBlob();
+/** Blob conectado do jeito novo da Vercel (sem chave): BLOB_STORE_ID + login automático (OIDC) do servidor. */
+export const blobOidc = () => !tokenBlob() && !!String(process.env.BLOB_STORE_ID || '').trim();
+export const blobLigado = () => !!tokenBlob() || blobOidc();
+/** Opções de credencial para put/list/del: a chave, se houver; senão o SDK usa o OIDC sozinho. */
+export const opcoesBlob = () => (tokenBlob() ? { token: tokenBlob() } : {});
 const printsNaMemoria = [];
 export const tipoAceito = t => !!t && t in TIPOS_IMAGEM;
 
@@ -292,7 +296,7 @@ export async function salvarPrint(dados, tipo, agora = new Date()) {
     printsNaMemoria.push({ caminho, url });
     return url;
   }
-  const b = await put(caminho, dados, { access: 'public', contentType: tipo, addRandomSuffix: false, token: tokenBlob() });
+  const b = await put(caminho, dados, { access: 'public', contentType: tipo, addRandomSuffix: false, ...opcoesBlob() });
   return b.url;
 }
 
@@ -307,7 +311,7 @@ export async function listarPrints(dias) {
     }
     let cursor;
     do {
-      const pagina = await list({ prefix: prefixo, cursor, token: tokenBlob() });
+      const pagina = await list({ prefix: prefixo, cursor, ...opcoesBlob() });
       for (const b of pagina.blobs) saida.push({ url: b.url, dia, enviadoEm: Number(b.pathname.split('/').pop().split('-')[0]) || 0 });
       cursor = pagina.hasMore ? pagina.cursor : undefined;
     } while (cursor);
@@ -324,7 +328,7 @@ export async function apagarPrint(url) {
   let u;
   try { u = new URL(url); } catch { return false; }
   if (!u.hostname.endsWith('.public.blob.vercel-storage.com') || !u.pathname.startsWith('/conteudo/prints/')) return false;
-  await del(url, { token: tokenBlob() });
+  await del(url, { ...opcoesBlob() });
   return true;
 }
 
