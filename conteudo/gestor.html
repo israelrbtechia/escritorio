@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Gestor de conteúdo · Prédio RBTech</title>
+  <meta name="theme-color" content="#0f0f0f">
+  <link rel="icon" type="image/png" href="icone-192.png">
+  <link rel="apple-touch-icon" href="icone-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body class="pagina-gestor">
+  <header class="topo topo-largo">
+    <div class="marca"><img class="marca-logo" src="logo-rbtech.png" alt="RBTech Celulares" width="466" height="324"><span class="marca-nome"><small>Gestor de conteúdo</small></span></div>
+    <div class="acoes-topo">
+      <a class="botao pequeno" href="./">← Central</a>
+      <button id="sair" class="botao fantasma pequeno">← Prédio</button>
+    </div>
+  </header>
+
+  <div class="barra-gestor">
+    <div class="navegar-semana">
+      <button id="semana-anterior" class="botao pequeno" aria-label="Semana anterior">◀</button>
+      <button id="hoje" class="botao pequeno">Hoje</button>
+      <button id="semana-seguinte" class="botao pequeno" aria-label="Semana seguinte">▶</button>
+      <span id="periodo" class="periodo"></span>
+    </div>
+    <div class="navegar-semana">
+      <select id="filtro-tipo" aria-label="Filtrar por tipo">
+        <option value="">Todos os tipos</option>
+        <option value="story">Stories</option>
+        <option value="reels">Reels</option>
+        <option value="post">Posts</option>
+        <option value="outro">Outros</option>
+      </select>
+      <button id="novo-card" class="botao primario pequeno">+ Novo card</button>
+    </div>
+  </div>
+
+  <div id="quadro" class="quadro" aria-live="polite"></div>
+
+  <div id="aviso" class="aviso" role="status" hidden></div>
+  <script src="comum.js"></script>
+  <script src="gestor.js"></script>
+</body>
+</html>

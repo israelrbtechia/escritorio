@@ -40,7 +40,8 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 | `AGENCIA_MODELO_EQUIPE` | opcional: modelo só dos funcionários (os chefes continuam no `AGENCIA_MODELO`). Ex.: `claude-sonnet-5-5`, que custa metade |
 | `AGENCIA_ESFORCO_CHEFES` / `AGENCIA_ESFORCO_EQUIPE` | opcional: `low`, `medium`, `high`… Padrão: chefes `medium`, equipe `low` |
 | `REPARO_SITE_URL` | opcional: endereço do site do ReparoSimples, para a revisão dos servidores conferir se está no ar |
-| `ROTINAS_ATIVAS` | opcional: liga as rotinas automáticas. Ex.: `trafego,loja` ou `todas`. Sem ela, ficam em standby |
+| `ROTINAS_ATIVAS` | opcional: escolhe as rotinas automáticas. Ex.: `stories,reels,trafego` ou `todas`. Sem ela, só rodam `stories` e `reels` |
+| `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_DESTINATARIOS` | opcional: avisam no WhatsApp quando o relatório de reels fica pronto (veja Central de conteúdo) |
 | `ELEVENLABS_API_KEY` | opcional: vozes reais para cada funcionário e transcrição das perguntas por áudio |
 | `ELEVENLABS_VOZES` | opcional: troca vozes, em JSON (ex.: `{"chefe":"id-da-voz"}`) |
 
@@ -58,7 +59,10 @@ Sem `AGENCIA_USUARIO` e `AGENCIA_SENHA`, o site fica aberto: qualquer pessoa com
 A equipe só **lê** métricas: não publica, não edita posts e não mexe em orçamento.
 
 ### Rotinas (vercel.json)
-**Em standby por padrão**, para não gastar créditos todo dia. O cron continua agendado, mas sai na hora sem chamar a IA. Para ligar, crie `ROTINAS_ATIVAS` com as equipes (ex.: `trafego` ou `trafego,loja`) e faça redeploy. Os botões "Rodar …" da aba Ajustes funcionam sempre.
+- **Ligadas por padrão:** os stories do dia (08h03) e os reels da semana (segunda, 08h13), da Central de conteúdo. Cada uma é uma chamada de IA só.
+- **Em standby:** as reuniões automáticas dos andares (loja, tráfego, crescimento e vendas). O cron continua agendado, mas sai na hora sem chamar a IA.
+- **Para escolher:** crie `ROTINAS_ATIVAS` com as equipes (ex.: `stories,reels,trafego`) e faça redeploy.
+- Os botões "Rodar …" da aba Ajustes funcionam sempre.
 
 | Horário (Brasília) | Andar |
 |---|---|
@@ -94,6 +98,28 @@ Variáveis na Vercel (projeto do prédio):
 | `REPARO_LOJA_ID` | opcional: o prédio acha sozinho a loja com "RB Tech" no nome. Só precisa se houver mais de uma loja com esse nome |
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
+
+## Central de conteúdo do Instagram (antigo Agente de Reels e Stories)
+O antigo agente (repositório `agente-`) agora roda dentro do prédio. As rotinas são as mesmas, só que feitas pelos times:
+- **Stories do dia:** todo dia antes das 9h, o **Especialista de crescimento** (time da Helena) entrega o roteiro dos stories do dia. Ele usa a época, os posts de ontem das lojas de referência, os prints que você subiu, os stories da RBTech e o estoque.
+- **Reels da semana:** toda segunda de manhã, o **Roteirista** (time da Pamella) entrega o relatório dos reels que viralizaram nas lojas de referência, com roteiros para gravar.
+- **Ideias de trend:** o especialista pesquisa na internet o que está em alta e cria 1 story, 1 reels e 1 post.
+- **Prints, Reels, Configurações e Gestor:** as mesmas telas do agente, em `/conteudo/`. Abra pela aba Insta, botão "Abrir central". O login é o mesmo do prédio.
+- Cada entrega aparece no chat do chefe e na aba Entregas, com o HTML. Os chefes leem a central (ferramenta `ler_central_de_conteudo`) antes de criar algo parecido.
+
+Para economizar, cada rotina é **uma chamada só**, sem reunião do chefe. O esforço segue `AGENCIA_ESFORCO_EQUIPE`, que por padrão é `low`; use `medium` se quiser o mesmo do agente antigo.
+
+**Migrar do agente antigo (uma vez):**
+1. Copie as configurações do site antigo (lojas de referência, estoque, sobre a loja, transcrições) para a Central de conteúdo, em Configurações.
+2. Use as mesmas chaves da Meta. O `IG_USER_ID` do agente aqui se chama `META_IG_USER_ID`. O token precisa de `instagram_basic`, `instagram_manage_insights` e `pages_read_engagement`.
+3. Para os prints, ligue o Blob na Vercel (o mesmo das mídias do Instagram).
+4. **WhatsApp (opcional):** copie para o projeto do prédio as mesmas variáveis do agente:
+   - `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_DESTINATARIOS`;
+   - `WHATSAPP_MODO`, `WHATSAPP_TEMPLATE`, `WHATSAPP_TEMPLATE_IDIOMA`;
+   - `WHATSAPP_VERIFY_TOKEN` e `META_APP_SECRET`.
+
+   No app da Meta, troque a URL do webhook para `https://SEU-PREDIO.vercel.app/api/conteudo?r=whatsapp`.
+5. Depois disso, desligue o projeto do agente antigo na Vercel. Assim as rotinas não rodam duas vezes nem gastam em dobro.
 
 ## ReparoSimples como SaaS (3º andar)
 O ReparoSimples é o SaaS principal do prédio. A aba **SaaS** e o painel do 3º andar mostram, calculados como no painel admin:

@@ -89,6 +89,10 @@
       </section>
 
       <section class="aba" id="aba-instagram">
+        <div class="caixa-meta central-conteudo">
+          <div><strong>📱 Central de conteúdo</strong><br><small>Stories do dia (todo dia antes das 9h, time da Helena), reels da semana (segunda, time da Pamella), ideias de trend, prints das concorrentes, gestor e configurações.</small></div>
+          <div class="botoes-central"><a class="bt-link primario" href="conteudo/" target="_blank" rel="noopener">Abrir central</a><a class="bt-link" href="conteudo/gestor.html" target="_blank" rel="noopener">Gestor</a></div>
+        </div>
         <p class="dica">O que o time da Helena preparou para o Instagram. Publicar só acontece quando você aprova na página de upload.</p>
         <h3 class="titulo-secao">📎 Pedidos de mídia</h3>
         <div id="listaPedidos"></div>
@@ -150,9 +154,11 @@
           </div>
           <div class="rotinas">
             <strong>Rotinas automáticas</strong>
-            <small>Cada andar pode trabalhar sozinho de manhã, mesmo com o app fechado. Para economizar, isso fica em standby: ligue na Vercel com ROTINAS_ATIVAS (ex.: trafego,loja) ou use os botões abaixo quando quiser.</small>
+            <small>Ligadas por padrão: os stories do dia (antes das 9h) e os reels da semana (segunda), uma chamada de IA cada. As reuniões automáticas dos andares ficam em standby para economizar: para escolher, crie ROTINAS_ATIVAS na Vercel (ex.: stories,reels,trafego). Os botões rodam na hora.</small>
             <small id="statusRotinas">…</small>
             <div class="botoes-rotina">
+              <button type="button" class="bt-sec" data-rotina="stories">Rodar stories</button>
+              <button type="button" class="bt-sec" data-rotina="reels">Rodar reels</button>
               <button type="button" class="bt-sec" data-rotina="loja">Rodar loja</button>
               <button type="button" class="bt-sec" data-rotina="trafego">Rodar tráfego</button>
               <button type="button" class="bt-sec" data-rotina="crescimento">Rodar crescimento</button>

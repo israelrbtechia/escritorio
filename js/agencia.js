@@ -366,6 +366,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   function metaDeEnsaio(nome) {
     const base = { ensaio: true, aviso: 'Números de ENSAIO, não são reais.' };
     if (nome === 'ler_metricas_anuncios') return { ...base, linhas: [{ investimento: 180, conversasWhatsApp: 23, custoPorConversa: 7.83, ctr: 1.9, cpm: 21.4, frequencia: 1.6 }] };
+    if (nome === 'ler_central_de_conteudo') return { ...base, storiesDeHoje: { estrategia: { estrategiaDoDia: 'Aquecer a Black Friday (exemplo).' } }, ultimoRelatorioDeReels: 'nenhum ainda', estoqueDaSemana: '13 128 seminovo (exemplo)' };
     if (nome === 'ler_saas_reparo') return { ...base, lojas: 64, ativas: 31, emTeste: 18, pagantes: 27, receitaMensal: { reais: 1880 }, novasNoMes: 9, recentes: [{ nome: 'Assistência Exemplo', plano: 'Pro', situacao: 'teste' }] };
     if (nome === 'ler_posts_instagram') return { ...base, posts: [{ tipo: 'reels', curtidas: 210, comentarios: 18, numeros: { reach: 5400, shares: 31, saved: 22 } }] };
     return { ...base, perfil: { usuario: 'rbtech', seguidores: 12000 }, numerosDoPeriodo: { reach: 31000, accounts_engaged: 1400 } };

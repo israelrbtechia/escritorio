@@ -352,3 +352,6 @@ body.modo-video .ent .tag { font-size: 12px; }
 .checagens { margin: 8px 0 0; padding-left: 4px; list-style: none; font-size: 13px; }
 .checagens li { padding: 3px 0; }
 .checagens small { color: var(--texto-2); }
+
+.central-conteudo { flex-wrap: wrap; }
+.botoes-central { display: flex; gap: 6px; flex-wrap: wrap; }

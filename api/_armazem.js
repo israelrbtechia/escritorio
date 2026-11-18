@@ -7,9 +7,26 @@ const tok = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_RES
 const CHAVE = 'agencia:rotinas';
 const GUARDAR = 40;
 
-export const armazemLigado = () => !!(url() && tok());
+// Sem Redis e fora da Vercel (teste no computador), guarda na memória do processo.
+const MEMORIA = !process.env.VERCEL && !(url() && tok());
+export const armazemLigado = () => MEMORIA || !!(url() && tok());
+
+const mem = new Map();
+function naMemoria([cmd, chave, ...r]) {
+  if (cmd === 'LPUSH') { const l = mem.get(chave) || []; l.unshift(...r); mem.set(chave, l); return l.length; }
+  if (cmd === 'LTRIM') { mem.set(chave, (mem.get(chave) || []).slice(r[0], r[1] + 1)); return 'OK'; }
+  if (cmd === 'LRANGE') return (mem.get(chave) || []).slice(r[0], r[1] + 1);
+  const h = mem.get(chave) || new Map(); mem.set(chave, h);
+  if (cmd === 'HSET') { h.set(r[0], r[1]); return 1; }
+  if (cmd === 'HGET') return h.get(r[0]) ?? null;
+  if (cmd === 'HDEL') return h.delete(r[0]) ? 1 : 0;
+  if (cmd === 'HKEYS') return [...h.keys()];
+  if (cmd === 'HGETALL') return [...h.entries()].flat();
+  throw new Error(`comando ${cmd} sem memória`);
+}
 
 async function comando(...args) {
+  if (MEMORIA) return naMemoria(args);
   const r = await fetch(url(), {
     method: 'POST',
     headers: { Authorization: `Bearer ${tok()}`, 'content-type': 'application/json' },
@@ -85,4 +102,14 @@ export async function lerItens(colecao, limite = 200) {
   const lista = [];
   for (let i = 1; i < plano.length; i += 2) { try { lista.push(JSON.parse(plano[i])); } catch { /* ignora */ } }
   return lista.sort((a, b) => (b.quando || 0) - (a.quando || 0)).slice(0, limite);
+}
+
+export async function listarIds(colecao) {
+  if (!armazemLigado()) return [];
+  return (await comando('HKEYS', `agencia:${colecao}`)) || [];
+}
+export async function apagarItem(colecao, id) {
+  if (!armazemLigado()) return false;
+  await comando('HDEL', `agencia:${colecao}`, id);
+  return true;
 }

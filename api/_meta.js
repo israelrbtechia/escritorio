@@ -14,7 +14,7 @@ const contaAnuncios = () => {
   const id = (process.env.META_AD_ACCOUNT_ID || '').trim();
   return id && (id.startsWith('act_') ? id : 'act_' + id);
 };
-const contaInstagram = () => (process.env.META_IG_USER_ID || '').trim();
+export const contaInstagram = () => (process.env.META_IG_USER_ID || '').trim();
 
 export function metaLigado() {
   return { anuncios: !!(token() && contaAnuncios()), instagram: !!(token() && contaInstagram()) };
@@ -24,7 +24,7 @@ export class ErroMeta extends Error {
   constructor(msg, codigo) { super(msg); this.codigo = codigo; }
 }
 
-async function graph(caminho, params = {}, metodo = 'GET') {
+export async function graph(caminho, params = {}, metodo = 'GET') {
   const u = new URL(`https://graph.facebook.com/${versao()}/${caminho}`);
   for (const [k, v] of Object.entries(params)) if (v != null) u.searchParams.set(k, typeof v === 'object' ? JSON.stringify(v) : String(v));
   u.searchParams.set('access_token', token());
@@ -212,6 +212,7 @@ export async function lerStatus() {
 export async function executarFerramentaMeta(nome, entrada = {}) {
   if (nome === 'ler_ordens_de_servico') return (await import('./_reparo.js')).ferramentaOrdens();
   if (nome === 'ler_saas_reparo') return (await import('./_saas.js')).ferramentaSaas();
+  if (nome === 'ler_central_de_conteudo') return (await import('./_conteudo.js')).ferramentaConteudo();
   if (nome === 'ler_metricas_anuncios') return lerAnuncios(entrada);
   if (nome === 'ler_metricas_instagram') return lerInstagram(entrada);
   if (nome === 'ler_posts_instagram') return lerPosts(entrada);

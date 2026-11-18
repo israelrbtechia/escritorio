@@ -931,6 +931,7 @@ function mostrarRotina(r, nova) {
   const titulo = `${nome(r.gestor)} · rotina ${r.origem === 'manual' ? 'manual' : 'automática'} de ${quando}`;
   if (r.status !== 'ok') adicionarChat(r.gestor, { quem: 'aviso', texto: `Rotina de ${quando} falhou: ${r.erro || 'erro desconhecido'}` });
   else adicionarChat(r.gestor, { quem: 'chefe', titulo, texto: r.relatorio || '(sem relatório)', final: true });
+  if (r.status === 'ok' && r.conteudo) adicionarChat(r.gestor, { quem: 'evento', html: true, texto: `📱 <a href="conteudo/" target="_blank" rel="noopener">Abrir na Central de conteúdo</a>` });
   if (nova) cena.reviverRotina(r);
 }
 async function sincronizar(inicial = false) {

@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Central de conteúdo · Prédio RBTech</title>
+  <meta name="theme-color" content="#0f0f0f">
+  <link rel="icon" type="image/png" href="icone-192.png">
+  <link rel="apple-touch-icon" href="icone-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+  <header class="topo">
+    <div class="marca"><img class="marca-logo" src="logo-rbtech.png" alt="RBTech Celulares" width="466" height="324"><span class="marca-nome"><small>Central de conteúdo · times da Helena e da Pamella</small></span></div>
+    <button id="sair" class="botao fantasma pequeno">← Prédio</button>
+  </header>
+
+  <nav class="abas" role="tablist">
+    <button role="tab" data-aba="stories" aria-selected="true">Stories</button>
+    <button role="tab" data-aba="ideias">Ideias</button>
+    <button role="tab" data-aba="prints">Prints</button>
+    <button role="tab" data-aba="reels">Reels</button>
+    <button role="tab" data-aba="config">Configurações</button>
+    <a class="aba-link" href="gestor.html">Gestor →</a>
+  </nav>
+
+  <main>
+    <!-- STORIES -->
+    <section id="aba-stories" class="aba">
+      <div class="barra">
+        <select id="stories-data" aria-label="Dia do roteiro"></select>
+        <button id="stories-gerar" class="botao primario">Gerar agora</button>
+      </div>
+      <p class="suave pequeno-texto">O roteiro de stories é feito todo dia antes das 9h pelo Especialista de crescimento (time da Helena). Gerar agora leva alguns minutos.</p>
+      <div id="stories-conteudo"></div>
+    </section>
+
+    <!-- IDEIAS -->
+    <section id="aba-ideias" class="aba" hidden>
+      <h2>Ideia avulsa</h2>
+      <p class="suave">O Especialista de crescimento pesquisa na internet o que está viralizando agora e cria <strong>1 story, 1 reels e 1 post</strong> para a RBTech.</p>
+      <label>Tema (opcional)
+        <input type="text" id="ideia-tema" maxlength="200" placeholder="Ex.: GTA 6, final da novela, jogo do Brasil…">
+      </label>
+      <button id="ideia-gerar" class="botao primario largo">Gerar ideia</button>
+      <p class="suave pequeno-texto">Em branco, a IA escolhe o assunto do momento. Leva de 1 a 3 minutos.</p>
+      <div class="barra"><select id="ideias-data" aria-label="Ideias anteriores"></select></div>
+      <div id="ideias-conteudo"></div>
+    </section>
+
+    <!-- PRINTS -->
+    <section id="aba-prints" class="aba" hidden>
+      <h2>Prints dos stories das concorrentes</h2>
+      <p class="suave">O Instagram não libera os stories de outras lojas para robôs. Tire prints durante o dia e envie aqui: o roteiro de amanhã cedo vai usar o que elas fizeram.</p>
+      <label class="area-envio">
+        <input id="prints-arquivos" type="file" accept="image/*" multiple>
+        <span><strong>Escolher prints</strong><br><span class="suave">JPG ou PNG, quantos quiser</span></span>
+      </label>
+      <p id="prints-status" class="suave" aria-live="polite"></p>
+      <div id="prints-lista"></div>
+    </section>
+
+    <!-- REELS -->
+    <section id="aba-reels" class="aba" hidden>
+      <div class="barra">
+        <select id="reels-data" aria-label="Semana do relatório"></select>
+        <button id="reels-gerar" class="botao primario">Gerar agora</button>
+      </div>
+      <label class="check"><input type="checkbox" id="reels-enviar"> Também avisar no WhatsApp</label>
+      <p class="suave pequeno-texto">O relatório de reels é feito toda segunda de manhã pelo Roteirista (time da Pamella). Se o WhatsApp estiver configurado na Vercel, ele avisa por lá também.</p>
+      <div id="reels-conteudo"></div>
+    </section>
+
+    <!-- CONFIGURAÇÕES -->
+    <section id="aba-config" class="aba" hidden>
+      <form id="form-config">
+        <h2>Lojas de referência</h2>
+        <label>Um @ por linha. Só funcionam contas comerciais ou de criador.
+          <textarea name="contas" rows="6" spellcheck="false"></textarea>
+        </label>
+        <div class="grade-numeros">
+          <label>Stories por dia <input type="number" name="quantidadeStories" min="5" max="30"></label>
+          <label>Roteiros de reels por semana <input type="number" name="quantidadeRoteiros" min="1" max="10"></label>
+          <label>Dias analisados nos reels <input type="number" name="diasAnalise" min="7" max="90"></label>
+        </div>
+
+        <h2>Estoque da semana</h2>
+        <label>Escreva do jeito que quiser: lista, frase, abreviação. A IA entende. Ela só anuncia o que estiver aqui.
+          <textarea name="estoque" rows="8" placeholder="Exemplo:&#10;13 128 seminovo bateria 89 2899 pix&#10;15 pro 256 lacrado 6499 pix ou 12x&#10;capinhas magsafe 3 por 100&#10;essa semana troca com volta no 11"></textarea>
+        </label>
+
+        <h2>Sobre a loja</h2>
+        <label>O que vende, diferenciais, público, bairro, tom de voz, @ e WhatsApp. Também do jeito que quiser.
+          <textarea name="loja" rows="10" placeholder="Exemplo:&#10;Vendo iPhone novo e seminovo, acessórios e faço assistência.&#10;Garantia de 3 meses nos seminovos, aceito usado na troca, parcelo em 12x.&#10;Público: quem quer iPhone bom pagando menos e tem medo de golpe.&#10;Loja no Centro de Florianópolis. Falo direto, sem enrolar.&#10;@rbtech  WhatsApp (48) 99999-9999"></textarea>
+        </label>
+
+        <h2>Transcrições de reels (opcional)</h2>
+        <label>Link do reel e o texto falado.
+          <textarea name="transcricoes" rows="5" placeholder="Opcional. Cole o link do reel e o que a pessoa fala nele."></textarea>
+        </label>
+
+        <div class="rodape-form">
+          <span id="config-status" class="suave" aria-live="polite"></span>
+          <button type="submit" class="botao primario">Salvar</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div id="aviso" class="aviso" role="status" hidden></div>
+  <script src="comum.js"></script>
+  <script src="painel.js"></script>
+</body>
+</html>

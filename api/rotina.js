@@ -5,18 +5,21 @@
 //   POST /api/rotina?equipe=trafego&executar=1      → botão "rodar agora" do app (exige o código de acesso)
 //
 // Variáveis: CRON_SECRET (a Vercel manda no cabeçalho do cron) e o Redis do Upstash para guardar os relatórios.
-// ECONOMIA: as rotinas automáticas ficam em standby. Para ligar, crie ROTINAS_ATIVAS na Vercel
-// com as equipes separadas por vírgula (ex.: "trafego,loja") ou "todas". O botão "Rodar agora" sempre funciona.
+// ECONOMIA: as reuniões automáticas dos andares ficam em standby. Sem ROTINAS_ATIVAS, só rodam as rotinas de conteúdo
+// (stories do dia e reels da semana, que vieram do antigo agente). Para escolher, crie ROTINAS_ATIVAS na Vercel
+// com as equipes separadas por vírgula (ex.: "stories,reels,trafego") ou "todas". O botão "Rodar agora" sempre funciona.
 import crypto from 'node:crypto';
 import { ROTINAS } from './_equipe.js';
+import { ROTINAS_CONTEUDO, rodarRotinaConteudo } from './_conteudo.js';
 import { responder, codigoOk, reuniaoNoServidor, erroDaApi, NAO_AUTENTICADO } from './_agentes.js';
 import { armazemLigado, salvarRotina, lerRotinas, lerDecisoes, resumoAuditoria } from './_armazem.js';
 
 const DURACAO_MAX_MS = 300_000; // igual ao maxDuration do vercel.json
-const EQUIPES_ROTINA = Object.keys(ROTINAS);
-/** Equipes cuja rotina automática (cron) está ligada. Padrão: nenhuma (standby, sem gastar créditos). */
+const EQUIPES_ROTINA = [...Object.keys(ROTINAS_CONTEUDO), ...Object.keys(ROTINAS)];
+/** Equipes cuja rotina automática (cron) está ligada. Padrão: só stories e reels (as reuniões ficam em standby). */
 function rotinasAtivas() {
-  const v = String(process.env.ROTINAS_ATIVAS || '').toLowerCase().split(/[\s,;]+/).filter(Boolean);
+  if (!String(process.env.ROTINAS_ATIVAS || '').trim()) return Object.keys(ROTINAS_CONTEUDO);
+  const v = String(process.env.ROTINAS_ATIVAS).toLowerCase().split(/[\s,;]+/).filter(Boolean);
   return v.includes('todas') ? EQUIPES_ROTINA : EQUIPES_ROTINA.filter(e => v.includes(e));
 }
 
@@ -46,9 +49,15 @@ export default async function handler(req, res) {
 
   const equipe = req.query?.equipe;
   const rotina = ROTINAS[equipe];
-  if (!rotina) return responder(res, 400, { erro: 'Equipe desconhecida. Use trafego, crescimento, loja ou vendas.' });
+  if (!rotina && !ROTINAS_CONTEUDO[equipe]) return responder(res, 400, { erro: 'Equipe desconhecida. Use stories, reels, trafego, crescimento, loja ou vendas.' });
   // cron de uma equipe em standby: sai na hora, sem chamar a IA
   if (req.method === 'GET' && !rotinasAtivas().includes(equipe)) return responder(res, 200, { standby: true, equipe });
+  // stories do dia e reels da semana: uma chamada só, feita pelo funcionário certo (sem reunião do chefe)
+  if (ROTINAS_CONTEUDO[equipe]) {
+    const origem = req.method === 'GET' ? 'automatica' : 'manual';
+    const { registro, salvo } = await rodarRotinaConteudo(equipe, origem, { whatsapp: origem === 'automatica' && equipe === 'reels' });
+    return responder(res, registro.status === 'ok' ? 200 : 502, { salvo, armazem: armazemLigado(), rotina: registro });
+  }
 
   const data = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'full', timeStyle: 'short' });
   const registro = {

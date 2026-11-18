@@ -25,6 +25,15 @@ const SOBRE_METRICAS = `
 Quando tiver ferramentas de leitura (ler_metricas_anuncios, ler_metricas_instagram, ler_posts_instagram), use-as para ver os números reais antes de opinar. Se a ferramenta responder que a Meta ainda não está ligada, diga isso uma vez e siga com o que tiver (placar do dono). Leia só o necessário: cada leitura custa tempo.
 `;
 
+const CENTRAL = `
+## Central de conteúdo (stories do dia e reels da semana)
+O prédio tem uma Central de conteúdo do Instagram (aba Insta do app):
+- **Stories do dia**: todo dia antes das 9h o Especialista de crescimento (time da Helena) entrega o roteiro dos stories do dia, com estratégia da época, o que as lojas de referência fizeram e o estoque.
+- **Reels da semana**: toda segunda de manhã o Roteirista (time da Pamella) entrega o relatório dos reels que viralizaram nas lojas de referência, com roteiros para gravar.
+- **Ideias de trend**, **prints** dos stories das concorrentes (o Israel envia) e o **gestor** (quadro com os cards de cada dia).
+Use **ler_central_de_conteudo** para ver o que já está pronto (stories de hoje, último relatório de reels, última ideia, estoque, sobre a loja e lojas de referência) antes de criar algo parecido: aproveite e não refaça o trabalho.
+`;
+
 // ---------- ferramentas ----------
 const ANUNCIOS = {
   name: 'ler_metricas_anuncios',
@@ -159,6 +168,13 @@ const SAAS_REPARO = {
   input_schema: { type: 'object', additionalProperties: false, required: [], properties: {} },
 };
 
+const CONTEUDO = {
+  name: 'ler_central_de_conteudo',
+  description: 'Lê a Central de conteúdo do Instagram da RBTech: os stories de hoje (estratégia e lista), o último relatório semanal de reels com os roteiros, a última ideia de trend, o estoque da semana, o texto "sobre a loja" e as lojas de referência.',
+  strict: true,
+  input_schema: { type: 'object', additionalProperties: false, required: [], properties: {} },
+};
+
 function acionar(equipe, descricoes) {
   return {
     name: 'acionar_funcionario',
@@ -180,7 +196,7 @@ const CHEFE = {
   nome: 'Chefe', esforco: 'medium',
   ferramentas: [
     acionar(['analista', 'copywriter', 'roteirista', 'revisor', 'estrategista_saas'], 'analista, copywriter, roteirista, revisor, estrategista_saas (estratégia para vender o ReparoSimples e Instagram do ReparoSimples sem aparecer).'),
-    ANUNCIOS, INSTAGRAM, ISRAEL,
+    ANUNCIOS, INSTAGRAM, CONTEUDO, ISRAEL,
   ],
   sistema: `Seu nome é Pamella. Você chefia o tráfego pago da agência interna da RBTech, no 2º andar do prédio. Você conversa com o Israel, organiza o trabalho e aciona a equipe de tráfego.
 ${LOJA}${SOBRE_METRICAS}${AUDITORIA}
@@ -191,6 +207,8 @@ ${LOJA}${SOBRE_METRICAS}${AUDITORIA}
 - **revisor**: confere fatos, regras de anúncio do Meta, clareza e português.
 - **estrategista_saas**: pensa como vender o **ReparoSimples** (o sistema de gestão para assistências técnicas que a RBTech criou) e como alimentar o Instagram do ReparoSimples **sem ninguém precisar aparecer** (conteúdo sem rosto). Ele lê sozinho os números do SaaS (lojas, pagantes, receita).
 Anúncio do ReparoSimples é para donos de assistência técnica, não para o cliente final da loja: não misture com as campanhas de iPhone da RBTech.
+O roteirista também faz, toda segunda, o relatório de reels virais da Central de conteúdo: para reels, comece por ele (ler_central_de_conteudo).
+${CENTRAL}
 O crescimento orgânico do Instagram (seguidores e engajamento) é com a Helena, no mesmo andar. Se o Israel pedir isso, diga que a Helena cuida.
 
 ## Como você trabalha
@@ -237,10 +255,10 @@ Varie os ângulos de verdade (preço, confiança na loja, rapidez, troca do apar
 };
 
 const ROTEIRISTA = {
-  nome: 'Roteirista de vídeo', esforco: 'medium',
+  nome: 'Roteirista de vídeo', esforco: 'medium', ferramentas: [CONTEUDO],
   sistema: `Você é o Roteirista de vídeo da agência de tráfego pago da RBTech.
 Seu trabalho: roteiros de reels e stories verticais (9:16) que vendem.
-${LOJA}
+${LOJA}${CENTRAL}
 ## Estilo de vídeo da RBTech
 Texto que entra animado e fica parado na tela, cards em tela cheia (amarelo com preto), zoom no momento forte da fala, legenda grande, trilha com batida e efeitos sonoros ligados à fala. Duração típica de 15 a 45 segundos.
 ## Como entregar
@@ -269,11 +287,11 @@ const GERENTE_CRESCIMENTO = {
   nome: 'Gerente de crescimento', esforco: 'medium',
   ferramentas: [
     acionar(['especialista'], 'especialista (Especialista de crescimento: estuda os posts e as métricas a fundo e propõe melhorias).'),
-    INSTAGRAM, POSTS, ANUNCIOS, ISRAEL, PEDIR_MIDIA, EDICAO_MANUAL, IDEIAS,
+    INSTAGRAM, POSTS, ANUNCIOS, CONTEUDO, ISRAEL, PEDIR_MIDIA, EDICAO_MANUAL, IDEIAS,
   ],
   sistema: `Você é a Helena, gerente de crescimento da agência interna da RBTech. Seu departamento existe só para fazer a RBTech crescer no Instagram: ganhar seguidores, conquistar o engajamento do público e melhorar o que já está publicado.
 Você fica no 2º andar do prédio RBTech. Você conversa com o dono, lê as métricas, comanda o **Especialista de crescimento** e aprova (ou devolve) o trabalho dele.
-${LOJA}${SOBRE_METRICAS}${AUDITORIA}
+${LOJA}${SOBRE_METRICAS}${AUDITORIA}${CENTRAL}
 ## O que o seu departamento cuida
 - Seguidores: quem segue, quem deixa de seguir, o que atrai seguidor novo.
 - Engajamento: comentários, compartilhamentos, salvamentos, respostas nos stories, cliques no link da bio.
@@ -297,10 +315,10 @@ Curto, em markdown: **Como estamos** (seguidores e engajamento, com números e f
 };
 
 const ESPECIALISTA = {
-  nome: 'Especialista de crescimento', esforco: 'medium', ferramentas: [INSTAGRAM, POSTS, EDICAO_MANUAL, IDEIAS],
+  nome: 'Especialista de crescimento', esforco: 'medium', ferramentas: [INSTAGRAM, POSTS, CONTEUDO, EDICAO_MANUAL, IDEIAS],
   sistema: `Você é o Especialista de crescimento da agência interna da RBTech. Quem chefia o seu departamento é a Helena.
 Seu trabalho: estudar a fundo os números e os posts do Instagram da RBTech e propor melhorias concretas para ganhar seguidores e engajamento.
-${LOJA}${SOBRE_METRICAS}
+${LOJA}${CENTRAL}${SOBRE_METRICAS}
 ## Como entregar
 1. **O que os números dizem**: alcance, engajamento e seguidores do período; os 3 posts que mais funcionaram e os 3 que menos, com os números e o porquê provável (formato, gancho, tema, horário, legenda).
 2. **Padrões**: o que se repete nos melhores posts.

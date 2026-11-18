@@ -55,11 +55,11 @@ export function lerCorpo(req) {
 // AGENCIA_MODELO_EQUIPE (opcional) troca só o modelo da equipe, sem mexer nos chefes.
 const CHEFES = new Set(Object.keys(EQUIPES));
 const ESFORCOS = ['low', 'medium', 'high', 'xhigh', 'max'];
-const esforcoDe = papel => {
+export const esforcoDe = papel => {
   const env = String(process.env[CHEFES.has(papel) ? 'AGENCIA_ESFORCO_CHEFES' : 'AGENCIA_ESFORCO_EQUIPE'] || '').trim().toLowerCase();
   return ESFORCOS.includes(env) ? env : CHEFES.has(papel) ? 'medium' : 'low';
 };
-const modeloDe = papel => (CHEFES.has(papel) ? '' : process.env.AGENCIA_MODELO_EQUIPE) || process.env.AGENCIA_MODELO || 'claude-opus-5-5';
+export const modeloDe = papel => (CHEFES.has(papel) ? '' : process.env.AGENCIA_MODELO_EQUIPE) || process.env.AGENCIA_MODELO || 'claude-opus-5-5';
 
 /** Uma rodada de conversa de um funcionário. */
 export async function rodada(papel, messages) {

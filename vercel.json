@@ -18,6 +18,9 @@
     },
     "api/saas.js": {
       "maxDuration": 60
+    },
+    "api/conteudo.js": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -44,6 +47,14 @@
     {
       "path": "/api/saas?revisar=1",
       "schedule": "41 23 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=stories&executar=1",
+      "schedule": "3 11 * * *"
+    },
+    {
+      "path": "/api/rotina?equipe=reels&executar=1",
+      "schedule": "13 11 * * 1"
     }
   ],
   "headers": [
