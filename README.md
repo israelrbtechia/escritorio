@@ -85,7 +85,7 @@ Variáveis na Vercel (projeto do prédio):
 |---|---|
 | `REPARO_SUPABASE_URL` | o endereço do Supabase do ReparoSimples (o mesmo do `js/config.js` do REPARORBTECH) |
 | `REPARO_SUPABASE_SERVICE_KEY` | a chave secreta do Supabase (Project Settings → API Keys → secret / service_role). A mesma `SUPABASE_SERVICE_ROLE_KEY` do projeto REPARORBTECH na Vercel |
-| `REPARO_LOJA_ID` | o id da loja RB Tech: com as duas primeiras ligadas, a aba Ajustes do prédio mostra a lista de lojas com os ids |
+| `REPARO_LOJA_ID` | opcional: o prédio acha sozinho a loja com "RB Tech" no nome. Só precisa se houver mais de uma loja com esse nome |
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
 

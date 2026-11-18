@@ -136,16 +136,9 @@ async function sincronizarOs() {
       reparoLigado = true;
       cena.definirOrdensDeServico(r.ordens);
       const n = s => r.ordens.filter(o => o.status === s).length;
-      $('statusReparo').textContent = `✅ Ligado à loja RB Tech · ${r.ordens.length} OS em andamento (${n('analise') + n('peca')} na fila, ${n('servico')} em reparo, ${n('concluido')} prontas). Atualiza a cada 15 s.`;
+      $('statusReparo').textContent = `✅ Ligado à loja “${r.loja || 'RB Tech'}” · ${r.ordens.length} OS em andamento (${n('analise') + n('peca')} na fila, ${n('servico')} em reparo, ${n('concluido')} prontas). Atualiza a cada 15 s.`;
     } else {
-      $('statusReparo').textContent = r.conectavel
-        ? 'Falta escolher a loja: defina REPARO_LOJA_ID na Vercel com o id da RB Tech (veja a lista abaixo).'
-        : 'Não ligado: defina REPARO_SUPABASE_URL, REPARO_SUPABASE_SERVICE_KEY e REPARO_LOJA_ID na Vercel. Enquanto isso o laboratório mostra OS de exemplo.';
-      if (r.conectavel && !$('listaLojasReparo').dataset.ok) {
-        const l = await chamarApi('/api/os?lojas=1', null, 'GET');
-        $('listaLojasReparo').dataset.ok = '1';
-        $('listaLojasReparo').innerHTML = l.lojas.map(x => `<div class="linha-loja"><b>${String(x.nome).replace(/[<>&]/g, '')}</b><code>${x.id}</code></div>`).join('');
-      }
+      $('statusReparo').textContent = 'Não ligado: crie REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY na Vercel. Enquanto isso o laboratório mostra OS de exemplo.';
     }
   } catch (e) {
     $('statusReparo').textContent = `ReparoSimples: ${e.message}`;

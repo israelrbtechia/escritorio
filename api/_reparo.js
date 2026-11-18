@@ -4,13 +4,13 @@
 // Variáveis na Vercel (do projeto do prédio):
 //   REPARO_SUPABASE_URL          endereço do Supabase do ReparoSimples (ex.: https://xxxx.supabase.co)
 //   REPARO_SUPABASE_SERVICE_KEY  chave secreta (service_role ou sb_secret_...) — só no servidor
-//   REPARO_LOJA_ID               id da loja RB Tech na tabela "lojas" (o prédio mostra a lista para você escolher)
+//   REPARO_LOJA_ID               (opcional) id da loja RB Tech; sem ele, o prédio acha sozinho a loja com "RB Tech" no nome
 
 const url = () => String(process.env.REPARO_SUPABASE_URL || '').trim().replace(/\/(rest|auth)\/v1.*$/i, '').replace(/\/+$/, '');
 const chave = () => String(process.env.REPARO_SUPABASE_SERVICE_KEY || '').trim();
 const loja = () => String(process.env.REPARO_LOJA_ID || '').trim();
-export const reparoConfigurado = () => !!(url() && chave() && loja());
 export const reparoConectavel = () => !!(url() && chave());
+export const reparoConfigurado = reparoConectavel;
 
 export class ErroReparo extends Error {}
 
@@ -36,12 +36,25 @@ export async function listarLojas() {
 
 const ATIVOS = ['analise', 'peca', 'servico', 'concluido'];
 
+/** A loja RB Tech: pela variável REPARO_LOJA_ID ou, sem ela, a única loja com "RB Tech" no nome. */
+let lojaAchada = null;
+export async function lojaRbTech() {
+  if (loja()) return { id: loja(), nome: 'RB Tech' };
+  if (lojaAchada) return lojaAchada;
+  const lojas = await listarLojas();
+  const rb = lojas.filter(l => /rb\s*-?\s*tech/i.test(l.nome || ''));
+  if (rb.length === 1) return (lojaAchada = rb[0]);
+  if (!rb.length) throw new ErroReparo('Não achei nenhuma loja com "RB Tech" no nome no ReparoSimples. Defina REPARO_LOJA_ID na Vercel.');
+  throw new ErroReparo(`Achei ${rb.length} lojas com "RB Tech" no nome (${rb.map(l => l.nome).join(', ')}). Defina REPARO_LOJA_ID na Vercel com o id da certa.`);
+}
+
 /** OS em andamento da loja RB Tech (fora da lixeira). */
 export async function lerOrdensAbertas({ detalhes = false } = {}) {
-  if (!reparoConfigurado()) throw new ErroReparo('O ReparoSimples ainda não está ligado (faltam REPARO_SUPABASE_URL, REPARO_SUPABASE_SERVICE_KEY e REPARO_LOJA_ID).');
+  if (!reparoConfigurado()) throw new ErroReparo('O ReparoSimples ainda não está ligado (faltam REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY).');
+  const rb = await lojaRbTech();
   const campos = 'id,atualizado_em,dados';
   const filtro = [
-    `loja_id=eq.${encodeURIComponent(loja())}`,
+    `loja_id=eq.${encodeURIComponent(rb.id)}`,
     'colecao=eq.os',
     `dados->>status=in.(${ATIVOS.join(',')})`,
     'or=(dados->>deleted.is.null,dados->>deleted.eq.false)',
