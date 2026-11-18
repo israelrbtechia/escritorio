@@ -1,6 +1,7 @@
 // Conduz as reuniões do prédio RBTech: cada chefe de andar conversa com o dono, chama a equipe (em paralelo
 // quando dá), lê as métricas da Meta e manda as decisões para a auditoria do Israel, no terraço.
 // O navegador executa as ferramentas; assim o 3D acompanha cada passo.
+import { limparArte } from './arte.js';
 
 export const PESSOAS = {
   // 1º andar · Loja RB TECH
@@ -54,7 +55,7 @@ const CHAVE = { entregas: 'agencia.entregas', decisoes: 'agencia.decisoes', toke
 
 /** Link da página de upload: leva o pedido no próprio endereço (funciona em qualquer aparelho). */
 export function linkUpload(pedido) {
-  const dados = { id: pedido.id, tipo: pedido.tipo, titulo: pedido.titulo, briefing: pedido.briefing, legenda: pedido.legenda, quando_publicar: pedido.quando_publicar, solicitante: pedido.solicitante, quando: pedido.quando };
+  const dados = { id: pedido.id, tipo: pedido.tipo, titulo: pedido.titulo, briefing: pedido.briefing, legenda: pedido.legenda, quando_publicar: pedido.quando_publicar, solicitante: pedido.solicitante, quando: pedido.quando, ...(pedido.arte ? { comArte: true } : {}) };
   const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(dados)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   return `${location.origin}/upload.html?p=${b64}`;
 }
@@ -225,6 +226,23 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
         emitir('pedido', { gestor: ctx.gestor, pedido });
         return { type: 'tool_result', tool_use_id: b.id, content: `Pedido ${pedido.id} criado. O Israel recebeu o link de upload; ele sobe o arquivo, revisa a legenda e aprova a publicação. Não diga que já foi publicado.` };
       }
+      if (b.name === 'criar_arte') {
+        const tipo = ['carrossel', 'post', 'stories', 'reels'].includes(ent.tipo) ? ent.tipo : 'post';
+        const arte = limparArte(ent, tipo);
+        if (!arte.slides.length || ((tipo === 'carrossel' || tipo === 'reels') && arte.slides.length < 2)) return erro('A arte precisa de 1 tela (post e stories) ou de 2 a 10 telas (carrossel e reels).');
+        const pedido = {
+          id: proximo(pedidos, 'P'), tipo, titulo: String(ent.titulo || 'Arte').slice(0, 140), briefing: `Arte criada por ${PESSOAS[papel].nome}: ${arte.slides.length} tela(s)${arte.movimento ? ', animada (vídeo)' : ''}, desenhada pelo app com a logo da RB Tech.`,
+          legenda: String(ent.legenda || '').slice(0, 2200), quando_publicar: String(ent.quando_publicar || '').slice(0, 120),
+          solicitante: papel, quando: Date.now(), status: 'arte_pronta', arte, ensaio: !!ensaio(),
+        };
+        pedidos.push(pedido);
+        salvar();
+        if (!ensaio()) api('/api/instagram', { acao: 'salvar_pedido', pedido }).catch(() => {});
+        // publica sozinho só se o próprio Israel pediu para publicar na mensagem dele (rotinas e pedidos sem "publicar" esperam o toque dele)
+        const publicar = !!ent.publicar_agora && !!ctx.pediuPublicar && !ensaio();
+        emitir('arte', { gestor: ctx.gestor, pedido, publicar });
+        return { type: 'tool_result', tool_use_id: b.id, content: `Arte ${pedido.id} criada (${arte.slides.length} tela(s)). ${publicar ? 'O app começa a publicar em 10 segundos, se o Israel não cancelar. Diga que está publicando; não diga que já foi publicado.' : 'Está no chat para o Israel ver e publicar com um toque. Não diga que já foi publicado.'}` };
+      }
       if (b.name === 'sugerir_edicao_manual') {
         const edicao = { ...ent, id: proximo(edicoes, 'M'), autor: papel, quando: Date.now(), feito: false, ensaio: !!ensaio() };
         edicoes.push(edicao);
@@ -281,7 +299,8 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
     salvar();
     let terminou = false;
     try {
-      const r = await rodar(gestor, msgs, { gestor, persistir: true, canal });
+      const pediuPublicar = /\b(publi\w*|post(a|ar|e|em|ando)\b|poste\w*|sobe\s+no\s+insta|manda\s+pro\s+insta)/i.test(texto);
+      const r = await rodar(gestor, msgs, { gestor, persistir: true, canal, pediuPublicar });
       if (r.limite) emitir('aviso', { gestor, canal, texto: 'Passou do limite de rodadas. Peça para fechar o relatório.' });
       else { emitir('chefeTexto', { gestor, canal, texto: r.texto || '(sem resposta)', final: true }); terminou = true; }
     } catch (e) {
@@ -331,7 +350,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   const esperar = ms => new Promise(r => setTimeout(r, ms));
   const PLANO_ENSAIO = {
     chefe: [['analista'], ['copywriter', 'roteirista'], ['revisor'], ['israel']],
-    gerente_crescimento: [['meta:ler_metricas_instagram', 'especialista'], ['midia'], ['israel']],
+    gerente_crescimento: [['meta:ler_metricas_instagram', 'especialista'], ['arte', 'midia'], ['israel']],
     gerente_loja: [['meta:ler_ordens_de_servico', 'atendimento', 'tecnico'], ['israel']],
     head_vendas: [['sdr', 'produto'], ['closer', 'sucesso'], ['israel']],
   };
@@ -364,6 +383,13 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
             { tipo: 'editar_os', os: '408', mensagem: '', status: '', campos: [{ campo: 'previsao_entrega', valor: '2026-11-22' }] },
           ] : [];
           return { type: 'tool_use', id: id(), name: 'enviar_para_israel', input: { titulo: papel === 'gerente_loja' ? 'Mutirão de avisos das OS prontas (ensaio)' : 'Testar a sugestão da equipe por 7 dias (ensaio)', decisao: 'Aplicar a melhoria principal sugerida pela equipe e medir por 7 dias.', motivo: 'Entregas da equipe nesta reunião (ensaio).', riscos: 'Nenhum dado real ainda: é um ensaio.', urgencia: 'media', entregas: entregas.slice(-2).map(e => e.id), acoes } };
+        }
+        if (item === 'arte') {
+          return { type: 'tool_use', id: id(), name: 'criar_arte', input: { tipo: 'carrossel', titulo: 'Sinais de bateria fraca (ensaio)', legenda: 'Seu iPhone dá algum desses sinais? 🔋 Salva e manda pra quem precisa! Troca de bateria em 1 hora na RB Tech. #iphone #bateria #saojose', quando_publicar: 'quinta às 19h', publicar_agora: false, movimento: false, logo: 'canto_superior_esquerdo', slides: [
+            { layout: 'capa', tema: 'escuro', efeito: 'particulas', emoji: '🔋⚠️', titulo: '4 sinais de que a sua *bateria* pede troca', texto: 'Arraste e confira o seu iPhone.', destaque: 'Ensaio', rodape: '', svg: '' },
+            { layout: 'lista', tema: 'escuro', efeito: 'grade', emoji: '📱', titulo: 'Fique de olho se ele:', texto: 'Desliga com 20%\nEsquenta carregando\nSaúde abaixo de 80%\nDemora para carregar', destaque: '', rodape: '', svg: '' },
+            { layout: 'cta', tema: 'amarelo', efeito: 'vidro', emoji: '⚡', titulo: 'Troca em *1 hora*', texto: 'Chama no WhatsApp ou passa na loja.', destaque: 'Chamar no WhatsApp', rodape: 'Rodovia SC-281, 7955 · Colônia Santana · São José', svg: '' },
+          ] } };
         }
         if (item === 'midia') {
           return { type: 'tool_use', id: id(), name: 'pedir_midia', input: { tipo: 'reels', titulo: 'Unboxing do iPhone 15 na loja (ensaio)', briefing: 'Grave 20 segundos na vertical: a mão abrindo a caixa, o aparelho girando na luz da janela e você dizendo "chegou na RB Tech!". Termine apontando para a câmera.', legenda: 'Chegou na RB Tech 📦✨ Qual cor você levaria? Comenta aqui 👇 e chama no WhatsApp para saber condições. #iphone #florianopolis #rbtech', quando_publicar: 'quinta às 19h (horário de mais alcance nos últimos posts)' } };

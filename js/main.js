@@ -4,6 +4,7 @@ import { criarAgencia, PESSOAS, GESTORES, ler, gravar, linkUpload } from './agen
 import { markdown } from './markdown.js';
 import { abrirRelatorio, baixarRelatorio, gerarHtmlTrabalho, abrirHtml, baixarHtml } from './relatorio.js';
 import { criarVoz } from './voz.js';
+import { miniaturas, tocarAnimacao } from './arte.js';
 
 const $ = id => document.getElementById(id);
 const CHAVE_PLACAR = 'agencia.placar';
@@ -477,6 +478,104 @@ $('btVideo').addEventListener('click', () => modoVideo(true));
 $('btSairVideo').addEventListener('click', () => modoVideo(false));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('modo-video')) modoVideo(false); });
 
+// ---------- artes da Helena: miniaturas no chat e publicação com um toque ----------
+const estadoArte = new Map();   // id → { texto, contagem, publicando }
+const minisArte = new Map();    // id → Promise<dataURL[]>
+const pedidoPorId = id => { try { return agencia.pedidos().find(p => p.id === id); } catch { return undefined; } };
+function cartaoArte(item) {
+  const id = esc(item.pedido);
+  const tipo = NOME_TIPO[item.tipo] || esc(item.tipo);
+  return `<div class="arte-chat" data-arte="${id}">
+    <div class="arte-topo">🎨 <b>${esc(nome(item.autor))}</b> criou a arte <b>${id}</b> · ${tipo} · ${item.telas} tela${item.telas > 1 ? 's' : ''}${item.movimento ? ' · 🎬 animada' : ''}</div>
+    <div class="arte-titulo">${esc(item.titulo || '')}</div>
+    <div class="arte-minis" data-arte-minis="${id}"></div>
+    <div class="arte-acoes" data-arte-acoes="${id}"></div>
+    <small class="arte-status" data-arte-status="${id}"></small>
+  </div>`;
+}
+function marcarPedidoLocal(id, dados) {
+  const lista = ler('agencia.pedidos', []);
+  const i = lista.findIndex(x => x.id === id);
+  if (i >= 0) { lista[i] = { ...lista[i], ...dados }; gravar('agencia.pedidos', lista); }
+  agencia.recarregarLocal();
+}
+let preenchendoArtes = false;
+function preencherArtes() {
+  if (preenchendoArtes) return;
+  try { agencia.pedidos(); } catch { return; } // o app ainda está abrindo
+  preenchendoArtes = true;
+  try {
+    for (const el of $('chat').querySelectorAll('[data-arte]')) {
+      const id = el.dataset.arte, p = pedidoPorId(id);
+      const minis = el.querySelector('[data-arte-minis]'), acoes = el.querySelector('[data-arte-acoes]'), status = el.querySelector('[data-arte-status]');
+      if (!p?.arte) { if (status.textContent !== 'Arte não encontrada neste aparelho.') status.textContent = 'Arte não encontrada neste aparelho.'; continue; }
+      if (!minis.dataset.ok) {
+        minis.dataset.ok = '1';
+        if (!minisArte.has(id)) minisArte.set(id, miniaturas(p.arte, p.tipo, 216).catch(() => []));
+        minisArte.get(id).then(urls => { minis.innerHTML = urls.map((u, i) => `<img src="${u}" alt="Tela ${i + 1}" loading="lazy">`).join(''); });
+      }
+      const st = estadoArte.get(id);
+      let html;
+      if (p.status === 'publicado') html = p.permalink ? `<a class="bt-link" href="${esc(p.permalink)}" target="_blank" rel="noopener">✅ Publicado · ver no Instagram</a>` : '<span class="selo selo-aprovada">PUBLICADO</span>';
+      else if (st?.contagem) html = `<button type="button" class="bt-sec" data-cancelar-arte="${esc(id)}">✕ Cancelar (publica em ${st.contagem} s)</button>`;
+      else if (st?.publicando) html = '<button type="button" disabled>Publicando…</button>';
+      else html = `<button type="button" data-publicar-arte="${esc(id)}">✅ Publicar no Instagram</button>${p.arte.movimento ? `<button type="button" class="bt-sec" data-ver-animacao="${esc(id)}">▶ Ver animação</button>` : ''}<a class="bt-link" href="${esc(linkUpload(p))}" target="_blank" rel="noopener">Ver em tamanho real</a>`;
+      if (acoes.dataset.html !== html) { acoes.dataset.html = html; acoes.innerHTML = html; }
+      const texto = st?.texto || '';
+      if (status.textContent !== texto) status.textContent = texto;
+    }
+  } finally { preenchendoArtes = false; }
+}
+new MutationObserver(() => requestAnimationFrame(preencherArtes)).observe($('chat'), { childList: true, subtree: true });
+function atualizarArte(id, dados) { estadoArte.set(id, { ...(estadoArte.get(id) || {}), ...dados }); preencherArtes(); }
+/** Você pediu para publicar: 10 segundos para cancelar e o app publica sozinho. */
+function contagemParaPublicar(id) {
+  atualizarArte(id, { contagem: 10, texto: 'Você pediu para publicar: vai para o Instagram em 10 segundos.' });
+  const t = setInterval(() => {
+    const st = estadoArte.get(id);
+    if (!st?.contagem) { clearInterval(t); return; }
+    if (st.contagem <= 1) { clearInterval(t); atualizarArte(id, { contagem: 0 }); publicarArteAgora(id); return; }
+    atualizarArte(id, { contagem: st.contagem - 1 });
+  }, 1000);
+}
+/** Prévia da animação em tela cheia (toque para fechar). */
+async function verAnimacao(id) {
+  const p = pedidoPorId(id);
+  if (!p?.arte) return;
+  const fundo = document.createElement('div');
+  fundo.className = 'previa-animacao';
+  fundo.innerHTML = '<canvas></canvas><button type="button" class="bt-sec">✕ Fechar</button>';
+  document.body.appendChild(fundo);
+  const parar = await tocarAnimacao(p.arte, p.tipo, fundo.querySelector('canvas'));
+  fundo.addEventListener('click', () => { parar(); fundo.remove(); });
+}
+async function publicarArteAgora(id) {
+  const p = pedidoPorId(id);
+  if (!p || estadoArte.get(id)?.publicando || p.status === 'publicado') return;
+  if (semServidor) { atualizarArte(id, { texto: 'Prévia sem servidor: a publicação só funciona no site publicado na Vercel.' }); return; }
+  if (p.ensaio) { atualizarArte(id, { texto: 'Arte de ensaio: no modo ensaio nada vai para o Instagram.' }); return; }
+  atualizarArte(id, { publicando: true, texto: 'Começando…' });
+  try {
+    const { publicarArte } = await import('./publicador.js');
+    const r = await publicarArte(p, { token: ler('agencia.token', ''), aoPasso: texto => atualizarArte(id, { texto }) });
+    marcarPedidoLocal(id, { status: 'publicado', permalink: r.permalink || null, publicadoEm: Date.now() });
+    atualizarArte(id, { publicando: false, texto: '🎉 Publicado no Instagram!' });
+    adicionarChat(p.solicitante === 'especialista' ? 'gerente_crescimento' : (GESTORES[p.solicitante] ? p.solicitante : 'gerente_crescimento'), { quem: 'evento', html: true, texto: `🎉 Arte <b>${esc(id)}</b> publicada no Instagram${r.permalink ? ` · <a href="${esc(r.permalink)}" target="_blank" rel="noopener">ver o post</a>` : ''}` });
+    cena.comemorar('gerente_crescimento');
+  } catch (e) {
+    atualizarArte(id, { publicando: false, texto: `Não publicou: ${e.message}` });
+  }
+  desenharInstagram();
+}
+$('chat').addEventListener('click', ev => {
+  const pub = ev.target.closest('[data-publicar-arte]');
+  if (pub) { if (confirm('Publicar esta arte agora no Instagram da RBTech?')) publicarArteAgora(pub.dataset.publicarArte); return; }
+  const ver = ev.target.closest('[data-ver-animacao]');
+  if (ver) { verAnimacao(ver.dataset.verAnimacao); return; }
+  const can = ev.target.closest('[data-cancelar-arte]');
+  if (can) atualizarArte(can.dataset.cancelarArte, { contagem: 0, texto: 'Publicação cancelada. A arte continua aqui: publique quando quiser.' });
+});
+
 // ---------- modo jogo: dirigir até a loja, estacionar, entrar, conversar e brincar com Peter e Bibi ----------
 let autoCamAntesDoJogo = true;
 async function modoJogo(ligar) {
@@ -656,6 +755,8 @@ function elementoMsg(item, gestor, { ultima = true } = {}) {
     const aberta = abertas.has(chave);
     el.classList.add('voce-longa');
     el.innerHTML = `<div class="${aberta ? '' : 'texto-cortado'}">${esc(item.texto)}</div><button type="button" class="bt-recolher escuro" data-alternar="${esc(chave)}">${aberta ? 'recolher ▴' : 'ver tudo ▾'}</button>`;
+  } else if (item.quem === 'arte') {
+    el.innerHTML = cartaoArte(item);
   } else if (item.html) el.innerHTML = item.texto;
   else el.textContent = item.texto;
   return el;
@@ -785,7 +886,7 @@ function desenharEntregas() {
 const esc = t => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const opcoesRelatorio = e => ({ autor: e.papel === 'gerente_crescimento' ? 'Helena · gerente de crescimento' : `${nome(e.papel)} · time da Helena`, usuario: metaStatus?.instagram?.usuario || '' });
 const NOME_TIPO = { reels: '🎬 Reels', post: '🖼️ Post', carrossel: '🗂️ Carrossel', stories: '⏱️ Stories' };
-const STATUS_PEDIDO = { aguardando_midia: ['AGUARDANDO SEU ARQUIVO', 'pendente'], midia_recebida: ['ARQUIVO RECEBIDO', 'pendente'], processando: ['META PROCESSANDO', 'pendente'], publicado: ['PUBLICADO', 'aprovada'] };
+const STATUS_PEDIDO = { arte_pronta: ['ARTE PRONTA', 'pendente'], aguardando_midia: ['AGUARDANDO SEU ARQUIVO', 'pendente'], midia_recebida: ['ARQUIVO RECEBIDO', 'pendente'], processando: ['META PROCESSANDO', 'pendente'], publicado: ['PUBLICADO', 'aprovada'] };
 const ONDE = { bio: 'Bio do perfil', link_bio: 'Link da bio', legenda: 'Legenda de post', destaques: 'Destaques', fixado: 'Post fixado', capa: 'Capa de reels', outro: 'Outro' };
 function desenharInstagram() {
   agencia.recarregarLocal();
@@ -807,7 +908,7 @@ function desenharInstagram() {
       <div class="entrega-texto"><p>${esc(p.briefing).replace(/\n/g, '<br>')}</p>${p.quando_publicar ? `<p><b>Quando:</b> ${esc(p.quando_publicar)}</p>` : ''}</div>
       <div class="entrega-acoes">${p.status === 'publicado'
         ? (p.permalink ? `<a class="bt-link" href="${esc(p.permalink)}" target="_blank" rel="noopener">Ver no Instagram</a>` : '')
-        : `<a class="bt-link primario" href="${esc(linkUpload(p))}" target="_blank" rel="noopener">⬆️ Abrir página de upload</a><button type="button" class="bt-sec">Copiar link</button>`}</div>`;
+        : `<a class="bt-link primario" href="${esc(linkUpload(p))}" target="_blank" rel="noopener">${p.arte ? '🎨 Ver e publicar a arte' : '⬆️ Abrir página de upload'}</a><button type="button" class="bt-sec">Copiar link</button>`}</div>`;
     card.querySelector('button')?.addEventListener('click', async ev => {
       try { await navigator.clipboard.writeText(linkUpload(p)); ev.target.textContent = 'Copiado ✓'; } catch { ev.target.textContent = 'Não deu para copiar'; }
     });
@@ -1064,6 +1165,11 @@ const agencia = criarAgencia({
         cena.fala(ev.pedido.solicitante, `📎 pedi um ${ev.pedido.tipo} pro Israel`);
         adicionarChat(g, { quem: 'evento', html: true, texto: `📎 ${esc(nome(ev.pedido.solicitante))} pediu um <b>${esc(NOME_TIPO[ev.pedido.tipo] || ev.pedido.tipo)}</b>: “${esc(ev.pedido.titulo)}” · <a href="${esc(linkUpload(ev.pedido))}" target="_blank" rel="noopener">abrir página de upload</a>` });
         desenharInstagram();
+        break;
+      case 'arte':
+        adicionarChat(g, { quem: 'arte', pedido: ev.pedido.id, autor: ev.pedido.solicitante, tipo: ev.pedido.tipo, telas: ev.pedido.arte.slides.length, titulo: ev.pedido.titulo, movimento: !!ev.pedido.arte.movimento });
+        desenharInstagram();
+        if (ev.publicar) contagemParaPublicar(ev.pedido.id);
         break;
       case 'edicao':
         adicionarChat(g, { quem: 'evento', html: true, texto: `✍️ Card para aplicar à mão no Instagram: <b>${esc(ONDE[ev.edicao.onde] || ev.edicao.onde)}</b> (aba Instagram)` });

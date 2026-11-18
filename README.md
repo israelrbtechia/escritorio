@@ -155,6 +155,14 @@ O token é uma senha que você mesmo cria. O ReparoSimples só aceita pedidos do
 
 Com o RB Central ligado, a leitura das OS da equipe também passa a trazer valor, previsão, técnico e nome do cliente (nunca o telefone).
 
+## 🎨 Artes da Helena (post, carrossel, stories e reels animado)
+Peça para a Helena no chat: "cria um carrossel sobre troca de bateria", "faz um reels animado da promoção" ou "cria e publica um post do iPhone 15".
+- **Quem desenha:** a Helena (Claude) escreve o conteúdo e escolhe, tela por tela, o layout (capa, lista, número, frase, comparativo, chamada ou ilustração), o tema (preto, amarelo ou claro), o efeito visual (brilho, grade tech, partículas, vidro, neon) e até 3 emojis grandes. O app desenha no seu navegador, no padrão da RB Tech, com a logo **RB Tech Celulares** (a mesma do ReparoSimples, em `img/logo-rbtech.jpg`) em todas as telas.
+- **Formatos:** post e carrossel em JPG 1080×1350; stories em 1080×1920. Reels e stories animados viram **vídeo MP4**: o texto entra deslizando, os emojis estalam, o fundo se mexe e as telas trocam com uma passagem amarela. O vídeo é gravado no próprio aparelho (Chrome ou Safari atualizados), em tempo real: não troque de tela enquanto grava.
+- **No chat:** a arte aparece com as miniaturas e os botões **✅ Publicar no Instagram**, **▶ Ver animação** e **Ver em tamanho real**.
+- **Publicar:** um toque em "Publicar" já publica (o app sobe as imagens ou o vídeo para o Blob e publica pela API oficial). Se na sua mensagem você pediu para publicar ("cria e publica…"), o app conta 10 segundos, com botão para cancelar, e publica sozinho. Nas rotinas automáticas a arte fica pronta, mas nada é publicado sem o seu toque.
+- **Precisa:** Instagram ligado (`META_ACCESS_TOKEN` e `META_IG_USER_ID`) e o Blob da Vercel conectado ao projeto.
+
 ## 🎮 Modo jogo
 Botão **🎮 Jogar** no topo. Você vira um boneco jogável (o Israel) e começa de carro na SC-281, 140 m antes da loja, no meio do trânsito.
 - **Dirigir:** WASD ou setas (no celular, o joystick). Espaço é o freio de mão. Os carros da rodovia andam nas duas mãos e freiam para você.

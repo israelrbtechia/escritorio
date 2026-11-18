@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { PAPEIS, EQUIPES } from './_equipe.js';
 import { executarFerramentaMeta } from './_meta.js';
 import { limparAcoes } from './_central.js';
+import { limparArte } from '../js/arte.js';
 import { salvarDecisao, salvarItem } from './_armazem.js';
 
 const client = new Anthropic();
@@ -177,6 +178,17 @@ export async function reuniaoNoServidor(gestor, pedido, { prazo, idRotina }) {
         try { await salvarItem('pedidos', pedido); } catch { /* fica no registro da rotina */ }
         passo(papel, `pediu ${pedido.tipo} ao Israel (${pedido.id})`);
         return { type: 'tool_result', tool_use_id: b.id, content: `Pedido ${pedido.id} criado. O Israel vai receber o link de upload ao abrir o app; só depois da aprovação dele o conteúdo é publicado.` };
+      }
+      if (b.name === 'criar_arte') { // na rotina a arte fica pronta, mas só o Israel publica (pelo app)
+        registro.pedidos = registro.pedidos || [];
+        const tipo = ['carrossel', 'post', 'stories', 'reels'].includes(b.input?.tipo) ? b.input.tipo : 'post';
+        const arte = limparArte(b.input, tipo);
+        if (!arte.slides.length || ((tipo === 'carrossel' || tipo === 'reels') && arte.slides.length < 2)) return { type: 'tool_result', tool_use_id: b.id, is_error: true, content: 'A arte precisa de 1 tela (post e stories) ou de 2 a 10 (carrossel e reels).' };
+        const pedido = { tipo, titulo: b.input.titulo, briefing: `Arte criada por ${PAPEIS[papel].nome}: ${arte.slides.length} tela(s)${arte.movimento ? ', animada (vídeo)' : ''}.`, legenda: b.input.legenda, quando_publicar: b.input.quando_publicar, arte, id: `${idRotina}-P${registro.pedidos.length + 1}`, solicitante: papel, quando: Date.now(), status: 'arte_pronta', origem: 'rotina' };
+        registro.pedidos.push(pedido);
+        try { await salvarItem('pedidos', pedido); } catch { /* fica no registro da rotina */ }
+        passo(papel, `criou a arte ${pedido.id} (${tipo})`);
+        return { type: 'tool_result', tool_use_id: b.id, content: `Arte ${pedido.id} criada (${arte.slides.length} tela(s)). Fica no app para o Israel ver e publicar; numa rotina nada é publicado sozinho.` };
       }
       if (b.name === 'sugerir_edicao_manual') {
         registro.edicoes = registro.edicoes || [];

@@ -7,6 +7,7 @@
 import { responder, responderDemorado, autenticado, lerCorpo, NAO_AUTENTICADO } from './_agentes.js';
 import { armazemLigado, salvarItem, lerItem, lerItens } from './_armazem.js';
 import { publicarNoInstagram, ErroMeta } from './_meta.js';
+import { limparArte } from '../js/arte.js';
 
 const TIPOS = ['reels', 'post', 'carrossel', 'stories'];
 const texto = (v, max) => String(v ?? '').slice(0, max);
@@ -16,6 +17,8 @@ function limparPedido(p) {
     id: texto(p.id, 40), tipo: TIPOS.includes(p.tipo) ? p.tipo : 'post', titulo: texto(p.titulo, 140), briefing: texto(p.briefing, 3000),
     legenda: texto(p.legenda, 2200), quando_publicar: texto(p.quando_publicar, 120), solicitante: texto(p.solicitante, 40),
     quando: Number(p.quando) || Date.now(), status: texto(p.status || 'aguardando_midia', 30),
+    // arte desenhada pelo app (criar_arte da Helena): o navegador gera os JPGs na hora de publicar
+    ...(p.arte?.slides?.length ? { arte: limparArte(p.arte, TIPOS.includes(p.tipo) ? p.tipo : 'post') } : {}),
   };
 }
 
@@ -32,7 +35,7 @@ export default async function handler(req, res) {
 
     if (c.acao === 'salvar_pedido' && c.pedido?.id) {
       const atual = await lerItem('pedidos', texto(c.pedido.id, 40));
-      const pedido = { ...limparPedido(c.pedido), ...(atual ? { status: atual.status, midias: atual.midias, permalink: atual.permalink } : {}) };
+      const pedido = { ...limparPedido(c.pedido), ...(atual ? { status: atual.status, midias: atual.midias, permalink: atual.permalink, ...(atual.arte && !c.pedido.arte ? { arte: atual.arte } : {}) } : {}) };
       await salvarItem('pedidos', pedido);
       return responder(res, 200, { ok: true, pedido });
     }

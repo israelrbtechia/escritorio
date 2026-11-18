@@ -2,6 +2,7 @@
 // O arquivo vai direto do navegador para o Blob da Vercel (vídeos grandes não passam pelo servidor);
 // depois o servidor pede à Meta para publicar a partir desse endereço.
 import { upload } from 'https://cdn.jsdelivr.net/npm/@vercel/blob@2.8.2/client/+esm';
+import { gerarImagens, gravarVideo, tocarAnimacao } from './arte.js';
 
 const $ = id => document.getElementById(id);
 const ler = (k, p) => { try { const v = localStorage.getItem(k); return v == null ? p : JSON.parse(v); } catch { return p; } };
@@ -198,6 +199,36 @@ async function publicar(tentativa = 1) {
   }
 }
 
+// ---------- arte criada pela Helena: o próprio navegador gera as imagens (ou o vídeo animado) ----------
+async function carregarArte() {
+  let p = ler('agencia.pedidos', []).find(x => x.id === pedido.id && x.arte);
+  if (!p && !semServidor) {
+    try { const r = await fetch('/api/instagram', { headers: cabecalhos() }); const d = await r.json(); p = (d.pedidos || []).find(x => x.id === pedido.id && x.arte); } catch { /* sem servidor */ }
+  }
+  return p?.arte || null;
+}
+async function prepararArte() {
+  const arte = await carregarArte();
+  if (!arte) { avisar('Não achei a arte neste aparelho nem no servidor. Abra pelo chat da Helena no prédio.', 'erro'); return; }
+  $('pBriefingTitulo').textContent = 'A arte';
+  $('zonaTexto').textContent = 'A arte já está pronta logo abaixo. Se quiser, troque por outro arquivo.';
+  try {
+    if (arte.movimento) {
+      $('arteViva').hidden = false;
+      tocarAnimacao(arte, pedido.tipo, $('arteViva').querySelector('canvas'));
+      const video = await gravarVideo(arte, pedido.tipo, { aoProgresso: k => { $('statusUp').textContent = `🎬 Gravando o vídeo da animação: ${Math.round(k * 100)}% (não troque de tela)`; } });
+      await escolher([new File([video], `${pedido.id}.mp4`, { type: 'video/mp4' })]);
+    } else {
+      $('statusUp').textContent = '🎨 Desenhando as imagens…';
+      const imagens = await gerarImagens(arte, pedido.tipo);
+      await escolher(imagens.map((b, i) => new File([b], `${pedido.id}-${i + 1}.jpg`, { type: 'image/jpeg' })));
+    }
+    $('statusUp').textContent = '✅ Arte pronta. Toque em “Subir arquivo” e depois em “Aprovar e publicar”.';
+  } catch (e) {
+    avisar(`Não deu para preparar a arte: ${e.message}`, 'erro');
+  }
+}
+
 // ---------- início ----------
 if (!pedido) {
   avisar('Link de upload inválido. Abra o link que a Helena deixou no chat do prédio.', 'erro');
@@ -229,4 +260,5 @@ if (!pedido) {
   $('btPublicar').addEventListener('click', () => publicar(1));
   await conferirLogin();
   if (semServidor) avisar('Prévia sem servidor: dá para ver a página, mas o upload e a publicação só funcionam no site publicado na Vercel.', 'info');
+  if (pedido.comArte) prepararArte();
 }

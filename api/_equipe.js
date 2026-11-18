@@ -134,6 +134,40 @@ const PEDIR_MIDIA = {
     },
   },
 };
+const CRIAR_ARTE = {
+  name: 'criar_arte',
+  description: 'Cria a arte de um post, carrossel, stories ou reels da RBTech. Você escreve o conteúdo e escolhe layout, tema, efeito visual e emojis de cada tela; o app desenha no padrão da marca (preto, amarelo #FFD60A, fonte Poppins e a logo RB Tech Celulares em todas as telas): JPG 1080×1350 no feed e 1080×1920 no stories. Reels (e stories com movimento) viram vídeo MP4 animado: o texto entra deslizando, os emojis estalam, o fundo se mexe e as telas trocam com uma passagem amarela. O Israel vê a arte no chat e publica com um toque. Se na mensagem dele o Israel pediu para publicar, marque publicar_agora: o app publica sozinho, com 10 segundos para ele cancelar. Devolve o código do pedido (P1, P2...).',
+  strict: true,
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['tipo', 'titulo', 'legenda', 'quando_publicar', 'publicar_agora', 'movimento', 'logo', 'slides'],
+    properties: {
+      tipo: { type: 'string', enum: ['carrossel', 'post', 'stories', 'reels'], description: 'carrossel e post: imagens no feed. stories: 1 tela parada, ou até 3 animadas com movimento. reels: vídeo animado de 2 a 10 telas (cerca de 3 s cada).' },
+      movimento: { type: 'boolean', description: 'Stories animado (vídeo). Reels é sempre animado; carrossel e post são sempre imagem parada.' },
+      titulo: { type: 'string', description: 'Nome curto do conteúdo (até 70 caracteres), para o Israel achar depois.' },
+      legenda: { type: 'string', description: 'Legenda pronta para publicar (gancho, chamada para o WhatsApp ou a loja, hashtags). Vazia para stories.' },
+      quando_publicar: { type: 'string', description: 'Melhor dia e horário, com o motivo. Se for publicar agora, escreva "agora".' },
+      publicar_agora: { type: 'boolean', description: 'true só se o Israel pediu, na mensagem dele, para publicar (ex.: "cria e posta", "publica"). Em qualquer outro caso, false.' },
+      logo: { type: 'string', enum: ['canto_superior_esquerdo', 'canto_superior_direito', 'canto_inferior_esquerdo', 'canto_inferior_direito', 'nenhum'], description: 'Onde fica a logo RB Tech Celulares em todas as telas. O normal é canto_superior_esquerdo.' },
+      slides: {
+        type: 'array', description: 'As telas, na ordem. Post: 1 tela. Stories: 1 (ou até 3 com movimento). Carrossel: de 2 a 10 (o ideal são 5 a 7). Reels: de 2 a 10 (o ideal são 4 a 7).',
+        items: {
+          type: 'object', additionalProperties: false, required: ['layout', 'tema', 'efeito', 'emoji', 'titulo', 'texto', 'destaque', 'rodape', 'svg'],
+          properties: {
+            layout: { type: 'string', enum: ['capa', 'lista', 'numero', 'frase', 'comparativo', 'cta', 'ilustracao'], description: 'capa: etiqueta (destaque) + título grande + texto. lista: título + itens (um por linha em texto, até 6). numero: título + número enorme (destaque, ex.: "R$ 189" ou "1 hora") + texto. frase: citação grande (titulo) + autor (texto). comparativo: título + 2 colunas (destaque "Coluna A | Coluna B"; texto com uma linha por item "a | b", até 6). cta: título + texto + botão (destaque, ex.: "Chamar no WhatsApp"). ilustracao: título + desenho em svg + texto curto.' },
+            tema: { type: 'string', enum: ['escuro', 'amarelo', 'claro'], description: 'escuro (preto com amarelo, o padrão), amarelo (fundo amarelo, ótimo para número e chamada) ou claro.' },
+            efeito: { type: 'string', enum: ['brilho', 'grade', 'particulas', 'vidro', 'neon', 'liso'], description: 'Visual do fundo: brilho (luz dourada e linhas de velocidade, o padrão), grade (piso tech em perspectiva), particulas (faíscas subindo), vidro (cartão de vidro sobre luzes), neon (moldura neon e linhas de tela) ou liso. No vídeo, todos se mexem.' },
+            emoji: { type: 'string', description: 'De 0 a 3 emojis que aparecem grandes, como figurinhas com sombra (ex.: "🔋⚡" ou "📱🔥"). Escolha os que reforçam a mensagem; vazio se não combinar. Emojis também podem ir no meio do título e do texto.' },
+            titulo: { type: 'string', description: 'Frase principal, curta (até ~12 palavras). Palavras entre *asteriscos* saem em destaque.' },
+            texto: { type: 'string', description: 'Texto de apoio curto (até ~25 palavras), ou os itens da lista e do comparativo, um por linha. Vazio se não precisar.' },
+            destaque: { type: 'string', description: 'Etiqueta da capa, número do layout numero, cabeçalho "A | B" do comparativo ou texto do botão do cta. Vazio nos outros.' },
+            rodape: { type: 'string', description: 'Linha pequena no pé da tela (ex.: endereço ou @). Normalmente só na última tela; vazio nas outras.' },
+            svg: { type: 'string', description: 'Só no layout ilustracao: um desenho simples em SVG (<svg viewBox="0 0 400 500">…</svg>), com formas (aparelho, bateria, tela, ícones), cores da marca (#0B0B0B, #FFD60A, #FFFFFF) e sem texto, sem fotos e sem links. Vazio nos outros layouts.' },
+          },
+        },
+      },
+    },
+  },
+};
 const EDICAO_MANUAL = {
   name: 'sugerir_edicao_manual',
   description: 'Registra uma edição que precisa ser feita à mão no app do Instagram, porque a API não permite (bio, link da bio, legenda de post já publicado, destaques, post fixado, capa de reels). Vira um card para o Israel copiar e aplicar.',
@@ -342,7 +376,7 @@ const GERENTE_CRESCIMENTO = {
   nome: 'Gerente de crescimento', esforco: 'medium',
   ferramentas: [
     acionar(['especialista'], 'especialista (Especialista de crescimento: estuda os posts e as métricas a fundo e propõe melhorias).'),
-    INSTAGRAM, POSTS, ANUNCIOS, CONTEUDO, ISRAEL, PEDIR_MIDIA, EDICAO_MANUAL, IDEIAS,
+    INSTAGRAM, POSTS, ANUNCIOS, CONTEUDO, ISRAEL, CRIAR_ARTE, PEDIR_MIDIA, EDICAO_MANUAL, IDEIAS,
   ],
   sistema: `Você é a Helena, gerente de crescimento da agência interna da RBTech. Seu departamento existe só para fazer a RBTech crescer no Instagram: ganhar seguidores, conquistar o engajamento do público e melhorar o que já está publicado.
 Você fica no 2º andar do prédio RBTech. Você conversa com o dono, lê as métricas, comanda o **Especialista de crescimento** e aprova (ou devolve) o trabalho dele.
@@ -361,6 +395,14 @@ ${LOJA}${SOBRE_METRICAS}${AUDITORIA}${CENTRAL}
 - Toda sugestão precisa vir com: o que fazer, por quê (qual número sustenta) e como medir na semana seguinte.
 
 ## Ferramentas do Instagram
+- **criar_arte**: quando o Israel pedir uma arte, um post, uma imagem, um carrossel, um stories ou um reels animado (ou quando o plano pedir um conteúdo que dá para fazer só com design, sem foto ou vídeo), crie você mesma. O app desenha no padrão da RB Tech, com a logo em todas as telas, e anima reels e stories. Faça o mais completo possível:
+  - Combine os recursos visuais: alterne os efeitos (grade e partículas dão cara de tecnologia, vidro e neon dão cara premium) e use 1 a 3 emojis por tela (figurinhas grandes), sempre ligados ao assunto.
+  - Para movimento (reels ou stories animado), 4 a 7 telas curtas: gancho na 1ª, uma ideia por tela, chamada na última.
+  - Capa com gancho forte (uma promessa, um número ou uma pergunta) e a palavra-chave entre *asteriscos*.
+  - Uma ideia por tela, frases curtas, nada de parágrafo. Varie os layouts e alterne o tema escuro com o amarelo.
+  - Última tela do carrossel: layout cta com o botão (ex.: "Chamar no WhatsApp") e o endereço no rodapé (Rodovia SC-281, 7955 · Colônia Santana · São José).
+  - Preço, prazo e garantia só com o que o Israel informou ou o que está no sistema; nunca invente.
+  - Marque publicar_agora só quando o Israel pediu para publicar na mensagem dele. Depois diga "está publicando" (ou "a arte está no chat para você publicar"), nunca "publiquei".
 - **pedir_midia**: quando um conteúdo novo estiver aprovado no plano e precisar do vídeo ou da foto do Israel, peça com briefing claro e a legenda pronta. O Israel sobe o arquivo pelo link e aprova; o app publica pela API oficial. Nunca diga que já publicou.
 - **sugerir_edicao_manual**: para o que a API não deixa mudar (bio, link da bio, legenda de post antigo, destaques, fixado, capa). Uma chamada por edição, com o texto exato.
 - **entregar_ideias**: quando você mesma entregar ideias (sem o especialista), use para o relatório organizado. As ideias do especialista já vêm organizadas.

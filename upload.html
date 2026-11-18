@@ -8,7 +8,7 @@
   <meta name="theme-color" content="#0f0f0f">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Noto+Color+Emoji&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/estilo.css">
   <style>
     body.pagina-upload { display: block; overflow: auto; min-height: 100%; }
@@ -39,6 +39,10 @@
     .aviso-up { padding: 10px 12px; border-radius: 10px; font-size: 14px; }
     .aviso-up.ok { background: #123a24; color: #b8f5d0; } .aviso-up.erro { background: #3a1616; color: #ffb3b3; } .aviso-up.info { background: #33300f; color: #ffe98a; }
     .aviso-up a { color: inherit; font-weight: 700; }
+    .arte-viva { margin-top: 12px; max-width: 320px; }
+    .arte-viva canvas { width: 100%; border-radius: 12px; display: block; background: #000; }
+    .arte-viva small { color: var(--texto-2); font-size: 12px; }
+    .previas img { object-fit: contain; }
   </style>
 </head>
 <body class="pagina-upload">
@@ -49,8 +53,9 @@
       <div class="rotulos"><span class="rotulo amarelo" id="pTipo"></span><span class="rotulo" id="pCodigo"></span><span class="rotulo" id="pQuem"></span></div>
       <h1 id="pTitulo"></h1>
       <p class="dica" id="pQuando"></p>
-      <h2 style="margin-top:14px">O que gravar ou criar</h2>
+      <h2 style="margin-top:14px" id="pBriefingTitulo">O que gravar ou criar</h2>
       <p class="briefing" id="pBriefing"></p>
+      <div class="arte-viva" id="arteViva" hidden><canvas></canvas><small>Prévia da animação</small></div>
     </section>
 
     <section class="cartao" id="cartaoArquivo" hidden>
