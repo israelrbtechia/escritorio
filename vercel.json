@@ -27,6 +27,9 @@
     },
     "api/decisoes.js": {
       "maxDuration": 300
+    },
+    "api/imagem.js": {
+      "maxDuration": 180
     }
   },
   "crons": [

@@ -230,6 +230,20 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
         const tipo = ['carrossel', 'post', 'stories', 'reels'].includes(ent.tipo) ? ent.tipo : 'post';
         const arte = limparArte(ent, tipo);
         if (!arte.slides.length || ((tipo === 'carrossel' || tipo === 'reels') && arte.slides.length < 2)) return erro('A arte precisa de 1 tela (post e stories) ou de 2 a 10 telas (carrossel e reels).');
+        // imagens de destaque: geradas recortadas (gerador da OpenAI, se estiver ligado na Vercel); senão entra o iPhone 3D do app
+        let notaImagens = '';
+        const pedidas = arte.slides.filter(s => s.imagem && !s.imagem_url);
+        if (pedidas.length && !ensaio()) {
+          emitir('meta', { gestor: ctx.gestor, papel, tipo: 'imagens' });
+          const ligado = await api('/api/imagem', null, 'GET').then(r => r.ligado).catch(() => false);
+          if (!ligado) notaImagens = ' O gerador de imagens não está ligado (falta OPENAI_API_KEY na Vercel): nas telas com imagem entrou o iPhone 3D desenhado pelo app.';
+          else {
+            const feitas = await Promise.allSettled(pedidas.map(s => api('/api/imagem', { prompt: s.imagem })));
+            const falhas = [];
+            feitas.forEach((r, k) => { if (r.status === 'fulfilled' && r.value?.url) pedidas[k].imagem_url = r.value.url; else falhas.push(r.reason?.message || 'erro'); });
+            notaImagens = falhas.length ? ` ${pedidas.length - falhas.length} de ${pedidas.length} imagens geradas; nas outras entrou o iPhone 3D (${falhas[0]}).` : ` ${pedidas.length} imagem(ns) de destaque gerada(s).`;
+          }
+        }
         const pedido = {
           id: proximo(pedidos, 'P'), tipo, titulo: String(ent.titulo || 'Arte').slice(0, 140), briefing: `Arte criada por ${PESSOAS[papel].nome}: ${arte.slides.length} tela(s)${arte.movimento ? ', animada (vídeo)' : ''}, desenhada pelo app com a logo da RB Tech.`,
           legenda: String(ent.legenda || '').slice(0, 2200), quando_publicar: String(ent.quando_publicar || '').slice(0, 120),
@@ -241,7 +255,7 @@ export function criarAgencia({ ensaio, placarTexto, pedirLogin, aoEvento }) {
         // publica sozinho só se o próprio Israel pediu para publicar na mensagem dele (rotinas e pedidos sem "publicar" esperam o toque dele)
         const publicar = !!ent.publicar_agora && !!ctx.pediuPublicar && !ensaio();
         emitir('arte', { gestor: ctx.gestor, pedido, publicar });
-        return { type: 'tool_result', tool_use_id: b.id, content: `Arte ${pedido.id} criada (${arte.slides.length} tela(s)). ${publicar ? 'O app começa a publicar em 10 segundos, se o Israel não cancelar. Diga que está publicando; não diga que já foi publicado.' : 'Está no chat para o Israel ver e publicar com um toque. Não diga que já foi publicado.'}` };
+        return { type: 'tool_result', tool_use_id: b.id, content: `Arte ${pedido.id} criada (${arte.slides.length} tela(s)).${notaImagens} ${publicar ? 'O app começa a publicar em 10 segundos, se o Israel não cancelar. Diga que está publicando; não diga que já foi publicado.' : 'Está no chat para o Israel ver e publicar com um toque. Não diga que já foi publicado.'}` };
       }
       if (b.name === 'sugerir_edicao_manual') {
         const edicao = { ...ent, id: proximo(edicoes, 'M'), autor: papel, quando: Date.now(), feito: false, ensaio: !!ensaio() };
@@ -385,10 +399,11 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
           return { type: 'tool_use', id: id(), name: 'enviar_para_israel', input: { titulo: papel === 'gerente_loja' ? 'Mutirão de avisos das OS prontas (ensaio)' : 'Testar a sugestão da equipe por 7 dias (ensaio)', decisao: 'Aplicar a melhoria principal sugerida pela equipe e medir por 7 dias.', motivo: 'Entregas da equipe nesta reunião (ensaio).', riscos: 'Nenhum dado real ainda: é um ensaio.', urgencia: 'media', entregas: entregas.slice(-2).map(e => e.id), acoes } };
         }
         if (item === 'arte') {
-          return { type: 'tool_use', id: id(), name: 'criar_arte', input: { tipo: 'carrossel', titulo: 'Sinais de bateria fraca (ensaio)', legenda: 'Seu iPhone dá algum desses sinais? 🔋 Salva e manda pra quem precisa! Troca de bateria em 1 hora na RB Tech. #iphone #bateria #saojose', quando_publicar: 'quinta às 19h', publicar_agora: false, movimento: false, logo: 'canto_superior_esquerdo', slides: [
-            { layout: 'capa', tema: 'escuro', efeito: 'particulas', emoji: '🔋⚠️', titulo: '4 sinais de que a sua *bateria* pede troca', texto: 'Arraste e confira o seu iPhone.', destaque: 'Ensaio', rodape: '', svg: '' },
-            { layout: 'lista', tema: 'escuro', efeito: 'grade', emoji: '📱', titulo: 'Fique de olho se ele:', texto: 'Desliga com 20%\nEsquenta carregando\nSaúde abaixo de 80%\nDemora para carregar', destaque: '', rodape: '', svg: '' },
-            { layout: 'cta', tema: 'amarelo', efeito: 'vidro', emoji: '⚡', titulo: 'Troca em *1 hora*', texto: 'Chama no WhatsApp ou passa na loja.', destaque: 'Chamar no WhatsApp', rodape: 'Rodovia SC-281, 7955 · Colônia Santana · São José', svg: '' },
+          return { type: 'tool_use', id: id(), name: 'criar_arte', input: { tipo: 'carrossel', titulo: 'Sinais de bateria fraca (ensaio)', legenda: 'Seu iPhone dá algum desses sinais? 🔋 Salva e manda pra quem precisa! Troca de bateria na RB Tech. #iphone #bateria #saojose', quando_publicar: 'quinta às 19h', publicar_agora: false, arroba: '', slides: [
+            { layout: 'capa', tema: 'escuro', efeito: 'luz', chamada: 'Sua bateria', titulo: '*Pede socorro?*', assinatura: 'Ensaio', imagem: 'iPhone com a bateria fraca', imagem_lado: 'centro', texto: '', emoji: '' },
+            { layout: 'topico', tema: 'escuro', efeito: 'pixel', titulo: 'Desliga\n+com\n*20%*', texto: '**Desligou sozinho?** É sinal de *bateria gasta*.', assinatura: 'Atenção', imagem: 'iPhone de lado', imagem_lado: 'direita', emoji: '🪫' },
+            { layout: 'topico', tema: 'amarelo', efeito: 'pixel', titulo: 'Esquenta\n~carregando~', texto: 'Calor demais na carga **desgasta** a bateria.', imagem: '', imagem_lado: 'esquerda', emoji: '🔥' },
+            { layout: 'fechamento', tema: 'escuro', efeito: 'luz', titulo: 'Salva aí!', texto: '**Troca na hora** na RB Tech, com *garantia*.', destaque: 'Chamar no WhatsApp', rodape: 'Rodovia SC-281, 7955 · Colônia Santana · São José' },
           ] } };
         }
         if (item === 'midia') {

@@ -1236,7 +1236,7 @@ export function criarEscritorio(container, camada) {
     consultar(papel, tipo) {
       const p = pessoas[papel];
       if (!p) return;
-      p.falar(tipo.includes('posts') ? '📱 lendo os posts…' : tipo.includes('instagram') ? '📈 lendo o Instagram…' : '📊 lendo o Meta Ads…', 4000);
+      p.falar(tipo === 'imagens' ? '🎨 gerando as imagens da arte…' : tipo.includes('posts') ? '📱 lendo os posts…' : tipo.includes('instagram') ? '📈 lendo o Instagram…' : '📊 lendo o Meta Ads…', 4000);
       telaModo(papel, 'trabalhando');
     },
     /** O chefe sobe de elevador até a sala do Israel com a decisão e volta. */

@@ -4,6 +4,7 @@ import { PAPEIS, EQUIPES } from './_equipe.js';
 import { executarFerramentaMeta } from './_meta.js';
 import { limparAcoes } from './_central.js';
 import { limparArte } from '../js/arte.js';
+import { gerarImagem, geradorDeImagemLigado } from './_imagem.js';
 import { salvarDecisao, salvarItem } from './_armazem.js';
 
 const client = new Anthropic();
@@ -220,6 +221,9 @@ export async function reuniaoNoServidor(gestor, pedido, { prazo, idRotina }) {
         const tipo = ['carrossel', 'post', 'stories', 'reels'].includes(b.input?.tipo) ? b.input.tipo : 'post';
         const arte = limparArte(b.input, tipo);
         if (!arte.slides.length || ((tipo === 'carrossel' || tipo === 'reels') && arte.slides.length < 2)) return { type: 'tool_result', tool_use_id: b.id, is_error: true, content: 'A arte precisa de 1 tela (post e stories) ou de 2 a 10 (carrossel e reels).' };
+        if (geradorDeImagemLigado()) { // imagens de destaque da rotina (quem publica continua sendo o Israel)
+          await Promise.allSettled(arte.slides.filter(s => s.imagem && !s.imagem_url).map(async s => { s.imagem_url = await gerarImagem(s.imagem); }));
+        }
         const pedido = { tipo, titulo: b.input.titulo, briefing: `Arte criada por ${PAPEIS[papel].nome}: ${arte.slides.length} tela(s)${arte.movimento ? ', animada (vídeo)' : ''}.`, legenda: b.input.legenda, quando_publicar: b.input.quando_publicar, arte, id: `${idRotina}-P${registro.pedidos.length + 1}`, solicitante: papel, quando: Date.now(), status: 'arte_pronta', origem: 'rotina' };
         registro.pedidos.push(pedido);
         try { await salvarItem('pedidos', pedido); } catch { /* fica no registro da rotina */ }
