@@ -11,7 +11,7 @@
 //   WHATSAPP_TEMPLATE, WHATSAPP_TEMPLATE_IDIOMA, WHATSAPP_VERIFY_TOKEN e META_APP_SECRET (webhook).
 import crypto from 'node:crypto';
 import Anthropic from '@anthropic-ai/sdk';
-import { put, list, del } from '@vercel/blob';
+import { put, list, del, get } from '@vercel/blob';
 import { graph, contaInstagram, metaLigado } from './_meta.js';
 import { lerItem, salvarItem, listarIds, apagarItem, armazemLigado, salvarRotina } from './_armazem.js';
 import { modeloDe, esforcoDe } from './_agentes.js';
@@ -285,6 +285,41 @@ export const blobOidc = () => !tokenBlob() && !!String(process.env.BLOB_STORE_ID
 export const blobLigado = () => !!tokenBlob() || blobOidc();
 /** Opções de credencial para put/list/del: a chave, se houver; senão o SDK usa o OIDC sozinho. */
 export const opcoesBlob = () => (tokenBlob() ? { token: tokenBlob() } : {});
+/** Endereços do Blob (público ou privado). */
+export const BLOB_URL = /^https:\/\/[a-z0-9.-]+\.(public|private)\.blob\.vercel-storage\.com\//i;
+const ehPrivado = url => /\.private\.blob\.vercel-storage\.com\//i.test(String(url));
+let acessoDoBlob = null; // 'public' ou 'private' (descoberto no primeiro envio)
+/** Guarda no Blob; se o Blob for privado, guarda como privado (e o prédio entrega pelo link dele). */
+export async function guardarNoBlob(caminho, dados, opcoes = {}) {
+  const tentar = access => put(caminho, dados, { ...opcoes, access, ...opcoesBlob() });
+  if (acessoDoBlob !== 'private') {
+    try { const b = await tentar('public'); acessoDoBlob = 'public'; return b; }
+    catch (e) { if (!/private/i.test(e?.message || '')) throw e; acessoDoBlob = 'private'; }
+  }
+  return tentar('private');
+}
+/** Endereço que a Meta, o Claude e o navegador conseguem abrir: Blob público direto; privado, pelo link do prédio. */
+export function urlPublica(url, host) {
+  if (!ehPrivado(url)) return url;
+  const base = String(host || process.env.PREDIO_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || 'localhost').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  return `${/^localhost/.test(base) ? 'http' : 'https'}://${base}/api/arte?m=${encodeURIComponent(url)}`;
+}
+/** O contrário: link do prédio → endereço no Blob. */
+export function urlDoBlob(url) {
+  try { const u = new URL(url); if (u.pathname === '/api/arte' && u.searchParams.get('m')) return u.searchParams.get('m'); } catch { /* não é link */ }
+  return url;
+}
+/** Lê um arquivo do Blob (público ou privado): { tipo, dados } ou null. */
+export async function lerDoBlob(url) {
+  if (!BLOB_URL.test(url)) return null;
+  if (!ehPrivado(url)) {
+    const r = await fetch(url).catch(() => null);
+    return r?.ok ? { tipo: r.headers.get('content-type') || 'application/octet-stream', dados: Buffer.from(await r.arrayBuffer()) } : null;
+  }
+  const r = await get(url, { access: 'private', ...opcoesBlob() });
+  if (!r || r.statusCode !== 200 || !r.stream) return null;
+  return { tipo: r.blob?.contentType || r.headers.get('content-type') || 'application/octet-stream', dados: Buffer.from(await new Response(r.stream).arrayBuffer()) };
+}
 const printsNaMemoria = [];
 export const tipoAceito = t => !!t && t in TIPOS_IMAGEM;
 
@@ -296,8 +331,8 @@ export async function salvarPrint(dados, tipo, agora = new Date()) {
     printsNaMemoria.push({ caminho, url });
     return url;
   }
-  const b = await put(caminho, dados, { access: 'public', contentType: tipo, addRandomSuffix: false, ...opcoesBlob() });
-  return b.url;
+  const b = await guardarNoBlob(caminho, dados, { contentType: tipo, addRandomSuffix: false });
+  return urlPublica(b.url);
 }
 
 /** Prints dos dias pedidos (AAAA-MM-DD), mais antigos primeiro: [{ url, dia, enviadoEm }]. */
@@ -312,7 +347,7 @@ export async function listarPrints(dias) {
     let cursor;
     do {
       const pagina = await list({ prefix: prefixo, cursor, ...opcoesBlob() });
-      for (const b of pagina.blobs) saida.push({ url: b.url, dia, enviadoEm: Number(b.pathname.split('/').pop().split('-')[0]) || 0 });
+      for (const b of pagina.blobs) saida.push({ url: urlPublica(b.url), dia, enviadoEm: Number(b.pathname.split('/').pop().split('-')[0]) || 0 });
       cursor = pagina.hasMore ? pagina.cursor : undefined;
     } while (cursor);
   }
@@ -326,9 +361,10 @@ export async function apagarPrint(url) {
     return true;
   }
   let u;
-  try { u = new URL(url); } catch { return false; }
-  if (!u.hostname.endsWith('.public.blob.vercel-storage.com') || !u.pathname.startsWith('/conteudo/prints/')) return false;
-  await del(url, { ...opcoesBlob() });
+  const noBlob = urlDoBlob(url);
+  try { u = new URL(noBlob); } catch { return false; }
+  if (!BLOB_URL.test(noBlob) || !u.pathname.startsWith('/conteudo/prints/')) return false;
+  await del(noBlob, { ...opcoesBlob() });
   return true;
 }
 

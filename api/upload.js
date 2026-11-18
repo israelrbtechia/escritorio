@@ -2,11 +2,10 @@
 //   GET                                 → { blob, modo, variaveis }  modo: "token" (BLOB_READ_WRITE_TOKEN) ou "oidc" (BLOB_STORE_ID, sem chave)
 //   POST (handleUpload do @vercel/blob) → autorização para o navegador subir direto (só no modo token; serve para arquivos grandes)
 //   POST ?arquivo=1&nome=&tipo=         → o arquivo vai no corpo (application/octet-stream) e o servidor sobe (até 4 MB; funciona nos dois modos)
-import { put } from '@vercel/blob';
 import { handleUpload } from '@vercel/blob/client';
 import crypto from 'node:crypto';
 import { responder, autenticado, lerCorpo, NAO_AUTENTICADO } from './_agentes.js';
-import { tokenBlob, blobLigado, blobOidc, opcoesBlob } from './_conteudo.js';
+import { tokenBlob, blobLigado, blobOidc, guardarNoBlob, urlPublica } from './_conteudo.js';
 
 const TIPOS = ['video/mp4', 'video/quicktime', 'image/jpeg', 'image/png'];
 const MAXIMO_PELO_SERVIDOR = Math.floor(4.3 * 1024 * 1024); // limite de corpo das funções da Vercel (4,5 MB)
@@ -38,8 +37,8 @@ export default async function handler(req, res) {
       if (!dados.length) return responder(res, 400, { erro: 'Arquivo vazio.' });
       if (dados.length > MAXIMO_PELO_SERVIDOR) return responder(res, 413, { erro: 'Arquivo maior que 4 MB.' });
       const nome = String(req.query.nome || 'arquivo').replace(/[^\w.-]+/g, '_').replace(/\.{2,}/g, '.').slice(0, 100);
-      const b = await put(`instagram/${Date.now()}-${crypto.randomBytes(3).toString('hex')}-${nome}`, dados, { access: 'public', contentType: tipo, addRandomSuffix: false, ...opcoesBlob() });
-      return responder(res, 200, { url: b.url });
+      const b = await guardarNoBlob(`instagram/${Date.now()}-${crypto.randomBytes(3).toString('hex')}-${nome}`, dados, { contentType: tipo, addRandomSuffix: false });
+      return responder(res, 200, { url: urlPublica(b.url, req.headers['x-forwarded-host'] || req.headers.host) });
     } catch (e) {
       return responder(res, 502, { erro: `O Blob recusou o arquivo: ${e.message}` });
     }

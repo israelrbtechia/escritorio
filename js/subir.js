@@ -15,7 +15,8 @@ export async function estadoDoBlob(token) {
 export async function subirArquivo(arquivo, nome, tipo, { token, estado, aoProgresso = () => {} } = {}) {
   const st = estado || await estadoDoBlob(token);
   if (!st.blob) throw new Error('o Blob ainda não está ligado na Vercel (Storage → Blob → conectar ao projeto e fazer Redeploy).');
-  if (st.modo === 'oidc') {
+  const pequeno = arquivo.size <= (st.maximoPeloServidor || 4.3 * 1024 * 1024);
+  if (st.modo === 'oidc' || (st.privado && pequeno)) {
     const maximo = st.maximoPeloServidor || 4.3 * 1024 * 1024;
     if (arquivo.size > maximo) throw new Error(`o arquivo tem ${(arquivo.size / 1048576).toFixed(1)} MB e, com o Blob conectado sem chave, o servidor só recebe até ${(maximo / 1048576).toFixed(1)} MB. Para arquivos maiores, crie a chave BLOB_READ_WRITE_TOKEN no Blob da Vercel.`);
     aoProgresso(0);
@@ -28,9 +29,16 @@ export async function subirArquivo(arquivo, nome, tipo, { token, estado, aoProgr
     return d.url;
   }
   const { upload } = await import(CLIENTE_BLOB);
-  const r = await upload(nome, arquivo, {
-    access: 'public', handleUploadUrl: '/api/upload', headers: { authorization: `Bearer ${token}` }, contentType: tipo,
-    multipart: arquivo.size > 20 * 1024 * 1024, onUploadProgress: p => aoProgresso(p.loaded / (p.total || arquivo.size)),
-  });
-  return r.url;
+  try {
+    const r = await upload(nome, arquivo, {
+      access: 'public', handleUploadUrl: '/api/upload', headers: { authorization: `Bearer ${token}` }, contentType: tipo,
+      multipart: arquivo.size > 20 * 1024 * 1024, onUploadProgress: p => aoProgresso(p.loaded / (p.total || arquivo.size)),
+    });
+    return r.url;
+  } catch (e) {
+    // Blob privado: o upload direto não serve (a Meta não abriria o arquivo); até 4 MB vai pelo servidor do prédio
+    if (!/private/i.test(e?.message || '')) throw e;
+    if (!pequeno) throw new Error(`o Blob da Vercel está como privado e este arquivo tem ${(arquivo.size / 1048576).toFixed(1)} MB (pelo servidor, só até 4 MB). Crie um Blob público para vídeos grandes.`);
+    return subirArquivo(arquivo, nome, tipo, { token, estado: { ...st, privado: true }, aoProgresso });
+  }
 }

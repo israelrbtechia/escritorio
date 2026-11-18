@@ -11,7 +11,8 @@ import { limparArte } from '../js/arte.js';
 
 const TIPOS = ['reels', 'post', 'carrossel', 'stories'];
 const texto = (v, max) => String(v ?? '').slice(0, max);
-const midiaValida = m => m && /^https:\/\/[a-z0-9.-]+\.public\.blob\.vercel-storage\.com\//i.test(String(m.url || ''));
+// endereço público do Blob, ou o link do prédio que entrega um arquivo do Blob privado (/api/arte?m=...)
+const midiaValida = m => m && (/^https:\/\/[a-z0-9.-]+\.public\.blob\.vercel-storage\.com\//i.test(String(m.url || '')) || /^https?:\/\/[a-z0-9.:-]+\/api\/arte\?m=https%3A%2F%2F[a-z0-9.-]+\.(public|private)\.blob\.vercel-storage\.com%2F(instagram|artes)%2F/i.test(String(m.url || '')));
 function limparPedido(p) {
   return {
     id: texto(p.id, 40), tipo: TIPOS.includes(p.tipo) ? p.tipo : 'post', titulo: texto(p.titulo, 140), briefing: texto(p.briefing, 3000),

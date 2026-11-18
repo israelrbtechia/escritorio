@@ -8,17 +8,25 @@
 import { responder, responderDemorado, autenticado, lerCorpo, NAO_AUTENTICADO, erroDaApi } from './_agentes.js';
 import { desenharTelaSvg, revisarTelaSvg } from './_designer.js';
 import { gerarImagem, geradorDeImagemLigado, faltaParaImagens, BLOB_DA_ARTE } from './_imagem.js';
+import { lerDoBlob, BLOB_URL } from './_conteudo.js';
 
+// ?u = imagem de destaque (artes/) · ?m = mídia para publicar (instagram/, artes/, prints): entregues pelo próprio domínio,
+// o que também resolve o Blob privado (a Meta e o navegador não abrem o endereço privado do Blob)
+const PASTAS_PUBLICAVEIS = /^\/(instagram|artes|conteudo\/prints)\//;
 async function imagem(req, res) {
-  const u = String(req.query?.u || '');
-  if (!u) return responder(res, 200, { ligado: geradorDeImagemLigado(), falta: faltaParaImagens() });
-  if (!BLOB_DA_ARTE.test(u)) return responder(res, 400, { erro: 'Endereço de imagem inválido.' });
-  const r = await fetch(u).catch(() => null);
-  if (!r?.ok) return responder(res, 404, { erro: 'Imagem não encontrada.' });
+  const u = String(req.query?.u || ''), m = String(req.query?.m || '');
+  if (!u && !m) return responder(res, 200, { ligado: geradorDeImagemLigado(), falta: faltaParaImagens() });
+  const alvo = u || m;
+  let caminho = '';
+  try { caminho = new URL(alvo).pathname; } catch { /* inválido */ }
+  if (u ? !BLOB_DA_ARTE.test(u) : !(BLOB_URL.test(m) && PASTAS_PUBLICAVEIS.test(caminho))) return responder(res, 400, { erro: 'Endereço de mídia inválido.' });
+  const arquivo = await lerDoBlob(alvo).catch(() => null);
+  if (!arquivo) return responder(res, 404, { erro: 'Arquivo não encontrado.' });
   res.statusCode = 200;
-  res.setHeader('content-type', r.headers.get('content-type') || 'image/png');
+  res.setHeader('content-type', arquivo.tipo);
+  res.setHeader('content-length', String(arquivo.dados.length));
   res.setHeader('cache-control', 'public, max-age=31536000, immutable');
-  res.end(Buffer.from(await r.arrayBuffer()));
+  res.end(arquivo.dados);
 }
 
 function planoValido(p) {
