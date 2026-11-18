@@ -159,7 +159,7 @@ export function criarJogo(ctx) {
   const est = {
     noCarro: true,
     car: { x: 0, z: 30, y: 0, h: Math.PI / 2, v: 0 },
-    camYaw: 0, camDist: 9.5, camAlvo: new THREE.Vector3(),
+    camYaw: 0, camPitch: 0.42, camDist: 9.5, camAlvo: new THREE.Vector3(),
     teclas: new Set(), joy: { x: 0, y: 0 },
     acoes: [], chave: '', bola: null, cachorroControle: null,
     falandoCom: null,
@@ -212,7 +212,7 @@ export function criarJogo(ctx) {
   hud.innerHTML = `
     <div class="hud-topo"><strong>🎮 Prédio RBTech</strong><span class="hud-status"></span><span class="hud-caes"></span><button type="button" class="hud-sair">✕ Sair do jogo</button></div>
     <div class="hud-aviso" hidden></div>
-    <div class="hud-dica">${toque ? 'Joystick: andar ou dirigir · arraste a tela para girar a câmera · pinça: zoom' : 'WASD ou setas: andar/dirigir · Shift: correr · E: entrar/sair do carro · Espaço ou 1–4: ações · arraste: girar câmera · rodinha: zoom'}</div>
+    <div class="hud-dica">${toque ? 'Joystick: andar ou dirigir · arraste a tela para girar e inclinar a câmera · pinça: zoom' : 'WASD ou setas: andar/dirigir · Shift: correr · E: entrar/sair do carro · Espaço ou 1–4: ações · arraste: girar e inclinar a câmera · rodinha: zoom'}</div>
     <div class="hud-acoes"></div>
     <div class="hud-joy"${toque ? '' : ' hidden'}><div class="hud-joy-bola"></div></div>
     <form class="hud-pedido" hidden><span></span><input type="text" maxlength="500" placeholder="O que você quer pedir?" autocomplete="off"><button type="submit">Enviar</button><button type="button" class="hud-cancelar">✕</button></form>`;
@@ -263,7 +263,12 @@ export function criarJogo(ctx) {
   const pm = e => {
     const antes = ponteiros.get(e.pointerId); if (!antes) return;
     ponteiros.set(e.pointerId, [e.clientX, e.clientY]);
-    if (ponteiros.size === 1) est.camYaw -= (e.clientX - antes[0]) * 0.006;
+    if (ponteiros.size === 1) {
+      // arrastar para os lados gira; para cima e para baixo inclina (de quase rente ao chão até olhar de cima)
+      const k = Math.PI / Math.max(300, tela.clientHeight);
+      est.camYaw -= (e.clientX - antes[0]) * 0.006;
+      est.camPitch = THREE.MathUtils.clamp(est.camPitch + (e.clientY - antes[1]) * k, 0.05, 1.4);
+    }
     else if (ponteiros.size === 2 && pinca) { const [a, b] = [...ponteiros.values()]; est.camDist = THREE.MathUtils.clamp(pinca.dist * pinca.d / Math.max(20, Math.hypot(a[0] - b[0], a[1] - b[1])), 3, 40); }
   };
   const pu = e => { ponteiros.delete(e.pointerId); pinca = null; };
@@ -298,9 +303,10 @@ export function criarJogo(ctx) {
     eu.raiz.position.set(x, alturaDoChao(x, z), z);
     eu.raiz.rotation.y = c.h;
     est.camDist = 5.5;
+    est.camPitch = 0.5;
     aviso('Você saiu do carro. A porta da loja abre sozinha quando você chega perto.');
   }
-  function entrarNoCarro() { est.noCarro = true; eu.ativo = false; est.camDist = 9.5; est.camYaw = est.car.h; }
+  function entrarNoCarro() { est.noCarro = true; eu.ativo = false; est.camDist = 9.5; est.camPitch = 0.42; est.camYaw = est.car.h; }
   function andarDoElevador(destino) {
     if (est.subindo) return;
     est.subindo = true;
@@ -524,20 +530,22 @@ export function criarJogo(ctx) {
   }
   const vAlvo = new THREE.Vector3(), vCam = new THREE.Vector3();
   function moverCamera(dt) {
-    let alvo, dist = est.camDist, altura;
+    let alvo, dist = est.camDist, dentro = false;
     if (est.noCarro) {
       const c = est.car;
       if (Math.abs(c.v) > 2) est.camYaw = angulo(est.camYaw, c.h, Math.min(1, dt * 1.6));
       alvo = vAlvo.set(c.x, c.y + 1.4, c.z);
-      altura = 3.4 + dist * 0.18;
     } else {
       const p = eu.raiz.position;
       alvo = vAlvo.set(p.x, p.y + 1.5, p.z);
-      const dentro = eu.andar > 0 || naCasca(p.x, p.z);
+      dentro = eu.andar > 0 || naCasca(p.x, p.z);
       if (dentro) dist = Math.min(dist, 6.5);
-      altura = 1.6 + dist * 0.42;
     }
-    vCam.set(alvo.x - Math.sin(est.camYaw) * dist, alvo.y + altura, alvo.z - Math.cos(est.camYaw) * dist);
+    const plano = dist * Math.cos(est.camPitch);
+    vCam.set(alvo.x - Math.sin(est.camYaw) * plano, alvo.y + dist * Math.sin(est.camPitch), alvo.z - Math.cos(est.camYaw) * plano);
+    // a câmera não entra no chão (na rua, segue o terreno; dentro do prédio, o piso do andar)
+    const piso = dentro ? eu.andar * ALT : alturaDoChao(vCam.x, vCam.z, alvo.y - 1.5);
+    if (vCam.y < piso + 0.4) vCam.y = piso + 0.4;
     camera.position.lerp(vCam, 1 - Math.exp(-dt * 7));
     est.camAlvo.lerp(alvo, 1 - Math.exp(-dt * 10));
     camera.lookAt(est.camAlvo);

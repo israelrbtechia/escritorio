@@ -144,7 +144,7 @@ export function criarEscritorio(container, camada) {
         const desloc = Math.abs(m.meioY - gesto.meioY);
         if (escala > 0.06) gesto.modo = 'zoom';
         else if (giro > 0.16) gesto.modo = 'girar';
-        else if (desloc > 16) gesto.modo = 'inclinar';
+        else if (desloc > 10) gesto.modo = 'inclinar';
         else return;
         Object.assign(gesto, m); // começa do ponto atual, sem pulo
         return;
@@ -157,7 +157,7 @@ export function criarEscritorio(container, camada) {
         off.applyAxisAngle(EIXO_Y, volta(m.ang - gesto.ang));
       } else {
         esf.setFromVector3(off);
-        esf.phi = THREE.MathUtils.clamp(esf.phi - (m.meioY - gesto.meioY) * 0.006, 0.12, controles.maxPolarAngle);
+        esf.phi = THREE.MathUtils.clamp(esf.phi - (m.meioY - gesto.meioY) * (0.6 * Math.PI / Math.max(300, el.clientHeight)), 0.12, controles.maxPolarAngle); // arrastar ~70% da altura da tela vai de rente ao chão até a vista de cima
         off.setFromSpherical(esf);
       }
       camera.position.copy(controles.target).add(off);
