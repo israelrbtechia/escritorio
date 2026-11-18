@@ -257,3 +257,12 @@ body.modo-video .ent .tag { font-size: 12px; }
 
 .sem-nomes .ent .tag { display: none; }
 .sem-nomes .ent .balao { bottom: 4px; }
+
+/* ---------- câmeras: botões pequenos, todos visíveis, quebrando linha ---------- */
+.cams { flex-wrap: wrap; overflow: visible; gap: 4px; align-content: center; }
+.cams button { padding: 3px 8px; font-size: 11.5px; line-height: 1.4; border-radius: 6px; font-weight: 600; }
+.topo { padding: 8px 16px; row-gap: 6px; }
+@media (max-width: 860px) {
+  .cams { gap: 4px; }
+  .cams button { padding: 3px 7px; font-size: 11px; }
+}
