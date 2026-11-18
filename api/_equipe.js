@@ -67,7 +67,7 @@ const POSTS = {
 };
 const ISRAEL = {
   name: 'enviar_para_israel',
-  description: 'Envia uma decisão sua para a sala do Israel (o Boss, dono da RBTech) no terraço. Ele audita toda decisão: aprova, recusa ou comenta. Use para tudo que muda algo na empresa (publicar, investir, mudar preço, processo, contratar, priorizar). Em "acoes" vão as ações no sistema da loja RB Tech (ReparoSimples) que acontecem sozinhas quando ele aprovar: mandar WhatsApp ao cliente de uma OS, aviso de aparelho pronto, mudar status ou editar campos da OS. Devolve o código da decisão (D1, D2...).',
+  description: 'Envia uma decisão sua para a sala do Israel (o Boss, dono da RBTech) no terraço. Ele audita toda decisão: aprova, recusa ou comenta. Use para tudo que muda algo na empresa (publicar, investir, mudar preço, processo, contratar, priorizar). Em "acoes" vão as ações no sistema da loja RB Tech (ReparoSimples) que acontecem sozinhas quando ele aprovar (as mesmas do RB Central): WhatsApp ao cliente da OS, aviso de aparelho pronto, mudar status, editar a OS, registrar pagamento, abrir OS, pedidos de peças e metas. Devolve o código da decisão (D1, D2...).',
   strict: true,
   input_schema: {
     type: 'object', additionalProperties: false, required: ['titulo', 'decisao', 'motivo', 'riscos', 'urgencia', 'entregas', 'acoes'],
@@ -84,17 +84,21 @@ const ISRAEL = {
         items: {
           type: 'object', additionalProperties: false, required: ['tipo', 'os', 'mensagem', 'status', 'campos'],
           properties: {
-            tipo: { type: 'string', enum: ['avisar_cliente', 'aviso_pronto', 'mudar_status', 'editar_os'], description: 'avisar_cliente: WhatsApp com o texto de "mensagem" ao cliente da OS. aviso_pronto: o aviso oficial de aparelho pronto, com link de acompanhamento e garantia (OS concluída). mudar_status: muda o status (nunca para pago). editar_os: muda campos da OS.' },
-            os: { type: 'string', description: 'Número da OS (ex.: "371").' },
+            tipo: {
+              type: 'string',
+              enum: ['avisar_cliente', 'aviso_pronto', 'mudar_status', 'editar_os', 'registrar_pagamento', 'criar_os', 'pedir_peca', 'remover_pedido_peca', 'enviar_pedido_pecas', 'definir_meta'],
+              description: 'avisar_cliente: WhatsApp com o texto de "mensagem" ao cliente da OS. aviso_pronto: aviso oficial de aparelho pronto (OS concluída). mudar_status: muda o status (para pago use registrar_pagamento). editar_os: campos da OS. registrar_pagamento: campos valor e forma (dinheiro, pix, debito, credito, transferencia, outro). criar_os: campos cliente_nome, cliente_whatsapp, modelo, defeito, valor. pedir_peca: campos peca e quantidade (e "os" se for de uma OS). remover_pedido_peca: campo pedido_id. enviar_pedido_pecas: campos fornecedor e tipo_envio (cotacao ou pedido). definir_meta: campos meta_id e valor.',
+            },
+            os: { type: 'string', description: 'Número da OS (ex.: "371"). Vazio em criar_os, enviar_pedido_pecas, remover_pedido_peca e definir_meta.' },
             mensagem: { type: 'string', description: 'Só em avisar_cliente: o texto exato para o cliente, curto e no tom da loja. Vazio nos outros tipos.' },
             status: { type: 'string', description: 'Só em mudar_status: analise, peca, servico, concluido ou interrompido. Vazio nos outros tipos.' },
             campos: {
-              type: 'array', description: 'Só em editar_os: os campos a mudar. Lista vazia nos outros tipos.',
+              type: 'array', description: 'Os campos ou parâmetros da ação (veja em "tipo"). Lista vazia em avisar_cliente, aviso_pronto e mudar_status.',
               items: {
                 type: 'object', additionalProperties: false, required: ['campo', 'valor'],
                 properties: {
-                  campo: { type: 'string', enum: ['previsao_entrega', 'tecnico', 'observacoes', 'servico', 'defeito', 'valor', 'garantia_dias', 'acessorios'] },
-                  valor: { type: 'string', description: 'Novo valor. previsao_entrega em AAAA-MM-DD; valor em reais (ex.: "350"); tecnico com o nome cadastrado na loja.' },
+                  campo: { type: 'string', enum: ['previsao_entrega', 'tecnico', 'observacoes', 'servico', 'defeito', 'valor', 'garantia_dias', 'acessorios', 'forma', 'cliente_nome', 'cliente_whatsapp', 'modelo', 'peca', 'quantidade', 'pedido_id', 'fornecedor', 'tipo_envio', 'meta_id'] },
+                  valor: { type: 'string', description: 'Valor. Datas em AAAA-MM-DD; dinheiro em reais (ex.: "350"); tecnico e fornecedor com o nome cadastrado na loja; meta_id e pedido_id como vierem de ler_sistema_da_loja.' },
                 },
               },
             },
@@ -111,7 +115,7 @@ O Israel, dono da RBTech, audita toda decisão dos chefes numa sala no terraço 
 - Toda decisão que muda algo (publicar, investir, mudar preço ou processo, priorizar, contratar) vai para ele pela ferramenta enviar_para_israel, uma decisão por chamada, antes do relatório final. Nada é executado antes da aprovação dele.
 - A mensagem do dono pode trazer um bloco [AUDITORIA] com as últimas decisões auditadas. Respeite o que ele recusou e os comentários dele; não reenvie a mesma decisão recusada sem mudar o que ele criticou.
 - No relatório final, liste os códigos das decisões enviadas (D1, D2...).
-- Quando a decisão pede algo no sistema da loja RB Tech (mandar mensagem ao cliente de uma OS, mudar status, ajustar previsão, técnico, valor ou observação), coloque cada passo em "acoes": o app executa sozinho quando o Israel aprovar. Não peça para o Israel fazer à mão o que pode ir em "acoes". Pagamento e exclusão de OS não estão disponíveis: ficam com a loja.
+- Quando a decisão pede algo no sistema da loja RB Tech (mensagem ao cliente de uma OS, status, previsão, técnico, valor, pagamento, OS nova, pedido de peça, meta), coloque cada passo em "acoes": o app executa sozinho quando o Israel aprovar, igual ao RB Central. Não peça para o Israel fazer à mão o que pode ir em "acoes". Só a exclusão de OS não existe: fica com a loja.
 `;
 
 // ---------- ferramentas do departamento de crescimento (Instagram) ----------
@@ -174,6 +178,20 @@ const IDEIAS = {
           },
         },
       },
+    },
+  },
+};
+
+const SISTEMA_LOJA = {
+  name: 'ler_sistema_da_loja',
+  description: 'Lê o sistema da loja RB Tech (ReparoSimples, o mesmo que o RB Central vê): relatorio (OS abertas, criadas e concluídas, faturamento e ticket do dia; "desde" = o dia), metas do mês (com os ids para definir_meta), vendas e vendas_aparelhos (por período), pedidos_pecas (lista do fornecedor) e configuracao (status das OS, formas de pagamento, campos e fornecedores). Não traz telefone de cliente.',
+  strict: true,
+  input_schema: {
+    type: 'object', additionalProperties: false, required: ['consulta', 'desde', 'ate'],
+    properties: {
+      consulta: { type: 'string', enum: ['relatorio', 'metas', 'vendas', 'vendas_aparelhos', 'pedidos_pecas', 'configuracao'] },
+      desde: { type: 'string', description: 'AAAA-MM-DD ou vazio. No relatorio, é o dia (vazio = hoje).' },
+      ate: { type: 'string', description: 'AAAA-MM-DD ou vazio.' },
     },
   },
 };
@@ -381,7 +399,7 @@ const GERENTE_LOJA = {
   nome: 'Gerente da loja', esforco: 'medium',
   ferramentas: [
     acionar(['atendimento', 'tecnico'], 'atendimento (Atendimento: vendas, pós-venda e estoque) e tecnico (Técnico de reparo e avaliação de usados).'),
-    INSTAGRAM, ORDENS, ISRAEL,
+    INSTAGRAM, ORDENS, SISTEMA_LOJA, ISRAEL,
   ],
   sistema: `Seu nome é Rael. Você é gerente da loja RB TECH, no 1º andar do prédio RBTech. Você fica na mesa de negociação (onde avalia e fecha trocas de iPhone usado) e cuida da operação: vender mais no balcão e no WhatsApp, atender bem, ter o aparelho certo em estoque, consertar bem e transformar cliente em fã que volta e indica.
 ${LOJA}${LOJA_FISICA}${AUDITORIA}
@@ -397,16 +415,21 @@ Porta automática de vidro; café e cadeiras para o cliente na entrada; parede d
 - Os funcionários não lembram de nada: cada pedido precisa ter todo o contexto. Use "anexos" para passar entregas anteriores.
 - Relatório final curto: **Resumo** · **O que a equipe entregou** · **Decisões enviadas ao Israel** · **Próximo passo**.
 
-## Agir no ReparoSimples (depois do ok do Israel)
-Você pode propor ações no sistema da loja dentro de uma decisão (campo "acoes" de enviar_para_israel). Elas acontecem sozinhas quando o Israel aprovar:
-- **avisar_cliente**: WhatsApp para o cliente da OS, com o texto que você escrever (curto, com o nome do cliente e o aparelho, sem prometer preço ou prazo que a loja não informou). Para várias OS, uma ação por OS.
-- **aviso_pronto**: o aviso oficial de "aparelho pronto", com link de acompanhamento e garantia (para OS já concluída).
-- **mudar_status**: análise, peça, serviço, concluído ou interrompido (nunca pago).
+## O sistema da loja (igual ao RB Central)
+Você lê à vontade: ler_ordens_de_servico (OS com valor, previsão, técnico e cliente) e ler_sistema_da_loja (relatório do dia, metas, vendas, vendas de aparelhos, pedidos de peças e configuração).
+Para MUDAR algo, proponha ações dentro de uma decisão (campo "acoes" de enviar_para_israel). Elas acontecem sozinhas quando o Israel aprovar:
+- **avisar_cliente**: WhatsApp para o cliente da OS, com o texto que você escrever (curto, com o nome do cliente e o aparelho, sem prometer preço ou prazo que a loja não informou). Uma ação por OS.
+- **aviso_pronto**: o aviso oficial de "aparelho pronto", com link de acompanhamento e garantia (OS concluída).
+- **mudar_status**: análise, peça, serviço, concluído ou interrompido.
 - **editar_os**: previsão de entrega, técnico, observações, serviço, defeito, valor, garantia ou acessórios.
-Leia as OS (ler_ordens_de_servico) antes, para usar o número certo. Mande uma decisão por assunto (ex.: "mutirão de avisos das OS prontas", "previsão e técnico nas OS sem prazo"), com todas as ações daquele assunto.`,
+- **registrar_pagamento**: OS paga, com valor e forma (vai para o financeiro, no caixa aberto).
+- **criar_os**: OS nova com nome e WhatsApp do cliente, modelo, defeito e valor.
+- **pedir_peca** / **remover_pedido_peca** / **enviar_pedido_pecas**: a lista do fornecedor e o envio da cotação ou do pedido pelo WhatsApp.
+- **definir_meta**: muda uma meta do mês (use o id que veio em metas).
+Leia antes, para usar números, ids e nomes certos. Mande uma decisão por assunto (ex.: "mutirão de avisos das OS prontas", "previsão e técnico nas OS sem prazo"), com todas as ações daquele assunto.`,
 };
 const ATENDIMENTO = {
-  nome: 'Atendimento', esforco: 'medium',
+  nome: 'Atendimento', esforco: 'medium', ferramentas: [SISTEMA_LOJA],
   sistema: `Você é o atendente da loja RB TECH (1º andar), o único no balcão. Você cuida de vendas, pós-venda e do estoque de aparelhos e acessórios.
 ${LOJA}${LOJA_FISICA}
 ## Como entregar
@@ -416,7 +439,7 @@ ${LOJA}${LOJA_FISICA}
 Marque com [PREÇO], [CONDIÇÃO] e [ESTOQUE] o que depende da loja.`,
 };
 const TECNICO = {
-  nome: 'Técnico de reparo', esforco: 'medium', ferramentas: [ORDENS],
+  nome: 'Técnico de reparo', esforco: 'medium', ferramentas: [ORDENS, SISTEMA_LOJA],
   sistema: `Você é o técnico do setor de reparo da loja RB TECH (1º andar), na bancada atrás do painel de acessórios.
 ${LOJA}${LOJA_FISICA}
 ## O que você faz

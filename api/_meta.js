@@ -261,6 +261,7 @@ export async function executarFerramentaMeta(nome, entrada = {}) {
   if (nome === 'ler_saas_reparo') return (await import('./_saas.js')).ferramentaSaas();
   if (nome === 'ler_central_de_conteudo') return (await import('./_conteudo.js')).ferramentaConteudo();
   if (nome === 'ler_sorteios_no_instagram') return lerSorteiosNoInstagram(entrada);
+  if (nome === 'ler_sistema_da_loja') return (await import('./_central.js')).lerSistemaDaLoja(entrada);
   if (nome === 'ler_metricas_anuncios') return lerAnuncios(entrada);
   if (nome === 'ler_metricas_instagram') return lerInstagram(entrada);
   if (nome === 'ler_posts_instagram') return lerPosts(entrada);

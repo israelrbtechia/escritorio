@@ -401,6 +401,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
   function metaDeEnsaio(nome) {
     const base = { ensaio: true, aviso: 'Números de ENSAIO, não são reais.' };
     if (nome === 'ler_metricas_anuncios') return { ...base, linhas: [{ investimento: 180, conversasWhatsApp: 23, custoPorConversa: 7.83, ctr: 1.9, cpm: 21.4, frequencia: 1.6 }] };
+    if (nome === 'ler_sistema_da_loja') return { ...base, dia: 'hoje', os_abertas: 18, faturamento_dia: 1250, ticket_medio: 312.5 };
     if (nome === 'ler_ordens_de_servico') return { ...base, total: 3, ordens: [{ os: '371', status: 'pronta para retirada', modelo: 'iPhone 13', cliente: 'Cliente Exemplo', valor: 350 }] };
     if (nome === 'ler_sorteios_no_instagram') return { ...base, perfisCitados: [{ perfil: '@loja_exemplo', posts: 2, exemplo: 'https://instagram.com/p/exemplo' }], posts: [], avisos: [] };
     if (nome === 'ler_central_de_conteudo') return { ...base, storiesDeHoje: { estrategia: { estrategiaDoDia: 'Aquecer a Black Friday (exemplo).' } }, ultimoRelatorioDeReels: 'nenhum ainda', estoqueDaSemana: '13 128 seminovo (exemplo)' };

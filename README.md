@@ -108,14 +108,22 @@ Variáveis na Vercel (projeto do prédio):
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
 
-## Ações no ReparoSimples depois do seu ok (WhatsApp ao cliente e alterações nas OS)
-O Rael (e os outros chefes, quando for da loja) pode colocar **ações** dentro de uma decisão. Elas aparecem na Diretoria e só acontecem quando você toca em **Aprovar e executar**:
+## Ações no ReparoSimples depois do seu ok (igual ao RB Central)
+A equipe da loja **lê à vontade** o mesmo que o RB Central:
+- OS com valor, previsão, técnico e cliente;
+- relatório do dia, metas e vendas (também de aparelhos);
+- pedidos de peças e configuração.
+
+Para **mudar** algo, o Rael coloca **ações** dentro de uma decisão. Elas aparecem na Diretoria e só acontecem quando você toca em **Aprovar e executar**:
 - **WhatsApp ao cliente da OS:** com o texto que ele escreveu, que você confere antes.
 - **Aviso oficial de aparelho pronto:** com o link de acompanhamento e a garantia.
-- **Mudar status:** análise, peça, serviço, concluído ou interrompido. Nunca pago.
-- **Editar a OS:** previsão de entrega, técnico, observações, serviço, defeito, valor, garantia ou acessórios.
+- **Mudar status** e **editar a OS:** previsão, técnico, observações, serviço, defeito, valor, garantia ou acessórios.
+- **Registrar pagamento:** marca a OS como paga e lança a receita no financeiro, no caixa aberto.
+- **Abrir OS nova.**
+- **Pedidos de peças:** pôr ou tirar da lista do fornecedor e mandar a cotação ou o pedido pelo WhatsApp.
+- **Mudar uma meta do mês.**
 
-Depois da execução, a decisão mostra o resultado de cada ação. Se o WhatsApp não sair, aparece um link para você enviar à mão. Pagamento e exclusão de OS ficam com a loja.
+Depois da execução, a decisão mostra o resultado de cada ação. Se o WhatsApp não sair, aparece um link para você enviar à mão. Só a exclusão de OS fica com a loja.
 
 Tudo passa pela **API do RB Central** do ReparoSimples, a mesma que segue as regras da tela "Editar OS" e só enxerga a loja RB Tech. Para ligar:
 1. **No projeto do ReparoSimples na Vercel:**

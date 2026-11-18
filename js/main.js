@@ -827,6 +827,13 @@ $('chat').addEventListener('click', ev => {
 // ---------- diretoria: auditoria do Israel ----------
 const NOME_STATUS_OS = { analise: 'Em análise', peca: 'Aguardando peça', servico: 'Em serviço', concluido: 'Concluído', interrompido: 'Interrompido' };
 function descreverAcao(a) {
+  const p = Object.fromEntries((a.campos || []).map(c => [c.campo, c.valor]));
+  if (a.tipo === 'registrar_pagamento') return `💰 OS ${a.os} paga: R$ ${String(p.valor).replace(/^R\$\s*/i, '')} no ${p.forma} (vai para o financeiro)`;
+  if (a.tipo === 'criar_os') return `🆕 OS nova: ${p.cliente_nome}${p.cliente_whatsapp ? ` (${p.cliente_whatsapp})` : ''}, ${p.modelo}, "${p.defeito}"${p.valor ? `, R$ ${String(p.valor).replace(/^R\$\s*/i, '')}` : ''}`;
+  if (a.tipo === 'pedir_peca') return `🧩 Peça na lista do fornecedor: ${p.quantidade || 1}x ${p.peca}${a.os ? ` (OS ${a.os})` : ''}`;
+  if (a.tipo === 'remover_pedido_peca') return `🧩 Tirar da lista do fornecedor: ${p.pedido_id}`;
+  if (a.tipo === 'enviar_pedido_pecas') return `📦 Mandar a lista de peças para ${p.fornecedor} no WhatsApp (${p.tipo_envio === 'pedido' ? 'pedido' : 'cotação'})`;
+  if (a.tipo === 'definir_meta') return `🎯 Meta ${p.meta_id} = ${p.valor}`;
   if (a.tipo === 'avisar_cliente') return `📲 WhatsApp para o cliente da OS ${a.os}: "${a.mensagem}"`;
   if (a.tipo === 'aviso_pronto') return `📲 Aviso de aparelho pronto (link e garantia) para o cliente da OS ${a.os}`;
   if (a.tipo === 'mudar_status') return `🔁 OS ${a.os} → ${NOME_STATUS_OS[a.status] || a.status}`;

@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   try {
     if (consulta === 'status') return responder(res, 200, await lerStatus());
     if (consulta === 'placar') return responder(res, 200, await lerPlacar());
-    if (['ler_metricas_anuncios', 'ler_metricas_instagram', 'ler_posts_instagram', 'ler_ordens_de_servico', 'ler_saas_reparo', 'ler_central_de_conteudo', 'ler_sorteios_no_instagram'].includes(consulta)) {
+    if (['ler_metricas_anuncios', 'ler_metricas_instagram', 'ler_posts_instagram', 'ler_ordens_de_servico', 'ler_saas_reparo', 'ler_central_de_conteudo', 'ler_sorteios_no_instagram', 'ler_sistema_da_loja'].includes(consulta)) {
       return responder(res, 200, await executarFerramentaMeta(consulta, entrada));
     }
     return responder(res, 400, { erro: 'Consulta desconhecida.' });
