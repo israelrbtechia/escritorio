@@ -129,7 +129,9 @@ $('btMeta').addEventListener('click', () => puxarPlacarDaMeta(true));
 // ---------- ReparoSimples: OS da loja RB Tech no laboratório do térreo ----------
 let reparoLigado = false;
 async function sincronizarOs() {
-  if (semServidor || chkEnsaio.checked) return;
+  if (semServidor) { $('statusReparo').textContent = 'Prévia sem servidor: o ReparoSimples só aparece no site publicado na Vercel.'; return; }
+  if (chkEnsaio.checked) { $('statusReparo').textContent = 'Modo ensaio ligado: desmarque “Modo ensaio” aqui em cima para ver as OS reais da loja.'; return; }
+  $('statusReparo').textContent = 'Consultando o ReparoSimples…';
   try {
     const r = await chamarApi('/api/os', null, 'GET');
     if (r.configurado) {
@@ -710,6 +712,7 @@ chkEnsaio.addEventListener('change', () => {
     adicionarChat(g, { quem: 'evento', html: true, texto: chkEnsaio.checked ? '🎭 <b>Modo ensaio ligado.</b> Nova reunião começou.' : '🤖 <b>Modo ensaio desligado.</b> A equipe agora usa IA de verdade.' });
   }
   verificarMeta();
+  sincronizarOs();
 });
 $('btZerarGasto').addEventListener('click', () => agencia.zerarGasto());
 $('btNova').addEventListener('click', () => {
