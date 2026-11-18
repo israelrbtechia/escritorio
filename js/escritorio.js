@@ -786,6 +786,7 @@ export function criarEscritorio(container, camada) {
   function posicionarBaloes() {
     const w = container.clientWidth, h = container.clientHeight;
     const foco = camAtual.id === 'predio' ? null : camAtual.segue ? caes[caoSeguido].andar : camAtual.andar;
+    camada.classList.toggle('sem-nomes', camAtual.id === 'predio'); // visão do prédio sem os nomes, para não poluir
     for (const e of entidades) {
       if (!visivel(e) || (foco != null && andarVisual(e) !== foco && !e.noElevador)) { e.el.style.display = 'none'; continue; }
       e.raiz.getWorldPosition(v);
