@@ -138,7 +138,7 @@ async function sincronizarOs() {
       reparoLigado = true;
       cena.definirOrdensDeServico(r.ordens);
       const n = s => r.ordens.filter(o => o.status === s).length;
-      $('statusReparo').textContent = `✅ Ligado à loja “${r.loja || 'RB Tech'}” · ${r.ordens.length} OS em andamento (${n('analise') + n('peca')} na fila, ${n('servico')} em reparo, ${n('concluido')} prontas). Atualiza a cada 15 s.`;
+      $('statusReparo').textContent = `✅ Ligado à loja “${r.loja || 'RB Tech'}” · ${r.ordens.length} OS em andamento (${n('analise') + n('peca')} na fila, ${n('servico')} em reparo, ${n('concluido')} prontas). Atualiza a cada 1 min.`;
     } else {
       $('statusReparo').textContent = 'Não ligado: crie REPARO_SUPABASE_URL e REPARO_SUPABASE_SERVICE_KEY na Vercel. Enquanto isso o laboratório mostra OS de exemplo.';
     }
@@ -151,9 +151,28 @@ async function sincronizarOs() {
 const autoCam = $('autoCam');
 let timerCam = null;
 let ultimoFoco = Date.now();
+let setorMostrado = null;
+function desenharAngulos(setor) {
+  setorMostrado = setor;
+  for (const b of $('camSetores').querySelectorAll('[data-setor]')) b.classList.toggle('ativa', b.dataset.setor === setor);
+  const caixa = $('camAngulos');
+  caixa.textContent = '';
+  for (const cam of escritorio.cameras.filter(c => c.setor === setor)) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.dataset.cam = cam.id;
+    b.textContent = cam.botao;
+    b.title = cam.nome;
+    b.addEventListener('click', () => { autoCam.checked = false; focar(cam.id); });
+    caixa.appendChild(b);
+  }
+}
 function marcarCamera(cam) {
   $('camNome').textContent = cam.nome;
-  for (const b of $('cams').children) b.classList.toggle('ativa', b.dataset.cam === cam.id);
+  if (!escritorio) return;
+  if (cam.setor !== setorMostrado) desenharAngulos(cam.setor);
+  for (const b of $('camAngulos').children) b.classList.toggle('ativa', b.dataset.cam === cam.id);
+  for (const q of $('mosaicoGrade').children) q.classList.toggle('atual', q.dataset.cam === cam.id);
 }
 function focar(id, atraso = 0) {
   if (!id) return;
@@ -164,16 +183,106 @@ function focar(id, atraso = 0) {
 const focarAuto = (id, atraso = 0) => { if (autoCam.checked) focar(id, atraso); };
 const cameraDe = papel => (escritorio?.cameraDe ? escritorio.cameraDe(papel) : { analista: 'analise', revisor: 'analise', copywriter: 'criacao', roteirista: 'criacao', chefe: 'chefe' }[papel] || 'geral');
 if (escritorio) {
-  for (const cam of escritorio.cameras) {
+  for (const setor of escritorio.setores) {
     const b = document.createElement('button');
     b.type = 'button';
-    b.dataset.cam = cam.id;
-    b.textContent = cam.botao || cam.nome.replace(/^CAM \d+ · /, '').toLowerCase().replace(/^./, c => c.toUpperCase());
-    b.addEventListener('click', () => { autoCam.checked = false; focar(cam.id); });
-    $('cams').appendChild(b);
+    b.dataset.setor = setor.id;
+    b.textContent = setor.nome;
+    b.addEventListener('click', () => {
+      autoCam.checked = false;
+      desenharAngulos(setor.id);
+      focar(escritorio.cameras.find(c => c.setor === setor.id).id);
+    });
+    $('camSetores').appendChild(b);
   }
   marcarCamera(escritorio.cameraAtual());
+} else {
+  $('btMosaico').hidden = true;
 }
+
+// ---------- mosaico: central com várias câmeras ao vivo ----------
+const ABAS_MOSAICO = [{ id: 'todos', nome: 'Todos' }, ...(escritorio?.setores || []).filter(s => s.id !== 'caes')];
+let abaMosaico = 'todos';
+function camerasDaAba(aba) {
+  if (aba === 'todos') return escritorio.mosaicoTodos.map(id => escritorio.cameras.find(c => c.id === id)).filter(Boolean);
+  return escritorio.cameras.filter(c => c.setor === aba);
+}
+/** Escolhe o número de colunas que deixa cada quadro mais perto de 16:10, sem rolar. */
+function ajustarGrade() {
+  const grade = $('mosaicoGrade');
+  const n = grade.children.length;
+  if (!n) return;
+  const w = grade.clientWidth, h = grade.clientHeight;
+  let melhor = 1, nota = Infinity;
+  for (let cols = 1; cols <= Math.min(n, 6); cols++) {
+    const linhas = Math.ceil(n / cols);
+    const a = (w / cols) / (h / linhas);
+    const vazios = cols * linhas - n;
+    const d = Math.abs(Math.log(a / 1.6)) + vazios * 0.08;
+    if (d < nota) { nota = d; melhor = cols; }
+  }
+  grade.style.gridTemplateColumns = `repeat(${melhor}, minmax(0, 1fr))`;
+  grade.style.gridTemplateRows = `repeat(${Math.ceil(n / melhor)}, minmax(0, 1fr))`;
+}
+function desenharMosaico() {
+  const abas = $('mosaicoAbas');
+  abas.textContent = '';
+  for (const aba of ABAS_MOSAICO) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-selected', String(aba.id === abaMosaico));
+    b.className = aba.id === abaMosaico ? 'ativa' : '';
+    b.textContent = aba.nome;
+    b.addEventListener('click', () => { abaMosaico = aba.id; desenharMosaico(); });
+    abas.appendChild(b);
+  }
+  const grade = $('mosaicoGrade');
+  grade.textContent = '';
+  const atual = escritorio.cameraAtual().id;
+  for (const cam of camerasDaAba(abaMosaico)) {
+    const q = document.createElement('button');
+    q.type = 'button';
+    q.className = 'quadro' + (cam.id === atual ? ' atual' : '');
+    q.dataset.cam = cam.id;
+    q.title = `Abrir ${cam.nome}`;
+    const nome = document.createElement('span');
+    nome.className = 'quadro-nome';
+    const [num, resto] = cam.nome.split(' · ');
+    const elNum = document.createElement('span');
+    elNum.className = 'quadro-num';
+    elNum.textContent = `${num} · `;
+    nome.append(elNum, resto || '');
+    const setor = document.createElement('span');
+    setor.className = 'quadro-setor';
+    setor.textContent = escritorio.setores.find(s => s.id === cam.setor)?.nome || '';
+    q.append(nome, setor);
+    q.addEventListener('click', () => { fecharMosaico(); autoCam.checked = false; focar(cam.id); });
+    grade.appendChild(q);
+  }
+  ajustarGrade();
+  if (escritorio.mosaicoAberto()) escritorio.abrirMosaico(grade); // limpa a imagem dos quadros antigos
+}
+function abrirMosaico() {
+  if (!escritorio) return;
+  $('mosaico').hidden = false;
+  $('moldura').classList.add('com-mosaico');
+  $('btMosaico').classList.add('ativa');
+  desenharMosaico();
+  escritorio.abrirMosaico($('mosaicoGrade'));
+}
+function fecharMosaico() {
+  if (!escritorio?.mosaicoAberto()) return;
+  escritorio.fecharMosaico();
+  $('mosaico').hidden = true;
+  $('moldura').classList.remove('com-mosaico');
+  $('btMosaico').classList.remove('ativa');
+}
+$('btMosaico').addEventListener('click', () => (escritorio?.mosaicoAberto() ? fecharMosaico() : abrirMosaico()));
+$('btFecharMosaico').addEventListener('click', fecharMosaico);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && escritorio?.mosaicoAberto()) fecharMosaico(); });
+new ResizeObserver(() => { if (escritorio?.mosaicoAberto()) ajustarGrade(); }).observe($('mosaicoGrade'));
+
 setInterval(() => {
   $('camHora').textContent = new Date().toLocaleTimeString('pt-BR');
   if (autoCam.checked && escritorio && !agencia.ocupado() && Date.now() - ultimoFoco > 25000 && Math.random() < 0.05) {
@@ -516,9 +625,13 @@ $('seloEnsaio').hidden = !chkEnsaio.checked;
 const CHAVE_VOZES = 'agencia.vozes';
 const chkVozes = $('chkVozes');
 chkVozes.checked = ler(CHAVE_VOZES, true);
+const CHAVE_VOZ_REAL = 'agencia.vozReal';
+const chkVozReal = $('chkVozReal');
+chkVozReal.checked = ler(CHAVE_VOZ_REAL, false); // economia: começa desligada
 const voz = criarVoz({
   token: () => ler('agencia.token', ''),
   ensaio: () => chkEnsaio.checked,
+  premium: () => chkVozReal.checked,
   aoFalar: (papel, sim) => cena.falando(papel, sim),
 });
 voz.ligar(chkVozes.checked);
@@ -526,10 +639,11 @@ async function atualizarStatusVozes() {
   await voz.verificar();
   $('statusVozes').textContent = !chkVozes.checked ? 'Vozes desligadas.'
     : voz.usaElevenlabs() ? 'Vozes do ElevenLabs (uma voz para cada funcionário). Perguntas por áudio transcritas pelo ElevenLabs e revisadas pelo Claude Haiku.'
-    : 'Vozes do navegador (tom diferente para cada um). Para vozes reais, ligue o ElevenLabs (veja o README). Perguntas por áudio: reconhecimento do navegador + revisão do Claude Haiku.';
+    : 'Vozes do navegador, grátis (tom diferente para cada um). Perguntas por áudio: reconhecimento do navegador + revisão do Claude Haiku.';
   $('btMic').hidden = !voz.podeOuvir();
 }
 chkVozes.addEventListener('change', () => { gravar(CHAVE_VOZES, chkVozes.checked); voz.ligar(chkVozes.checked); atualizarStatusVozes(); });
+chkVozReal.addEventListener('change', () => { gravar(CHAVE_VOZ_REAL, chkVozReal.checked); atualizarStatusVozes(); });
 
 const agencia = criarAgencia({
   ensaio: () => chkEnsaio.checked,
@@ -665,7 +779,7 @@ function mostrarRotina(r, nova) {
   if (nova) cena.reviverRotina(r);
 }
 async function sincronizar(inicial = false) {
-  const { rotinas, armazem, erro } = await agencia.sincronizar().catch(e => ({ rotinas: [], erro: e.message }));
+  const { rotinas, armazem, ativas, erro } = await agencia.sincronizar().catch(e => ({ rotinas: [], erro: e.message }));
   const vistas = new Set(ler(CHAVE_ROTINAS_VISTAS, []));
   const novas = rotinas.filter(r => !vistas.has(r.id)).reverse();
   for (const r of novas) { mostrarRotina(r, true); vistas.add(r.id); }
@@ -674,10 +788,11 @@ async function sincronizar(inicial = false) {
     const resumo = novas.map(r => `${nome(r.gestor)} (${(r.entregas || []).length} entregas, ${(r.decisoes || []).length} decisões)`).join(', ');
     adicionarChat(gestorAtual, { quem: 'evento', html: true, texto: `🌙 <b>Enquanto o app estava fechado</b> a equipe trabalhou: ${resumo}` });
   }
+  const standby = !Array.isArray(ativas) ? '' : ativas.length ? `Automáticas ligadas: ${ativas.join(', ')}. ` : '💤 Automáticas em standby (economia): só rodam quando você aperta um botão. ';
   $('statusRotinas').textContent = chkEnsaio.checked ? 'Modo ensaio: rotinas não são consultadas.'
     : erro ? `Rotinas: ${erro}`
-    : armazem === false ? 'As rotinas rodam, mas para guardar os relatórios ligue o Redis (Upstash) na Vercel.'
-    : `Última rotina: ${rotinas[0] ? hora(rotinas[0].inicio) + ' · ' + nome(rotinas[0].gestor) : 'nenhuma ainda'}`;
+    : standby + (armazem === false ? 'Para guardar os relatórios, ligue o Redis (Upstash) na Vercel.'
+      : `Última rotina: ${rotinas[0] ? hora(rotinas[0].inicio) + ' · ' + nome(rotinas[0].gestor) : 'nenhuma ainda'}`);
   desenharEntregas();
   desenharDiretoria();
   desenharInstagram();
@@ -741,5 +856,5 @@ desenharEntregas();
 desenharDiretoria();
 desenharInstagram();
 if (!semServidor) { verificarMeta(); sincronizar(true); sincronizarOs(); }
-setInterval(() => { if (!document.hidden) sincronizarOs(); }, 15000);
+setInterval(() => { if (!document.hidden) sincronizarOs(); }, 60000); // economia: 1 consulta por minuto
 setInterval(() => { if (!document.hidden) sincronizar(); }, 5 * 60 * 1000);

@@ -26,8 +26,12 @@
       <span class="logo">RB</span>
       <div><strong>Prédio RBTech</strong><small>loja · agência · vendas · diretoria</small></div>
     </div>
-    <nav class="cams" id="cams" aria-label="Câmeras"></nav>
+    <nav class="cams" id="cams" aria-label="Câmeras">
+      <div class="cams-setores" id="camSetores" role="group" aria-label="Setor"></div>
+      <div class="cams-angulos" id="camAngulos" role="group" aria-label="Ângulos do setor"></div>
+    </nav>
     <div class="acoes-topo">
+      <button id="btMosaico" class="bt-mosaico" type="button" title="Ver várias câmeras ao mesmo tempo">▦ Mosaico</button>
       <label class="chave"><input type="checkbox" id="autoCam" checked><span>Câmera automática</span></label>
       <button id="btVideo" class="bt-sec" type="button">▶ Modo vídeo 9:16</button>
     </div>
@@ -41,6 +45,15 @@
         <div class="cam-rotulo"><span class="rec"></span><span id="camNome">CAM 01 · VISÃO GERAL</span><span id="camHora"></span></div>
         <div class="selo-ensaio" id="seloEnsaio" hidden>MODO ENSAIO · sem IA</div>
         <button id="btSairVideo" class="bt-sair-video" type="button" hidden>✕ sair do modo vídeo</button>
+        <div class="mosaico" id="mosaico" hidden>
+          <div class="mosaico-topo">
+            <strong class="mosaico-titulo"><span class="rec"></span>Central de câmeras</strong>
+            <div class="mosaico-abas" id="mosaicoAbas" role="tablist" aria-label="Quais câmeras mostrar"></div>
+            <button id="btFecharMosaico" class="bt-sec" type="button">✕ Fechar</button>
+          </div>
+          <div class="mosaico-grade" id="mosaicoGrade"></div>
+          <p class="mosaico-dica">Toque numa câmera para abrir em tela cheia.</p>
+        </div>
         <div class="sem-3d" id="sem3d" hidden>
           <p>Não deu para abrir o escritório 3D neste navegador.</p>
           <p>Os chats com as equipes continuam funcionando ao lado.</p>
@@ -112,6 +125,7 @@
         <div class="form">
           <label class="chave"><input type="checkbox" id="chkEnsaio"><span><strong>Modo ensaio</strong>: a equipe se mexe com respostas de mentira, sem IA e sem gastar créditos.</span></label>
           <label class="chave"><input type="checkbox" id="chkVozes"><span><strong>🔊 Vozes da equipe</strong>: os chefes respondem em texto e em voz. <small id="statusVozes"></small></span></label>
+          <label class="chave"><input type="checkbox" id="chkVozReal"><span><strong>🎙️ Voz realista (ElevenLabs)</strong>: gasta créditos do ElevenLabs a cada resposta. Desligada, usa a voz do navegador, que é grátis.</span></label>
           <div class="rotinas">
             <strong>🔧 ReparoSimples · loja RB Tech</strong>
             <small>As OS em andamento aparecem no laboratório do térreo: OS nova vira aparelho para o técnico e cada mudança de status move o aparelho.</small>
@@ -120,7 +134,7 @@
           </div>
           <div class="rotinas">
             <strong>Rotinas automáticas</strong>
-            <small>Todo dia de manhã cada andar trabalha sozinho, mesmo com o app fechado, e deixa o relatório aqui.</small>
+            <small>Cada andar pode trabalhar sozinho de manhã, mesmo com o app fechado. Para economizar, isso fica em standby: ligue na Vercel com ROTINAS_ATIVAS (ex.: trafego,loja) ou use os botões abaixo quando quiser.</small>
             <small id="statusRotinas">…</small>
             <div class="botoes-rotina">
               <button type="button" class="bt-sec" data-rotina="loja">Rodar loja</button>

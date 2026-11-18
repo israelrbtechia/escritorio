@@ -27,13 +27,14 @@ export function textoParaFalar(md, limite = 650) {
   return (fim > limite * 0.5 ? corte.slice(0, fim + 1) : corte + '…') + ' Os detalhes estão no chat.';
 }
 
-export function criarVoz({ token, ensaio, aoFalar }) {
+export function criarVoz({ token, ensaio, aoFalar, premium = () => true }) {
   let elevenlabs = false;
   let ligada = true;
   let fila = Promise.resolve();
   let audioAtual = null;
   const cabecalhos = () => ({ 'content-type': 'application/json', authorization: `Bearer ${token()}` });
 
+  const usa = () => elevenlabs && premium() && !ensaio(); // ElevenLabs gasta créditos: só com a chave ligada nos ajustes
   async function verificar() {
     try {
       const r = await fetch('/api/voz', { headers: cabecalhos() });
@@ -81,7 +82,7 @@ export function criarVoz({ token, ensaio, aoFalar }) {
       if (!ligada) return;
       aoFalar?.(papel, true);
       try {
-        if (elevenlabs && !ensaio()) await falarComElevenlabs(papel, texto);
+        if (usa()) await falarComElevenlabs(papel, texto);
         else await falarNoNavegador(papel, texto);
       } catch (e) {
         console.warn('voz:', e.message);
@@ -100,11 +101,11 @@ export function criarVoz({ token, ensaio, aoFalar }) {
   // ---------- ouvir ----------
   let gravador = null, pedacos = [], reconhecimento = null;
   const temReconhecimento = () => 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-  const podeOuvir = () => (elevenlabs && !ensaio() && !!navigator.mediaDevices?.getUserMedia && 'MediaRecorder' in window) || temReconhecimento();
+  const podeOuvir = () => (usa() && !!navigator.mediaDevices?.getUserMedia && 'MediaRecorder' in window) || temReconhecimento();
 
   /** Começa a ouvir. Chama aoParcial(texto) durante a fala (só no navegador). Devolve uma função que para e entrega o texto. */
   async function comecarAOuvir(aoParcial) {
-    if (elevenlabs && !ensaio() && navigator.mediaDevices?.getUserMedia && 'MediaRecorder' in window) {
+    if (usa() && navigator.mediaDevices?.getUserMedia && 'MediaRecorder' in window) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       pedacos = [];
       gravador = new MediaRecorder(stream);
@@ -157,7 +158,7 @@ export function criarVoz({ token, ensaio, aoFalar }) {
 
   return {
     verificar, falar, calar, comecarAOuvir, revisar, podeOuvir,
-    usaElevenlabs: () => elevenlabs && !ensaio(),
+    usaElevenlabs: () => usa(),
     ligada: () => ligada,
     ligar(v) { ligada = v; if (!v) calar(); },
   };

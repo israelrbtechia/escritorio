@@ -37,6 +37,9 @@ Um prédio 3D "blocadinho" onde cada andar tem uma equipe de IA, e toda decisão
 | `META_IG_USER_ID` | id da conta profissional do Instagram (número, não o @) |
 | `META_APP_SECRET` | opcional: chave secreta do app da Meta (assina as chamadas) |
 | `AGENCIA_MODELO` | opcional: padrão `claude-opus-5-5` |
+| `AGENCIA_MODELO_EQUIPE` | opcional: modelo só dos funcionários (os chefes continuam no `AGENCIA_MODELO`). Ex.: `claude-sonnet-5-5`, que custa metade |
+| `AGENCIA_ESFORCO_CHEFES` / `AGENCIA_ESFORCO_EQUIPE` | opcional: `low`, `medium`, `high`… Padrão: chefes `medium`, equipe `low` |
+| `ROTINAS_ATIVAS` | opcional: liga as rotinas automáticas. Ex.: `trafego,loja` ou `todas`. Sem ela, ficam em standby |
 | `ELEVENLABS_API_KEY` | opcional: vozes reais para cada funcionário e transcrição das perguntas por áudio |
 | `ELEVENLABS_VOZES` | opcional: troca vozes, em JSON (ex.: `{"chefe":"id-da-voz"}`) |
 
@@ -54,6 +57,8 @@ Sem `AGENCIA_USUARIO` e `AGENCIA_SENHA`, o site fica aberto: qualquer pessoa com
 A equipe só **lê** métricas: não publica, não edita posts e não mexe em orçamento.
 
 ### Rotinas (vercel.json)
+**Em standby por padrão**, para não gastar créditos todo dia. O cron continua agendado, mas sai na hora sem chamar a IA. Para ligar, crie `ROTINAS_ATIVAS` com as equipes (ex.: `trafego` ou `trafego,loja`) e faça redeploy. Os botões "Rodar …" da aba Ajustes funcionam sempre.
+
 | Horário (Brasília) | Andar |
 |---|---|
 | 08:07 | Loja |
@@ -91,8 +96,16 @@ A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGE
 
 ## Vozes e perguntas por áudio
 - Botão 🎙️ no chat: você fala, o texto aparece e o **Claude Haiku** corrige nomes e pontuação antes de enviar. O Claude não ouve áudio: quem transcreve é o ElevenLabs (com a chave) ou o próprio navegador (Chrome).
-- Os chefes respondem em texto e em voz. Com `ELEVENLABS_API_KEY`, cada funcionário tem uma voz brasileira própria (lista em `api/voz.js`); sem ela, o app usa a voz do navegador com tom diferente para cada um.
+- Os chefes respondem em texto e em voz. Por padrão usam a voz do navegador (grátis), com tom diferente para cada um. Com `ELEVENLABS_API_KEY` **e** a chave "Voz realista (ElevenLabs)" ligada nos Ajustes, cada funcionário tem uma voz brasileira própria (lista em `api/voz.js`); isso gasta créditos do ElevenLabs a cada resposta.
 - As vozes escolhidas vêm da biblioteca do ElevenLabs: se alguma não tocar, abra a voz na Voice Library e clique em **Add to my voices**.
 
 ## Custos
-Uma reunião completa custa de alguns centavos a cerca de US$ 0,50; as 4 rotinas diárias, algo parecido cada. A aba Ajustes mostra o gasto estimado das reuniões feitas no app.
+Uma reunião completa custa de alguns centavos a cerca de US$ 0,50. A aba Ajustes mostra o gasto estimado das reuniões feitas no app.
+
+Modo econômico (padrão):
+- rotinas automáticas em standby (`ROTINAS_ATIVAS` liga);
+- funcionários com esforço baixo e chefes com esforço médio;
+- voz do navegador no lugar do ElevenLabs;
+- ReparoSimples consultado uma vez por minuto.
+
+Para gastar ainda menos, use `AGENCIA_MODELO_EQUIPE=claude-sonnet-5-5`, ou o modo ensaio para testar sem IA.

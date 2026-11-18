@@ -24,23 +24,62 @@ const GESTOR_DE = {
 const CHEFES = ['gerente_loja', 'chefe', 'gerente_crescimento', 'head_vendas'];
 
 // câmeras: pos/alvo relativos ao andar; limite = até qual andar fica visível
-export const CAMERAS = [
-  { id: 'predio',      nome: 'CAM 00 · PRÉDIO RBTECH',     botao: 'Prédio',      andar: 0, limite: 3, pos: [34, 22, 42], alvo: [0, 6.5, 0], largura: 1.3, alvoEmPe: [0, 7, 0] },
-  { id: 'loja',        nome: 'CAM 01 · LOJA RB TECH',      botao: '1º Loja',     andar: 0, limite: 0, pos: [17, 15, 19], alvo: [0, 0, -0.5], largura: 1.5, alvoEmPe: [0.7, 0, -1] },
-  { id: 'balcao',      nome: 'CAM 02 · BALCÃO',            botao: 'Balcão',      andar: 0, limite: 0, pos: [1, 4.4, 5.4], alvo: [0, 1.2, -3.0] },
-  { id: 'reparo',      nome: 'CAM 02 · REPARO',            botao: 'Reparo',      andar: 0, limite: 0, pos: [-2.75, 16.9, -0.2], alvo: [-2.75, 0.9, -6.2], largura: 1.7 },
-  { id: 'geral',       nome: 'CAM 03 · AGÊNCIA',           botao: '2º Agência',  andar: 1, limite: 1, pos: [17, 15, 19], alvo: [0, 0, -0.5], largura: 1.5, alvoEmPe: [0.7, 0, -1] },
-  { id: 'chefe',       nome: 'CAM 04 · SALA DO TRÁFEGO',   botao: 'Tráfego',     andar: 1, limite: 1, pos: [7.4, 4.4, 2.4], alvo: [8, 1.3, -5.6] },
-  { id: 'crescimento', nome: 'CAM 05 · SALA DO CRESCIMENTO', botao: 'Crescimento', andar: 1, limite: 1, pos: [-7.6, 4.4, 2.4], alvo: [-8.2, 1.3, -5.6] },
-  { id: 'criacao',     nome: 'CAM 06 · CRIAÇÃO',           botao: 'Criação',     andar: 1, limite: 1, pos: [-6, 4.6, 10.8], alvo: [-6, 1.1, 3] },
-  { id: 'analise',     nome: 'CAM 07 · ANÁLISE E INSTAGRAM', botao: 'Análise',   andar: 1, limite: 1, pos: [5.5, 4.8, 12], alvo: [5, 1.1, 4.4] },
-  { id: 'vendas',      nome: 'CAM 08 · VENDAS E SAAS',     botao: '3º Vendas',   andar: 2, limite: 2, pos: [17, 15, 19], alvo: [0, 0, -0.5], largura: 1.5, alvoEmPe: [0.7, 0, -1] },
-  { id: 'saas',        nome: 'CAM 09 · SISTEMAS',          botao: 'Sistemas',    andar: 2, limite: 2, pos: [4.5, 4.6, 2.2], alvo: [4.5, 1.4, -6] },
-  { id: 'terraco',     nome: 'CAM 10 · TERRAÇO E DIRETORIA', botao: 'Terraço',   andar: 3, limite: 3, pos: [15, 13, 15], alvo: [0, 0, -1], largura: 1.4, alvoEmPe: [1, 0, -1] },
-  { id: 'boss',        nome: 'CAM 11 · SALA DO ISRAEL',    botao: 'Boss',        andar: 3, limite: 3, pos: [2.5, 4.6, 3.6], alvo: [2.5, 1.2, -5.4] },
-  { id: 'caes',        nome: 'CAM 12 · PETER E BIBI',      botao: 'Peter e Bibi', segue: true },
+// câmeras por setor. pos/alvo relativos ao andar (abs: em coordenadas do prédio); limite = até qual andar fica visível
+export const SETORES = [
+  { id: 'predio', nome: 'Prédio' }, { id: 'loja', nome: '1º Loja' }, { id: 'agencia', nome: '2º Agência' },
+  { id: 'vendas', nome: '3º Vendas' }, { id: 'terraco', nome: 'Terraço' }, { id: 'caes', nome: 'Peter e Bibi' },
 ];
-CAMERAS.forEach((c, i) => { c.nome = `CAM ${String(i).padStart(2, '0')} · ${c.nome.replace(/^CAM \d+ · /, '')}`; });
+const C = (setor, id, botao, andar, pos, alvo, extra = {}) => ({ setor, id, botao, nome: botao.toUpperCase(), andar, limite: andar, pos, alvo, ...extra });
+export const CAMERAS = [
+  // prédio por fora
+  C('predio', 'predio', 'Fachada', 0, [34, 22, 42], [0, 6.5, 0], { abs: true, limite: 3, largura: 1.3, alvoEmPe: [0, 7, 0], nome: 'PRÉDIO RBTECH' }),
+  C('predio', 'predio_rua', 'Da rua', 0, [5, 1.6, 23], [1, 5.5, 0], { abs: true, limite: 3, largura: 1.1 }),
+  C('predio', 'predio_lateral', 'Lateral e elevador', 0, [32, 9, -8], [7, 6.5, -1], { abs: true, limite: 3, largura: 1.2 }),
+  C('predio', 'predio_aerea', 'Aérea', 0, [6, 50, 20], [0, 7, 0], { abs: true, limite: 3, largura: 1.2 }),
+  // 1º andar · loja
+  C('loja', 'loja', 'Visão geral', 0, [17, 15, 19], [0, 0, -0.5], { largura: 1.5, alvoEmPe: [0.7, 0, -1], nome: 'LOJA RB TECH' }),
+  C('loja', 'loja_porta', 'Entrada', 0, [0, 3.0, 13], [0, 1.3, 1.5]),
+  C('loja', 'balcao', 'Balcão', 0, [1, 4.4, 5.4], [0, 1.2, -3.0]),
+  C('loja', 'loja_vitrine', 'Vitrines', 0, [6, 3.0, 1.6], [-1, 0.9, -2.4]),
+  C('loja', 'loja_negociacao', 'Mesa de negociação', 0, [-5.0, 3.4, 5.4], [-9.6, 1.0, 2.2]),
+  C('loja', 'loja_cafe', 'Café do cliente', 0, [-1.2, 3.0, 2.8], [-6, 0.8, 7]),
+  C('loja', 'loja_grama', 'Grama e TV', 0, [-3.5, 3.4, 0.4], [-11.5, 2.2, 1.5]),
+  C('loja', 'loja_neon', 'Neon e selfie', 0, [4.5, 3.0, 2.2], [11.5, 1.6, 4.5]),
+  C('loja', 'reparo', 'Laboratório', 0, [-2.75, 16.9, -0.2], [-2.75, 0.9, -6.2], { largura: 1.7, nome: 'LABORATÓRIO DE REPAROS' }),
+  C('loja', 'reparo_bancada', 'Bancada', 0, [-6.3, 3.3, -4.6], [-6.3, 0.9, -7.6]),
+  C('loja', 'reparo_os', 'Prateleiras de OS', 0, [6.0, 2.6, -4.6], [3.0, 1.0, -7.7]),
+  // 2º andar · agência
+  C('agencia', 'geral', 'Visão geral', 1, [17, 15, 19], [0, 0, -0.5], { largura: 1.5, alvoEmPe: [0.7, 0, -1], nome: 'AGÊNCIA RBTECH' }),
+  C('agencia', 'chefe', 'Sala da Pamella', 1, [7.4, 4.4, 2.4], [8, 1.3, -5.6]),
+  C('agencia', 'crescimento', 'Sala da Helena', 1, [-7.6, 4.4, 2.4], [-8.2, 1.3, -5.6]),
+  C('agencia', 'criacao', 'Criação', 1, [-6, 4.6, 10.8], [-6, 1.1, 3]),
+  C('agencia', 'analise', 'Análise e Instagram', 1, [5.5, 4.8, 12], [5, 1.1, 4.4]),
+  C('agencia', 'ag_placar', 'Placar e reunião', 1, [-0.5, 3.6, 0.8], [0.8, 1.6, -7.8]),
+  C('agencia', 'ag_janela', 'Janela', 1, [-3, 4.2, 2.5], [-7, 1.2, -5]),
+  C('agencia', 'ag_copa', 'Copa e sofá', 1, [6, 3.4, 2.4], [10.5, 0.9, 6.2]),
+  C('agencia', 'ag_corredor', 'Corredor', 1, [-11, 3.0, 0.4], [6, 1.0, 0]),
+  // 3º andar · vendas e SaaS
+  C('vendas', 'vendas', 'Visão geral', 2, [17, 15, 19], [0, 0, -0.5], { largura: 1.5, alvoEmPe: [0.7, 0, -1], nome: 'VENDAS E SAAS' }),
+  C('vendas', 'vd_head', 'Sala do head', 2, [-7.4, 4.4, 2.4], [-7, 1.3, -5.6]),
+  C('vendas', 'vd_time', 'Time de vendas', 2, [-4, 4.4, 10.8], [-4, 1.1, 3]),
+  C('vendas', 'saas', 'Sistemas', 2, [4.5, 4.6, 2.2], [4.5, 1.4, -6]),
+  C('vendas', 'vd_sino', 'Sino e painel SaaS', 2, [6, 3.2, 3.5], [2.5, 1.6, -6]),
+  C('vendas', 'vd_servidor', 'Servidor', 2, [7.5, 2.6, -2.5], [11, 1.2, -6.6]),
+  C('vendas', 'vd_copa', 'Copa', 2, [6, 3.4, 2.4], [10.5, 0.9, 6.2]),
+  // terraço
+  C('terraco', 'terraco', 'Visão geral', 3, [15, 13, 15], [0, 0, -1], { largura: 1.4, alvoEmPe: [1, 0, -1], nome: 'TERRAÇO E DIRETORIA' }),
+  C('terraco', 'boss', 'Sala do Israel', 3, [2.5, 4.6, 3.6], [2.5, 1.2, -5.4]),
+  C('terraco', 'tr_espresso', 'Espresso do Boss', 3, [3.0, 2.8, -1.8], [5.9, 1.1, -5.5]),
+  C('terraco', 'tr_reuniao', 'Mesa de reunião', 3, [2.5, 4.0, 8.6], [2.5, 0.9, 3.6]),
+  C('terraco', 'tr_lazer', 'Lazer e videogame', 3, [-4.5, 3.4, 1.4], [-10, 1, 5]),
+  C('terraco', 'tr_pebolim', 'Pebolim', 3, [-2.4, 2.6, 4.0], [-4.5, 1.0, 6.0]),
+  C('terraco', 'tr_copa', 'Copa do terraço', 3, [-6, 3.0, 0.4], [-11, 1.0, -3.6]),
+  // Peter e Bibi
+  { setor: 'caes', id: 'caes', botao: 'Seguir os cães', nome: 'PETER E BIBI', segue: true },
+];
+CAMERAS.forEach((c, i) => { c.nome = `CAM ${String(i + 1).padStart(2, '0')} · ${c.nome}`; });
+/** Uma câmera de cada setor (e as principais) para o mosaico "Todos". */
+export const MOSAICO_TODOS = ['predio', 'loja', 'balcao', 'reparo', 'geral', 'chefe', 'crescimento', 'vendas', 'saas', 'terraco', 'boss', 'caes'];
 const CAM_DE = {
   gerente_loja: 'loja', atendimento: 'balcao', tecnico: 'reparo',
   chefe: 'chefe', analista: 'analise', copywriter: 'criacao', roteirista: 'criacao', revisor: 'analise',
@@ -687,7 +726,7 @@ export function criarEscritorio(container, camada) {
   let transicao = null;
   let caoSeguido = 'bibi';
   let ultimoAspecto = 0;
-  const fator = cam => Math.max(1, (cam.largura ?? 0.8) / camera.aspect);
+  const fator = (cam, aspecto = camera.aspect) => Math.max(1, (cam.largura ?? 0.8) / aspecto);
   function aplicarLimite(n) {
     limite = n;
     andares.forEach((g, i) => {
@@ -695,18 +734,77 @@ export function criarEscritorio(container, camada) {
       if (g.userData.fachada) g.userData.fachada.visible = i < n;
     });
   }
-  function posicaoCamera(cam) {
+  function posicaoCamera(cam, aspecto = camera.aspect) {
     if (cam.segue) {
       const d = caes[caoSeguido];
       const m = d.raiz.position;
       const alvo = new THREE.Vector3(m.x, m.y + 0.5, m.z);
-      return [alvo.clone().add(new THREE.Vector3(2.4, 2.6, 3.8).multiplyScalar(fator(cam))), alvo];
+      return [alvo.clone().add(new THREE.Vector3(2.4, 2.6, 3.8).multiplyScalar(fator(cam, aspecto))), alvo];
     }
-    const dy = (cam.andar || 0) * ALT;
-    const alvo = new THREE.Vector3(cam.alvo[0], cam.alvo[1] + (cam.id === 'predio' ? 0 : dy), cam.alvo[2]);
-    const off = new THREE.Vector3(cam.pos[0] - cam.alvo[0], cam.pos[1] - cam.alvo[1], cam.pos[2] - cam.alvo[2]).multiplyScalar(fator(cam));
-    if (cam.alvoEmPe && camera.aspect < 0.8) alvo.set(cam.alvoEmPe[0], cam.alvoEmPe[1] + (cam.id === 'predio' ? 0 : dy), cam.alvoEmPe[2]);
+    const dy = cam.abs ? 0 : (cam.andar || 0) * ALT;
+    const alvo = new THREE.Vector3(cam.alvo[0], cam.alvo[1] + dy, cam.alvo[2]);
+    const off = new THREE.Vector3(cam.pos[0] - cam.alvo[0], cam.pos[1] - cam.alvo[1], cam.pos[2] - cam.alvo[2]).multiplyScalar(fator(cam, aspecto));
+    if (cam.alvoEmPe && aspecto < 0.8) alvo.set(cam.alvoEmPe[0], cam.alvoEmPe[1] + dy, cam.alvoEmPe[2]);
     return [alvo.clone().add(off), alvo];
+  }
+  const limiteDe = cam => (cam.segue ? (caes[caoSeguido].noElevador ? 3 : caes[caoSeguido].andar) : cam.limite);
+
+  // ---------- mosaico: várias câmeras ao vivo na mesma tela (estilo central de monitoramento) ----------
+  let mosaico = null; // { grade, cams: Map(id → PerspectiveCamera), prox }
+  const FUNDO_QUADRO = new THREE.Color(0x1b1a13);
+  function abrirMosaico(grade) {
+    mosaico = { grade, cams: new Map(), prox: 0 };
+    camada.style.display = 'none';
+    renderer.setScissorTest(false);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear(); // os vãos entre os quadros ficam transparentes (fundo escuro da moldura)
+  }
+  function fecharMosaico() {
+    if (!mosaico) return;
+    mosaico = null;
+    camada.style.display = '';
+    renderer.setClearColor(0x000000, 0);
+    renderer.shadowMap.autoUpdate = true;
+    renderer.setScissorTest(false);
+    renderer.setViewport(0, 0, container.clientWidth, container.clientHeight);
+    aplicarLimite(limiteDe(camAtual));
+    for (const e of entidades) e.raiz.visible = visivel(e);
+  }
+  function renderizarMosaico() {
+    const tela = renderer.domElement.getBoundingClientRect();
+    const quadros = [...mosaico.grade.querySelectorAll('[data-cam]')];
+    if (!quadros.length) return;
+    // a sombra só é recalculada uma vez por quadro (ou quando muda o andar visível)
+    renderer.shadowMap.autoUpdate = false;
+    let limSombra = null;
+    renderer.setScissorTest(true);
+    renderer.setClearColor(FUNDO_QUADRO, 1);
+    const porQuadro = Math.min(quadros.length, celular ? 2 : 4); // poucas câmeras por quadro: as outras mantêm a última imagem
+    for (let k = 0; k < porQuadro; k++) {
+      const el = quadros[(mosaico.prox + k) % quadros.length];
+      const cam = CAMERAS.find(c => c.id === el.dataset.cam);
+      if (!cam) continue;
+      const r = el.getBoundingClientRect();
+      const x = r.left - tela.left, y = tela.bottom - r.bottom, w = r.width, h = r.height;
+      if (w < 4 || h < 4) continue;
+      let camQuadro = mosaico.cams.get(cam.id);
+      if (!camQuadro) mosaico.cams.set(cam.id, (camQuadro = new THREE.PerspectiveCamera(40, 1, 0.1, 400)));
+      camQuadro.aspect = w / h;
+      camQuadro.updateProjectionMatrix();
+      const [pos, alvo] = posicaoCamera(cam, camQuadro.aspect);
+      camQuadro.position.copy(pos);
+      camQuadro.lookAt(alvo);
+      const lim = limiteDe(cam);
+      aplicarLimite(lim);
+      for (const e of entidades) e.raiz.visible = visivel(e);
+      if (lim !== limSombra) { renderer.shadowMap.needsUpdate = true; limSombra = lim; }
+      renderer.setViewport(x, y, w, h);
+      renderer.setScissor(x, y, w, h);
+      renderer.render(cena, camQuadro);
+    }
+    mosaico.prox = (mosaico.prox + porQuadro) % quadros.length;
+    renderer.setScissorTest(false);
+    renderer.setClearColor(0x000000, 0);
   }
   function irParaCamera(id, instantaneo = false) {
     const cam = CAMERAS.find(c => c.id === id) || CAMERAS[0];
@@ -715,7 +813,7 @@ export function criarEscritorio(container, camada) {
       caoSeguido = acordados.length === 1 ? acordados[0] : caoSeguido === 'bibi' ? 'peter' : 'bibi';
     }
     camAtual = cam;
-    aplicarLimite(cam.segue ? caes[caoSeguido].andar : cam.limite);
+    if (!mosaico) aplicarLimite(cam.segue ? caes[caoSeguido].andar : cam.limite);
     const [pos, alvo] = posicaoCamera(cam);
     if (instantaneo) { camera.position.copy(pos); controles.target.copy(alvo); transicao = null; }
     else transicao = { t: 0, de: camera.position.clone(), deAlvo: controles.target.clone(), para: pos, paraAlvo: alvo };
@@ -726,6 +824,7 @@ export function criarEscritorio(container, camada) {
     renderer.setSize(w, h, false);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    if (mosaico) renderer.setViewport(0, 0, w, h);
     if (Math.abs(camera.aspect - ultimoAspecto) > 0.05) { ultimoAspecto = camera.aspect; irParaCamera(camAtual.id, true); }
   }
   new ResizeObserver(redimensionar).observe(container);
@@ -928,7 +1027,7 @@ export function criarEscritorio(container, camada) {
       camera.position.lerp(pos, 0.03);
       controles.target.lerp(alvo, 0.05);
       const a = caes[caoSeguido].noElevador ? 3 : caes[caoSeguido].andar;
-      if (a !== limite) aplicarLimite(a);
+      if (a !== limite && !mosaico) aplicarLimite(a);
     }
     controles.update();
     if (t - ultimoDesenho > 0.25) {
@@ -943,15 +1042,15 @@ export function criarEscritorio(container, camada) {
         tela.desenhado = st.modo;
       }
     }
-    renderer.render(cena, camera);
-    posicionarBaloes();
+    if (mosaico) renderizarMosaico();
+    else { renderer.render(cena, camera); posicionarBaloes(); }
     requestAnimationFrame(quadro);
   }
   const v = new THREE.Vector3();
   function posicionarBaloes() {
     const w = container.clientWidth, h = container.clientHeight;
-    const foco = camAtual.id === 'predio' ? null : camAtual.segue ? caes[caoSeguido].andar : camAtual.andar;
-    camada.classList.toggle('sem-nomes', camAtual.id === 'predio'); // visão do prédio sem os nomes, para não poluir
+    const foco = camAtual.setor === 'predio' ? null : camAtual.segue ? caes[caoSeguido].andar : camAtual.andar;
+    camada.classList.toggle('sem-nomes', camAtual.setor === 'predio'); // visão do prédio sem os nomes, para não poluir
     for (const e of entidades) {
       if (!visivel(e) || (foco != null && andarVisual(e) !== foco && !e.noElevador)) { e.el.style.display = 'none'; continue; }
       e.raiz.getWorldPosition(v);
@@ -973,6 +1072,11 @@ export function criarEscritorio(container, camada) {
   const api = {
     versao: 2,
     cameras: CAMERAS,
+    setores: SETORES,
+    mosaicoTodos: MOSAICO_TODOS,
+    abrirMosaico,
+    fecharMosaico,
+    mosaicoAberto: () => !!mosaico,
     irParaCamera,
     cameraAtual: () => camAtual,
     cameraDe: papel => CAM_DE[papel] || 'predio',

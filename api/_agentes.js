@@ -51,16 +51,26 @@ export function lerCorpo(req) {
   return c || {};
 }
 
+// ECONOMIA: chefes pensam com esforço médio; a equipe deles com esforço baixo (tarefas curtas e bem definidas).
+// AGENCIA_MODELO_EQUIPE (opcional) troca só o modelo da equipe, sem mexer nos chefes.
+const CHEFES = new Set(Object.keys(EQUIPES));
+const ESFORCOS = ['low', 'medium', 'high', 'xhigh', 'max'];
+const esforcoDe = papel => {
+  const env = String(process.env[CHEFES.has(papel) ? 'AGENCIA_ESFORCO_CHEFES' : 'AGENCIA_ESFORCO_EQUIPE'] || '').trim().toLowerCase();
+  return ESFORCOS.includes(env) ? env : CHEFES.has(papel) ? 'medium' : 'low';
+};
+const modeloDe = papel => (CHEFES.has(papel) ? '' : process.env.AGENCIA_MODELO_EQUIPE) || process.env.AGENCIA_MODELO || 'claude-opus-5-5';
+
 /** Uma rodada de conversa de um funcionário. */
 export async function rodada(papel, messages) {
   const p = PAPEIS[papel];
+  const model = modeloDe(papel);
   const r = await client.beta.messages.create({
-    model: process.env.AGENCIA_MODELO || 'claude-opus-5-5',
+    model,
     max_tokens: 16000,
-    // se o modelo recusar por política de segurança, a própria API tenta de novo num modelo reserva
-    betas: ['server-side-fallback-2026-07-01'],
-    fallbacks: 'default',
-    output_config: { effort: p.esforco },
+    // se o modelo recusar por política de segurança, a própria API tenta de novo num modelo reserva (o Haiku não tem reserva)
+    ...(/haiku/i.test(model) ? {} : { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' }),
+    output_config: { effort: esforcoDe(papel) },
     cache_control: { type: 'ephemeral' },
     system: p.sistema,
     ...(p.ferramentas ? { tools: p.ferramentas } : {}),

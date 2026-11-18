@@ -282,7 +282,7 @@ Responda pelo seu andar em até 8 linhas: como está, o que você propõe e o qu
     }
     for (const r of rotinas) for (const d of r.decisoes || []) if (!decisoesServidor.some(x => x.id === d.id)) decisoesServidor.push(d);
     entregasRotina = rotinas.flatMap(r => (r.entregas || []).map(e => ({ ...e, gestor: r.gestor, rotina: r.id })));
-    return { rotinas, armazem: rot.status === 'fulfilled' ? rot.value.armazem : null, erro: rot.status === 'rejected' ? rot.reason.message : null };
+    return { rotinas, armazem: rot.status === 'fulfilled' ? rot.value.armazem : null, ativas: rot.status === 'fulfilled' ? rot.value.ativas : null, erro: rot.status === 'rejected' ? rot.reason.message : null };
   }
   async function rodarRotina(equipe) {
     return api(`/api/rotina?equipe=${encodeURIComponent(equipe)}&executar=1`, {});

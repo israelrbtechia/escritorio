@@ -280,3 +280,53 @@ body.modo-video .ent .tag { font-size: 12px; }
 
 .linha-loja { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; padding: 4px 0; border-top: 1px solid var(--linha); }
 .linha-loja code { user-select: all; color: var(--amarelo); background: none; padding: 0; }
+
+/* ---------- câmeras por setor + mosaico ---------- */
+.cams { flex-direction: column; align-items: stretch; gap: 4px; flex-wrap: nowrap; }
+.cams-setores, .cams-angulos { display: flex; flex-wrap: wrap; gap: 4px; }
+.cams-setores button { padding: 3px 10px; font-size: 12px; font-weight: 700; color: var(--texto); background: #262626; }
+.cams-setores button.ativa { background: #3a3510; color: var(--amarelo); border-color: #6b5f12; }
+.cams-angulos button { padding: 2px 8px; font-size: 11.5px; }
+.cams-angulos:empty { display: none; }
+.bt-mosaico { padding: 7px 12px; font-size: 13px; white-space: nowrap; }
+.bt-mosaico.ativa { background: #3a3510; color: var(--amarelo); outline: 1px solid var(--amarelo); }
+
+.moldura.com-mosaico { background: #070707; }
+.moldura.com-mosaico .cam-rotulo, .moldura.com-mosaico .selo-ensaio { display: none; }
+.mosaico {
+  position: absolute; inset: 0; z-index: 5;
+  display: flex; flex-direction: column; padding: 8px; gap: 6px;
+}
+.mosaico-topo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: rgba(10, 10, 10, .92); border: 1px solid var(--linha); border-radius: 10px; padding: 6px 8px; }
+.mosaico-titulo { display: flex; align-items: center; gap: 8px; font: 700 12px/1 "JetBrains Mono", monospace; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.mosaico-abas { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+.mosaico-abas button { padding: 4px 10px; font-size: 12px; background: var(--painel-2); color: var(--texto-2); border: 1px solid var(--linha); font-weight: 600; border-radius: 7px; }
+.mosaico-abas button.ativa { background: var(--amarelo); color: var(--preto); border-color: var(--amarelo); }
+.mosaico-topo .bt-sec { padding: 4px 10px; font-size: 12px; border-radius: 7px; }
+.mosaico-grade { flex: 1; min-height: 0; display: grid; gap: 6px; }
+.quadro {
+  position: relative; min-width: 0; min-height: 0; padding: 0; border-radius: 6px;
+  background: transparent; border: 1px solid #3a3a3a; color: #fff; font-weight: 600; text-align: left;
+  overflow: hidden; transition: border-color .15s, box-shadow .15s;
+}
+.quadro:hover, .quadro:focus-visible { border-color: var(--amarelo); box-shadow: inset 0 0 0 1px var(--amarelo); outline: none; }
+.quadro.atual { border-color: #8a7a12; }
+.quadro-nome, .quadro-setor {
+  position: absolute; left: 6px; max-width: calc(100% - 12px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: rgba(0, 0, 0, .62); border-radius: 4px; padding: 3px 6px;
+}
+.quadro-nome { top: 6px; font: 700 10.5px/1.2 "JetBrains Mono", monospace; letter-spacing: .04em; }
+.quadro-nome::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #ff3b3b; margin-right: 6px; vertical-align: 1px; animation: piscar 1.4s infinite; }
+.quadro-setor { bottom: 6px; font-size: 10.5px; color: #d8d8d8; font-weight: 500; }
+.mosaico-dica { margin: 0; text-align: center; font-size: 11.5px; color: var(--texto-2); }
+@media (max-width: 860px) {
+  .mosaico { padding: 6px; gap: 5px; }
+  .mosaico-titulo { display: none; }
+  .mosaico-grade { gap: 4px; }
+  .quadro-nome { font-size: 9px; padding: 2px 4px; top: 4px; left: 4px; }
+  .quadro-setor, .quadro-num { display: none; }
+  .mosaico-dica { display: none; }
+  .bt-mosaico { padding: 5px 9px; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .quadro-nome::before { animation: none; } }
