@@ -372,5 +372,16 @@ body.modo-video .ent .tag { font-size: 12px; }
 .lista-passos { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
 .lista-passos .msg { max-width: 100%; }
 
-.msg .corpo-cortado { max-height: 9.5em; overflow: hidden; position: relative; }
+.msg .corpo-cortado { max-height: 7.5em; overflow: hidden; position: relative; }
 .msg .corpo-cortado::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3em; background: linear-gradient(to bottom, rgba(32, 32, 32, 0), var(--painel-2)); pointer-events: none; }
+
+/* iPhone: campo com letra menor que 16px faz a página dar zoom sozinha ao tocar; e toque duplo não dá zoom */
+button, a, .abas, .cams, .gestores { touch-action: manipulation; }
+@media (max-width: 860px) {
+  .composer textarea, .form input, .form textarea, .form select, input[type="text"], input[type="number"], textarea { font-size: 16px; }
+}
+
+.msg.voce.voce-longa { white-space: normal; }
+.msg.voce .texto-cortado { white-space: pre-wrap; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.msg.voce > div:not(.texto-cortado) { white-space: pre-wrap; }
+.bt-recolher.escuro { color: var(--preto); opacity: .75; font-size: 12px; }

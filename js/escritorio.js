@@ -104,36 +104,64 @@ export function criarEscritorio(container, camada) {
   controles.maxPolarAngle = 1.45;
   controles.minDistance = 3;
   controles.maxDistance = 160;
-  // Toque: 1 dedo arrasta a visão; 2 dedos: pinça = zoom, girar os dedos = gira o prédio, arrastar os dois juntos = inclina.
+  // Toque: 1 dedo arrasta a visão. 2 dedos: o primeiro movimento decide o gesto (como nos mapas), e ele não se mistura:
+  //   pinça = zoom · girar os dedos = gira o prédio · arrastar os dois para cima/baixo = inclina.
   // Mouse: esquerdo arrasta, direito (ou Ctrl/Shift + esquerdo) gira, rodinha = zoom.
-  controles.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
+  controles.touches = { ONE: THREE.TOUCH.PAN, TWO: null }; // os 2 dedos ficam com o gesto abaixo
   controles.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
   controles.screenSpacePanning = true;
   let aoMexer = null;
   controles.addEventListener('start', () => { transicao = null; aoMexer?.(); });
   {
-    // girar com os dois dedos (como num mapa): a câmera dá a volta no ponto que está olhando
     const toques = new Map();
     const EIXO_Y = new THREE.Vector3(0, 1, 0);
-    let anguloAnterior = null;
+    const esf = new THREE.Spherical();
+    let gesto = null; // { dist, ang, meioY, modo: null | 'zoom' | 'girar' | 'inclinar' }
     const el = renderer.domElement;
-    el.addEventListener('pointerdown', e => { if (e.pointerType === 'touch') { toques.set(e.pointerId, [e.clientX, e.clientY]); anguloAnterior = null; } });
+    const medir = () => {
+      const [[x1, y1], [x2, y2]] = [...toques.values()];
+      return { dist: Math.hypot(x2 - x1, y2 - y1), ang: Math.atan2(y2 - y1, x2 - x1), meioY: (y1 + y2) / 2 };
+    };
+    const volta = a => (a > Math.PI ? a - 2 * Math.PI : a < -Math.PI ? a + 2 * Math.PI : a);
+    el.addEventListener('gesturestart', e => e.preventDefault()); // Safari: não dar zoom na página
+    el.addEventListener('pointerdown', e => {
+      if (e.pointerType !== 'touch') return;
+      toques.set(e.pointerId, [e.clientX, e.clientY]);
+      if (toques.size === 2) { gesto = { ...medir(), modo: null }; transicao = null; aoMexer?.(); }
+      else gesto = null;
+    });
     el.addEventListener('pointermove', e => {
       if (e.pointerType !== 'touch' || !toques.has(e.pointerId)) return;
       toques.set(e.pointerId, [e.clientX, e.clientY]);
-      if (toques.size !== 2) { anguloAnterior = null; return; }
-      const [[x1, y1], [x2, y2]] = [...toques.values()];
-      const a = Math.atan2(y2 - y1, x2 - x1);
-      if (anguloAnterior != null) {
-        let d = a - anguloAnterior;
-        if (d > Math.PI) d -= 2 * Math.PI;
-        if (d < -Math.PI) d += 2 * Math.PI;
-        const off = camera.position.clone().sub(controles.target).applyAxisAngle(EIXO_Y, d);
-        camera.position.copy(controles.target).add(off);
+      if (toques.size !== 2 || !gesto) return;
+      const m = medir();
+      if (!gesto.modo) {
+        // espera o movimento ficar claro e trava o gesto (evita girar ou inclinar sem querer durante o zoom)
+        const escala = Math.abs(Math.log(m.dist / gesto.dist));
+        const giro = Math.abs(volta(m.ang - gesto.ang));
+        const desloc = Math.abs(m.meioY - gesto.meioY);
+        if (escala > 0.06) gesto.modo = 'zoom';
+        else if (giro > 0.16) gesto.modo = 'girar';
+        else if (desloc > 16) gesto.modo = 'inclinar';
+        else return;
+        Object.assign(gesto, m); // começa do ponto atual, sem pulo
+        return;
       }
-      anguloAnterior = a;
+      const off = camera.position.clone().sub(controles.target);
+      if (gesto.modo === 'zoom') {
+        const d = THREE.MathUtils.clamp(off.length() * (gesto.dist / m.dist), controles.minDistance, controles.maxDistance);
+        off.setLength(d);
+      } else if (gesto.modo === 'girar') {
+        off.applyAxisAngle(EIXO_Y, volta(m.ang - gesto.ang));
+      } else {
+        esf.setFromVector3(off);
+        esf.phi = THREE.MathUtils.clamp(esf.phi - (m.meioY - gesto.meioY) * 0.006, 0.12, controles.maxPolarAngle);
+        off.setFromSpherical(esf);
+      }
+      camera.position.copy(controles.target).add(off);
+      Object.assign(gesto, m);
     });
-    const soltar = e => { toques.delete(e.pointerId); anguloAnterior = null; };
+    const soltar = e => { toques.delete(e.pointerId); gesto = null; };
     el.addEventListener('pointerup', soltar);
     el.addEventListener('pointercancel', soltar);
   }

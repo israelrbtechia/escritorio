@@ -578,10 +578,17 @@ function elementoMsg(item, gestor, { ultima = true } = {}) {
     } else {
       el.innerHTML = `${quem}${markdown(item.texto)}${botoesHtml(item)}${curta || (ultima && !grande) ? '' : `<button type="button" class="bt-recolher" data-alternar="${esc(chave)}">recolher ▴</button>`}`;
     }
+  } else if (item.quem === 'voce' && longaDoIsrael(item.texto)) {
+    // suas mensagens longas também ficam em 2 linhas (você já sabe o que escreveu)
+    const chave = chaveMsg(gestor, item);
+    const aberta = abertas.has(chave);
+    el.classList.add('voce-longa');
+    el.innerHTML = `<div class="${aberta ? '' : 'texto-cortado'}">${esc(item.texto)}</div><button type="button" class="bt-recolher escuro" data-alternar="${esc(chave)}">${aberta ? 'recolher ▴' : 'ver tudo ▾'}</button>`;
   } else if (item.html) el.innerHTML = item.texto;
   else el.textContent = item.texto;
   return el;
 }
+const longaDoIsrael = t => String(t || '').length > 110 || String(t || '').split('\n').length > 2;
 /** Vários passos seguidos da equipe viram uma linha (o último aparece); toque para ver todos. */
 function grupoDePassos(itens, gestor) {
   if (itens.length === 1) return elementoMsg(itens[0], gestor);
