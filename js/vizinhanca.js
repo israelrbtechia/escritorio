@@ -141,9 +141,19 @@ export async function montarVizinhanca(cena) {
   ceu(cena);
   const g = new THREE.Group();
   g.name = 'vizinhanca';
-  g.add(terreno(v.terreno));
-  g.add(fitas(v.vias.filter(x => !x.t), COR.asfalto));
-  g.add(fitas(v.vias.filter(x => x.t), COR.terra));
+  const solo = terreno(v.terreno);
+  // o relevo é uma malha grossa: onde ele passa por cima da rua, a rua sobe junto (senão some debaixo da grama)
+  const raio = new THREE.Raycaster(), baixo = new THREE.Vector3(0, -1, 0), o = new THREE.Vector3();
+  solo.updateMatrixWorld(true);
+  for (const lista of [v.vias, v.rios]) for (const via of lista) {
+    for (let i = 0; i < via.p.length; i += 3) {
+      raio.set(o.set(via.p[i], 2000, via.p[i + 2]), baixo);
+      const hit = raio.intersectObject(solo, false)[0];
+      if (hit && hit.point.y + 0.06 > via.p[i + 1]) via.p[i + 1] = hit.point.y + 0.06;
+    }
+  }
+  const chao = [solo, fitas(v.vias.filter(x => !x.t), COR.asfalto), fitas(v.vias.filter(x => x.t), COR.terra)];
+  g.add(...chao);
   g.add(fitas(v.rios, COR.rio));
   g.add(faixaCentral(v.vias));
   g.add(casas(v.casas));
@@ -152,6 +162,8 @@ export async function montarVizinhanca(cena) {
   const lote = new THREE.Mesh(new THREE.BoxGeometry(40, 0.2, 26), new THREE.MeshLambertMaterial({ color: COR.lote }));
   lote.position.set(0, -0.62, -0.5); lote.receiveShadow = true;
   g.add(lote);
+  chao.push(lote);
   cena.add(g);
-  return { grupo: g, fonte: v.fonte, loja: v.loja };
+  // chao: malhas onde dá para pisar (o modo jogo mede a altura do terreno nelas); dados: casas e ruas (colisão e trânsito)
+  return { grupo: g, fonte: v.fonte, loja: v.loja, chao, dados: v };
 }

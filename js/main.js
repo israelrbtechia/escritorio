@@ -128,6 +128,34 @@ $('btMeta').addEventListener('click', () => puxarPlacarDaMeta(true));
 
 // ---------- ReparoSimples: OS da loja RB Tech no laboratório do térreo ----------
 let reparoLigado = false;
+// token do RB Central: senha aleatória gerada no aparelho (nunca vai para o servidor)
+let lojaIdCentral = '';
+function mostrarLojaCentral() {
+  const el = $('lojaCentral');
+  if (!lojaIdCentral) { el.innerHTML = 'O id da loja RB Tech (para o <b>CENTRAL_LOJA</b> do ReparoSimples) aparece aqui quando o ReparoSimples estiver ligado.'; return; }
+  el.innerHTML = 'No ReparoSimples crie também <b>CENTRAL_LOJA</b> = <code></code> (o id da loja RB Tech). <button type="button" class="bt-link" id="btCopiarLoja">copiar id</button>';
+  el.querySelector('code').textContent = lojaIdCentral;
+}
+function gerarTokenCentral() {
+  const bytes = crypto.getRandomValues(new Uint8Array(48));
+  $('tokenCentral').value = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+async function copiarTexto(texto, botao) {
+  try { await navigator.clipboard.writeText(texto); } catch { return false; }
+  const antes = botao.textContent;
+  botao.textContent = '✅ Copiado';
+  setTimeout(() => { botao.textContent = antes; }, 1600);
+  return true;
+}
+$('btTokenCentral').addEventListener('click', () => {
+  const caixa = $('caixaTokenCentral');
+  caixa.hidden = !caixa.hidden;
+  if (!caixa.hidden && !$('tokenCentral').value) gerarTokenCentral();
+  mostrarLojaCentral();
+});
+$('btNovoToken').addEventListener('click', gerarTokenCentral);
+$('btCopiarToken').addEventListener('click', async e => { if (!(await copiarTexto($('tokenCentral').value, e.currentTarget))) $('tokenCentral').select(); });
+$('lojaCentral').addEventListener('click', e => { if (e.target.id === 'btCopiarLoja') copiarTexto(lojaIdCentral, e.target); });
 async function sincronizarOs() {
   if (semServidor) { $('statusReparo').textContent = 'Prévia sem servidor: o ReparoSimples só aparece no site publicado na Vercel.'; return; }
   if (chkEnsaio.checked) { $('statusReparo').textContent = 'Modo ensaio ligado: desmarque “Modo ensaio” aqui em cima para ver as OS reais da loja.'; return; }
@@ -144,6 +172,8 @@ async function sincronizarOs() {
         $('contadorOs').textContent = `🔧 Rodada da loja: faltam ${c.faltam} de ${c.aCada} atualizações de OS (${c.total} contadas). ${c.gatilho ? 'Contagem em tempo real pelo Supabase.' : 'Sem o gatilho do Supabase, conta só enquanto o app está aberto.'}`;
         $('btGatilhoOs').hidden = !!c.gatilho;
       }
+      lojaIdCentral = r.lojaId || '';
+      mostrarLojaCentral();
       $('statusCentral').textContent = r.central
         ? '⚙️ Ações aprovadas ligadas: quando você aprova uma decisão do Rael, o prédio manda o WhatsApp e altera a OS no ReparoSimples.'
         : '⚙️ Ações aprovadas desligadas: para os chefes mandarem WhatsApp e alterarem OS depois do seu ok, crie REPARO_CENTRAL_URL e REPARO_CENTRAL_TOKEN na Vercel do prédio (veja o README).';
@@ -287,7 +317,7 @@ $('btCopiarGatilho').addEventListener('click', async () => {
 });
 
 // crédito dos dados do bairro real (OpenStreetMap, Microsoft, SRTM)
-$('cena3d').addEventListener('bairro', e => { $('creditoMapa').textContent = e.detail.fonte; $('creditoMapa').hidden = false; });
+// crédito do mapa fica só no README e no código (opção do dono)
 
 // ---------- câmeras ----------
 const autoCam = $('autoCam');
@@ -446,6 +476,42 @@ function modoVideo(ligar) {
 $('btVideo').addEventListener('click', () => modoVideo(true));
 $('btSairVideo').addEventListener('click', () => modoVideo(false));
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('modo-video')) modoVideo(false); });
+
+// ---------- modo jogo: dirigir até a loja, estacionar, entrar, conversar e brincar com Peter e Bibi ----------
+let autoCamAntesDoJogo = true;
+async function modoJogo(ligar) {
+  if (!escritorio?.iniciarJogo) return;
+  if (!ligar) { escritorio.sairDoJogo(); return; }
+  if (escritorio.jogoAtivo()) return;
+  if (document.body.classList.contains('modo-video')) modoVideo(false);
+  fecharMosaico();
+  autoCamAntesDoJogo = autoCam.checked;
+  autoCam.checked = false;
+  document.body.classList.add('modo-jogo');
+  window.scrollTo(0, 0);
+  try {
+    await escritorio.iniciarJogo({
+      aoSair() {
+        document.body.classList.remove('modo-jogo');
+        autoCam.checked = autoCamAntesDoJogo;
+        marcarCamera(escritorio.cameraAtual());
+      },
+      /** Pedido feito no jogo, conversando com um chefe: vai para o chat dele, como se fosse digitado lá. */
+      aoPedir({ gestor, texto }) {
+        if (canalOcupado(gestor)) return `${nome(gestor)} ainda está no pedido anterior. Tente de novo daqui a pouco.`;
+        adicionarChat(gestor, { quem: 'voce', texto });
+        agencia.enviar(gestor, texto);
+        return true;
+      },
+    });
+  } catch (e) {
+    console.error(e);
+    document.body.classList.remove('modo-jogo');
+    autoCam.checked = autoCamAntesDoJogo;
+  }
+}
+$('btJogo').addEventListener('click', () => modoJogo(true));
+if (!escritorio) $('btJogo').hidden = true;
 
 // ---------- abas ----------
 function abrirAba(nomeAba) {
@@ -968,8 +1034,13 @@ const agencia = criarAgencia({
         break;
       case 'chefeTexto':
         adicionarChat(canal, { quem: 'chefe', titulo: canal === 'reuniao' ? (PESSOAS[g].cargo ? `${nome(g)} · ${PESSOAS[g].cargo}` : nome(g)) : undefined, texto: ev.texto, final: !!ev.final });
-        if (ev.final) { cena.comemorar(g); focarAuto(cameraDe(g)); voz.falar(g, ev.texto); }
-        else cena.fala(g, ev.texto.split('\n')[0].replace(/[*_#`]/g, '').slice(0, 46));
+        if (ev.final) {
+          cena.comemorar(g); focarAuto(cameraDe(g)); voz.falar(g, ev.texto);
+          if (escritorio?.jogoAtivo?.()) {
+            const linha = ev.texto.replace(/[*_#`>]/g, '').split('\n').map(l => l.trim()).filter(Boolean)[0] || '';
+            escritorio.avisoJogo(`💬 ${nome(g)}: ${linha.length > 150 ? linha.slice(0, 148) + '…' : linha} (resposta completa no chat)`, 10000);
+          }
+        } else cena.fala(g, ev.texto.split('\n')[0].replace(/[*_#`]/g, '').slice(0, 46));
         break;
       case 'acionar': {
         const resumo = ev.pedido.replace(/\s+/g, ' ');

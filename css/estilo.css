@@ -398,3 +398,45 @@ button, a, .abas, .cams, .gestores { touch-action: manipulation; }
 /* crédito dos dados do mapa (exigido pela licença ODbL) */
 .credito-mapa { position: absolute; right: 8px; bottom: 6px; max-width: 70%; font-size: 10px; line-height: 1.3; color: #1b2a33; background: rgba(255, 255, 255, .6); padding: 2px 6px; border-radius: 4px; pointer-events: none; text-align: right; }
 .moldura.com-mosaico .credito-mapa { display: none; }
+
+/* ---------- modo jogo ---------- */
+.bt-jogo { padding: 8px 14px; }
+body.modo-jogo { overflow: hidden; }
+body.modo-jogo .topo, body.modo-jogo .painel { display: none; }
+body.modo-jogo .palco { flex: 1; height: 100dvh; min-height: 0; }
+body.modo-jogo .cam-rotulo, body.modo-jogo .selo-ensaio, body.modo-jogo .bt-sair-video { display: none; }
+body.modo-jogo .credito-mapa { right: auto; left: 50%; transform: translateX(-50%); bottom: 2px; font-size: 9px; max-width: 60%; text-align: center; }
+.hud-jogo { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.hud-jogo button, .hud-jogo form, .hud-joy { pointer-events: auto; }
+.hud-topo { position: absolute; top: max(10px, env(safe-area-inset-top)); left: 10px; right: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hud-topo strong { background: rgba(0, 0, 0, .62); color: var(--amarelo); padding: 7px 10px; border-radius: 8px; font-size: 13px; }
+.hud-status { background: rgba(0, 0, 0, .62); color: #fff; padding: 7px 10px; border-radius: 8px; font: 700 13px/1 "JetBrains Mono", monospace; }
+.hud-caes { display: flex; gap: 6px; }
+.hud-caes button, .hud-sair { padding: 7px 10px; font-size: 12.5px; }
+.hud-sair { margin-left: auto; background: rgba(0, 0, 0, .66); color: #fff; border: 1px solid rgba(255, 255, 255, .25); }
+.hud-aviso {
+  position: absolute; top: 62px; left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100% - 32px));
+  background: rgba(15, 15, 15, .9); color: #fff; border: 1px solid rgba(255, 214, 10, .6); padding: 10px 14px; border-radius: 12px;
+  font-size: 14px; line-height: 1.4; text-align: center;
+}
+.hud-dica { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); width: max-content; max-width: calc(100% - 340px); font-size: 12px; color: #fff; background: rgba(0, 0, 0, .55); padding: 6px 10px; border-radius: 8px; text-align: center; }
+.hud-acoes { position: absolute; right: 12px; bottom: max(14px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: flex-end; gap: 8px; max-width: 60%; }
+.hud-acoes button { box-shadow: 0 4px 14px rgba(0, 0, 0, .4); font-size: 14px; padding: 11px 14px; text-align: right; }
+.hud-joy { position: absolute; left: 22px; bottom: max(26px, env(safe-area-inset-bottom)); width: 132px; height: 132px; border-radius: 50%; background: rgba(0, 0, 0, .35); border: 2px solid rgba(255, 255, 255, .4); touch-action: none; }
+.hud-joy-bola { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: rgba(255, 214, 10, .92); box-shadow: 0 2px 10px rgba(0, 0, 0, .4); pointer-events: none; }
+.hud-pedido { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(560px, calc(100% - 24px)); display: flex; gap: 6px; flex-wrap: wrap; background: rgba(15, 15, 15, .94); padding: 10px; border-radius: 12px; border: 1px solid var(--amarelo); }
+.hud-pedido span { flex-basis: 100%; color: var(--amarelo); font-size: 13px; font-weight: 700; }
+.hud-pedido input { flex: 1; min-width: 0; background: #111; border: 1px solid #333; border-radius: 8px; padding: 9px 10px; font-size: 16px; color: #fff; }
+.hud-pedido .hud-cancelar { background: #333; color: #fff; }
+.ent-jogador .tag { background: var(--amarelo); color: var(--preto); border-color: var(--preto); font-weight: 800; }
+@media (max-width: 760px) {
+  .hud-topo strong { display: none; }
+  .hud-acoes button { font-size: 13.5px; padding: 11px 12px; }
+  .hud-dica { left: 10px; right: 10px; top: 104px; bottom: auto; transform: none; max-width: none; width: auto; }
+  .hud-aviso { top: 56px; font-size: 13px; }
+}
+#caixaTokenCentral { display: grid; gap: 8px; margin-top: 6px; }
+#caixaTokenCentral[hidden] { display: none; }
+#tokenCentral { font: 13px/1.3 "JetBrains Mono", monospace; background: var(--painel); border: 1px solid var(--linha); border-radius: 8px; padding: 9px 10px; width: 100%; }
+.linha-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+#lojaCentral code { font-family: "JetBrains Mono", monospace; background: var(--painel); padding: 1px 5px; border-radius: 4px; word-break: break-all; }

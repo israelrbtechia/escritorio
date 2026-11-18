@@ -34,6 +34,7 @@
       <button id="btMosaico" class="bt-mosaico" type="button" title="Ver várias câmeras ao mesmo tempo">▦ Mosaico</button>
       <label class="chave"><input type="checkbox" id="autoCam" checked><span>Câmera automática</span></label>
       <button id="btVideo" class="bt-sec" type="button">▶ Modo vídeo 9:16</button>
+      <button id="btJogo" class="bt-jogo" type="button" title="Dirigir até a loja e andar pelo prédio">🎮 Jogar</button>
     </div>
   </header>
 
@@ -153,6 +154,13 @@
             <small id="statusReparo">…</small>
             <small id="contadorOs"></small>
             <small id="statusCentral"></small>
+            <button type="button" class="bt-sec" id="btTokenCentral">🔑 Gerar o token do RB Central</button>
+            <div id="caixaTokenCentral" hidden>
+              <small>Gerado aqui no seu aparelho: não passa pelo servidor e não fica salvo. Cole o <b>mesmo valor</b> nos dois projetos da Vercel: no <b>ReparoSimples</b> com o nome <b>CENTRAL_API_TOKEN</b> e no <b>prédio</b> com o nome <b>REPARO_CENTRAL_TOKEN</b>. Depois faça Redeploy dos dois.</small>
+              <input id="tokenCentral" readonly spellcheck="false" autocomplete="off">
+              <div class="linha-botoes"><button type="button" class="bt-sec" id="btCopiarToken">Copiar token</button><button type="button" class="bt-sec" id="btNovoToken">Gerar outro</button></div>
+              <small id="lojaCentral"></small>
+            </div>
             <div id="listaLojasReparo"></div>
             <button type="button" class="bt-sec" id="btGatilhoOs">⚡ Contar as OS em tempo real (SQL para o Supabase)</button>
             <div id="caixaGatilhoOs" hidden>

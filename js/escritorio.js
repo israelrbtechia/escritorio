@@ -135,7 +135,7 @@ export function criarEscritorio(container, camada) {
     el.addEventListener('pointermove', e => {
       if (e.pointerType !== 'touch' || !toques.has(e.pointerId)) return;
       toques.set(e.pointerId, [e.clientX, e.clientY]);
-      if (toques.size !== 2 || !gesto) return;
+      if (toques.size !== 2 || !gesto || jogo) return;
       const m = medir();
       if (!gesto.modo) {
         // espera o movimento ficar claro e trava o gesto (evita girar ou inclinar sem querer durante o zoom)
@@ -183,9 +183,13 @@ export function criarEscritorio(container, camada) {
   // ---------- prédio ----------
   const rua = montarRua(cena);
   // o bairro real em volta da loja (SC-281, Colônia Santana): carrega depois, sem travar o prédio
-  import('./vizinhanca.js').then(m => m.montarVizinhanca(cena)).then(v => {
+  let bairro = null, transito = null, jogo = null;
+  const obstaculosDoAndar = new Map();
+  import('./vizinhanca.js').then(m => m.montarVizinhanca(cena)).then(async v => {
     if (!v) return;
+    bairro = v;
     for (const o of rua.genericos) o.visible = false;
+    try { transito = (await import('./jogo.js')).criarTransito({ cena, dados: v.dados }); } catch (e) { console.warn('trânsito:', e); }
     container.dispatchEvent(new CustomEvent('bairro', { detail: { fonte: v.fonte, loja: v.loja } }));
   }).catch(e => console.warn('bairro:', e));
   const predio = grupo(0, 0, 0, cena);
@@ -265,7 +269,7 @@ export function criarEscritorio(container, camada) {
     };
     ent.moverPasso = dt => {
       const r = ent.raiz;
-      if (!ent.andando || !ent.caminho.length) return false;
+      if (ent.controlado || !ent.andando || !ent.caminho.length) return false;
       const alvo = ent.caminho[0];
       const dx = alvo.x - r.position.x, dz = alvo.z - r.position.z;
       const dist = Math.hypot(dx, dz);
@@ -517,6 +521,21 @@ export function criarEscritorio(container, camada) {
       await esperar(1500 + Math.random() * 3000);
       for (;;) {
         try {
+          if (d.chamado) { // alguém chamou (modo jogo): vai até a pessoa, no andar dela
+            const quem = d.chamado;
+            d.chamado = null;
+            const alvo = quem();
+            if (alvo) {
+              d.modo = 'andando';
+              await d.irPara(alvo.andar, [[alvo.x, alvo.z]]);
+              const agora2 = quem();
+              if (agora2 && agora2.andar === d.andar) await d.caminhar([[agora2.x + 0.9, agora2.z + 0.9]]);
+              d.falar(id === 'peter' ? 'Au au! Cheguei 🐾' : 'Arf arf! Tô aqui! 🐶', 2600);
+              d.modo = 'sentado';
+              await d.descansar(9000);
+            }
+            continue;
+          }
           const r = Math.random();
           if (r < 0.15) {
             const [aC, x, z] = CAMAS[id];
@@ -554,7 +573,7 @@ export function criarEscritorio(container, camada) {
         const fase = i === 0 || i === 3 ? 0 : PI;
         g.rotation.x = movendo ? Math.sin(t * ritmo + fase) * 0.55 : suave(g.rotation.x, 0, 0.2);
       });
-      const modo = movendo ? 'andando' : d.modo;
+      const modo = d.controlado ? d.modoControle || 'parado' : movendo ? 'andando' : d.modo;
       let alvoY = 0, alvoPitch = 0;
       if (modo === 'sentado') { alvoPitch = -0.35; alvoY = -d.alturaCorpo * 0.22; }
       if (modo === 'dormindo') alvoY = -d.alturaCorpo * 0.78;
@@ -688,15 +707,16 @@ export function criarEscritorio(container, camada) {
   }
 
   // ---------- balões e etiquetas ----------
-  for (const e of entidades) {
+  function criarEtiqueta(e) {
     const el = document.createElement('div');
-    el.className = 'ent' + (e.cachorro ? ' ent-cao' : '') + (e.id === 'israel' ? ' ent-boss' : '') + (e.id === 'cliente' ? ' ent-cliente' : '');
+    el.className = 'ent' + (e.cachorro ? ' ent-cao' : '') + (e.id === 'israel' ? ' ent-boss' : '') + (e.id === 'cliente' ? ' ent-cliente' : '') + (e.id === 'jogador' ? ' ent-jogador' : '');
     el.innerHTML = `<div class="balao vazio"></div><div class="tag"><span class="tag-humor"></span>${e.nome}</div>`;
     camada.appendChild(el);
     e.el = el;
     e.elBalao = el.querySelector('.balao');
     e.elHumor = el.querySelector('.tag-humor');
   }
+  entidades.forEach(criarEtiqueta);
   const andarVisual = e => (e.noElevador ? Math.floor(cabine.position.y / ALT + 0.01) : e.andar);
   const visivel = e => e.ativo !== false && andarVisual(e) <= limite;
 
@@ -878,6 +898,7 @@ export function criarEscritorio(container, camada) {
     renderer.setClearColor(0x000000, 0);
   }
   function irParaCamera(id, instantaneo = false) {
+    if (jogo) return camAtual; // no jogo a câmera é sua
     const cam = CAMERAS.find(c => c.id === id) || CAMERAS[0];
     if (cam.segue && cam !== camAtual) {
       const acordados = ['peter', 'bibi'].filter(k => caes[k].modo !== 'dormindo');
@@ -896,7 +917,7 @@ export function criarEscritorio(container, camada) {
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
     if (mosaico) renderer.setViewport(0, 0, w, h);
-    if (Math.abs(camera.aspect - ultimoAspecto) > 0.05) { ultimoAspecto = camera.aspect; irParaCamera(camAtual.id, true); }
+    if (Math.abs(camera.aspect - ultimoAspecto) > 0.05 && !jogo) { ultimoAspecto = camera.aspect; irParaCamera(camAtual.id, true); }
   }
   new ResizeObserver(redimensionar).observe(container);
   redimensionar();
@@ -1078,6 +1099,8 @@ export function criarEscritorio(container, camada) {
       cabine.position.y += Math.sign(d) * Math.min(Math.abs(d), passo);
     } else if (elevador.aoChegar) { cabine.position.y = elevador.alvo; const cb = elevador.aoChegar; elevador.aoChegar = null; cb(); }
     for (const e of entidades) { e.raiz.visible = visivel(e); e.atualizar(dt, t); }
+    transito?.atualizar(dt);
+    if (jogo) jogo.atualizar(dt);
     // porta automática da loja: abre quando alguém chega perto
     if (telas.portas) {
       const perto = entidades.some(e => e.ativo !== false && e.andar === 0 && !e.noElevador && Math.abs(e.raiz.position.x) < 2.2 && Math.abs(e.raiz.position.z - 7.85) < 2.0);
@@ -1087,7 +1110,9 @@ export function criarEscritorio(container, camada) {
     }
     if (telas.leds) telas.leds.forEach((l, i) => { l.visible = Math.sin(t * 3 + i * 1.7) > -0.6; });
 
-    if (transicao) {
+    if (jogo) {
+      // a câmera segue você (jogo.atualizar já posicionou)
+    } else if (transicao) {
       transicao.t = Math.min(1, transicao.t + dt / 1.3);
       const k = transicao.t < 0.5 ? 2 * transicao.t ** 2 : 1 - (-2 * transicao.t + 2) ** 2 / 2;
       camera.position.lerpVectors(transicao.de, transicao.para, k);
@@ -1100,7 +1125,7 @@ export function criarEscritorio(container, camada) {
       const a = caes[caoSeguido].noElevador ? 3 : caes[caoSeguido].andar;
       if (a !== limite && !mosaico) aplicarLimite(a);
     }
-    controles.update();
+    if (!jogo) controles.update();
     if (t - ultimoDesenho > 0.25) {
       ultimoDesenho = t;
       if (telas.tvLoja && limite >= 0) desenharTv(telas.tvLoja, t);
@@ -1120,8 +1145,8 @@ export function criarEscritorio(container, camada) {
   const v = new THREE.Vector3();
   function posicionarBaloes() {
     const w = container.clientWidth, h = container.clientHeight;
-    const foco = camAtual.setor === 'predio' ? null : camAtual.segue ? caes[caoSeguido].andar : camAtual.andar;
-    camada.classList.toggle('sem-nomes', camAtual.setor === 'predio'); // visão do prédio sem os nomes, para não poluir
+    const foco = jogo ? jogo.focoAndar() : camAtual.setor === 'predio' ? null : camAtual.segue ? caes[caoSeguido].andar : camAtual.andar;
+    camada.classList.toggle('sem-nomes', !jogo && camAtual.setor === 'predio'); // visão do prédio sem os nomes, para não poluir
     for (const e of entidades) {
       if (!visivel(e) || (foco != null && andarVisual(e) !== foco && !e.noElevador)) { e.el.style.display = 'none'; continue; }
       e.raiz.getWorldPosition(v);
@@ -1328,6 +1353,70 @@ export function criarEscritorio(container, camada) {
       for (const d of r.decisoes || []) api.levarDecisao(r.gestor, d.id);
     },
     foto() { renderer.render(cena, camera); return renderer.domElement.toDataURL('image/png'); },
+
+    // ---------- modo jogo ----------
+    jogoAtivo: () => !!jogo,
+    /** Liga o jogo: você dirige até a loja, estaciona, entra e anda pelo prédio. eventos: { aoSair(), aoPedir({ gestor, texto }) }. */
+    async iniciarJogo(eventos = {}) {
+      if (jogo) return;
+      if (mosaico) fecharMosaico();
+      const { criarJogo } = await import('./jogo.js');
+      transicao = null;
+      controles.enabled = false;
+      const ctx = {
+        cena, camera, renderer, container, pessoas, caes, clientes, entidades,
+        ALT, ELEVADOR, PESSOAS_3D, GESTOR_DE, CHEFES, NOMES,
+        criarPessoa(id, def, opcoes) { const p = new Pessoa(id, def, opcoes); criarEtiqueta(p); return p; },
+        removerPessoa(p) {
+          const i = entidades.indexOf(p);
+          if (i >= 0) entidades.splice(i, 1);
+          predio.remove(p.raiz);
+          p.el?.remove();
+        },
+        aplicarLimite,
+        viajarJogador: (ent, destino) => viajar(ent, destino),
+        /** Móveis e paredes de vidro de um andar, na altura do corpo: [xMin, xMax, zMin, zMax] (calculado uma vez). */
+        obstaculos(andar) {
+          if (obstaculosDoAndar.has(andar)) return obstaculosDoAndar.get(andar);
+          const lista = [], piso = andar * ALT, g = andares[andar], fachada = g.userData.fachada;
+          const portas = new Set(telas.portas || []), b = new THREE.Box3();
+          predio.updateMatrixWorld(true);
+          g.traverse(o => {
+            if (!o.isMesh || portas.has(o) || o.userData.semColisao) return;
+            for (let a = o; a && a !== g; a = a.parent) if (a === fachada) return;
+            b.setFromObject(o);
+            if (b.min.y - piso > 1.2 || b.max.y - piso < 0.3) return; // acima da cabeça ou rente ao chão (tapetes)
+            if (b.max.x - b.min.x > 14 || b.max.z - b.min.z > 14) return; // piso, teto e paredes externas: o jogo já trata
+            lista.push([b.min.x, b.max.x, b.min.z, b.max.z]);
+          });
+          obstaculosDoAndar.set(andar, lista);
+          return lista;
+        },
+        chao: () => (bairro ? bairro.chao : [rua.chao]).concat(rua.calcada),
+        dados: () => bairro?.dados || null,
+        transito: () => transito,
+        chamarCao(id, quem) { const d = caes[id]; d.chamado = quem; d.acordar = true; },
+        emitir(tipo, dados) { return tipo === 'pedido' ? eventos.aoPedir?.(dados) : undefined; },
+        sair: () => api.sairDoJogo(),
+      };
+      jogo = criarJogo(ctx);
+      jogo.aoSair = eventos.aoSair;
+      jogo.inicio();
+    },
+    sairDoJogo() {
+      if (!jogo) return;
+      const j = jogo;
+      jogo = null;
+      j.destruir();
+      controles.enabled = true;
+      ultimoAspecto = 0;
+      redimensionar();
+      irParaCamera('predio');
+      j.aoSair?.();
+    },
+    /** Mensagem rápida na tela do jogo (ex.: a resposta de um chefe). */
+    avisoJogo(texto, ms) { jogo?.aviso(texto, ms); },
+    _jogo: () => jogo, // para testes
   };
   document.fonts?.ready.then(() => { desenharBoss(telas.boss, pendentesBoss, cafesDoBoss); desenharSaas(telas.saas, sinos, saasAtual); });
   return api;

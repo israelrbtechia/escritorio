@@ -140,6 +140,8 @@ Para **mudar** algo, o Rael coloca **ações** dentro de uma decisão. Elas apar
 Depois da execução, a decisão mostra o resultado de cada ação. Se o WhatsApp não sair, aparece um link para você enviar à mão. Só a exclusão de OS fica com a loja.
 
 Tudo passa pela **API do RB Central** do ReparoSimples, a mesma que segue as regras da tela "Editar OS" e só enxerga a loja RB Tech. Para ligar:
+O token é uma senha que você mesmo cria. O ReparoSimples só aceita pedidos do prédio que mandarem essa senha, por isso ela tem o **mesmo valor** nos dois projetos (o nome muda: `CENTRAL_API_TOKEN` lá e `REPARO_CENTRAL_TOKEN` aqui). Para criar: **Ajustes → ReparoSimples → 🔑 Gerar o token do RB Central**. A senha é gerada no seu aparelho, não passa pelo servidor e não fica salva. A mesma caixa mostra o id da loja RB Tech para o `CENTRAL_LOJA`.
+
 1. **No projeto do ReparoSimples na Vercel:**
    - `CENTRAL_LOJA`: o id da loja RB Tech;
    - `CENTRAL_API_TOKEN`: uma senha longa, com 40 caracteres ou mais.
@@ -152,6 +154,18 @@ Tudo passa pela **API do RB Central** do ReparoSimples, a mesma que segue as reg
 4. Faça **Redeploy** nos dois projetos.
 
 Com o RB Central ligado, a leitura das OS da equipe também passa a trazer valor, previsão, técnico e nome do cliente (nunca o telefone).
+
+## 🎮 Modo jogo
+Botão **🎮 Jogar** no topo. Você vira um boneco jogável (o Israel) e começa de carro na SC-281, 140 m antes da loja, no meio do trânsito.
+- **Dirigir:** WASD ou setas (no celular, o joystick). Espaço é o freio de mão. Os carros da rodovia andam nas duas mãos e freiam para você.
+- **Estacionar e sair:** parado, toque em **🚪 Sair do carro** (tecla E). Perto do carro aparece **🚗 Entrar no carro**.
+- **Andar:** a porta automática abre quando você chega perto. Dentro do prédio você bate nos móveis e nas paredes de vidro e escorrega ao longo deles. Shift corre.
+- **Elevador:** na porta do elevador aparecem os botões dos andares. Se outra pessoa estiver usando, você espera a vez.
+- **Conversar:** perto de alguém, **💬 Conversar**. Perto de um chefe ou de alguém do time dele, **📋 Pedir algo**: o pedido vai para o chat daquele chefe, igual a digitar lá. A resposta aparece na tela do jogo e fica completa no chat.
+- **Peter e Bibi:** **📣 Peter / 📣 Bibi** chama o cão até você (ele pega o elevador se precisar). Perto dele: **🐾 Carinho**, **🎾 Jogar bolinha** (ele busca e traz) e **🤸 Brincar**.
+- **Câmera:** fica atrás de você. Arraste para girar e use a rodinha ou a pinça para aproximar.
+
+O trânsito da SC-281 roda também fora do jogo (veja a câmera "Chegando pela SC-281").
 
 ## Central de conteúdo do Instagram (antigo Agente de Reels e Stories)
 O antigo agente (repositório `agente-`) agora roda dentro do prédio. As rotinas são as mesmas, só que feitas pelos times:
