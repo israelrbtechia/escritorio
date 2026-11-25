@@ -610,6 +610,9 @@ async function modoJogo(ligar) {
   }
 }
 $('btJogo').addEventListener('click', () => modoJogo(true));
+// céu do prédio: automático pelo horário de Brasília, ou fixo
+try { $('selCeu').value = localStorage.getItem('predio.ceu') || 'auto'; } catch { /* sem armazenamento */ }
+$('selCeu').addEventListener('change', e => escritorio?.definirCeu?.(e.target.value));
 if (!escritorio) $('btJogo').hidden = true;
 
 // ---------- abas ----------

@@ -176,7 +176,8 @@ export function criarEscritorio(container, camada) {
   }
 
   // luz de pôr do sol: céu quente, chão arroxeado, sol baixo e alaranjado (vindo do oeste) e um contraluz azul-piscina
-  cena.add(new THREE.HemisphereLight(0xffc9a8, 0x3b2350, 1.25));
+  const ceuLuz = new THREE.HemisphereLight(0xffc9a8, 0x3b2350, 1.25);
+  cena.add(ceuLuz);
   const contraluz = new THREE.DirectionalLight(0x5ad8ff, 0.55);
   contraluz.position.set(24, 12, -26);
   cena.add(contraluz);
@@ -194,13 +195,64 @@ export function criarEscritorio(container, camada) {
   // ---------- prédio ----------
   const rua = montarRua(cena);
   // mundo aberto: São José inteira em volta da loja (carrega por quadrados perto da câmera ou de você no jogo)
-  let bairro = null, transito = null, jogo = null;
+  let bairro = null, transito = null, jogo = null, cidade = null, luzesVeiculos = null;
+  // ---------- ciclo do dia: o céu e as luzes seguem o horário de Brasília (ou o que você escolher em Ajustes) ----------
+  const FASES = {
+    noite: { ceu: ['#05081c', '#0d1433', '#1b2150', '#2c2a60', '#3d3468', '#4a3a6e'], neblina: 0x1a1a33, luzCeu: [0x7a8cd0, 0x141420, 0.8], sol: [0x9fb4ff, 0.45, -20, 30, 10], contra: 0.25, exp: 1.15, brilho: 0.95, astro: [-1500, 700, 900, 0xdfe8ff, 200, 1.6, 0.15], lampada: 4, neon: 2.6, farol: 4, outdoor: 1.1 },
+    amanhecer: { ceu: ['#3a5aa8', '#8f86c8', '#f2a6b8', '#ffc89a', '#ffe2b8', '#fff0d6'], neblina: 0xf2c6b4, luzCeu: [0xffe0c8, 0x3b3350, 1.1], sol: [0xffc08a, 1.8, 30, 14, -10], contra: 0.4, exp: 1.05, brilho: 0.5, astro: [2300, 150, -600, 0xffffff, 480, 2.0, 0.8], lampada: 0.4, neon: 1.4, farol: 1.2, outdoor: 0.3 },
+    dia: { ceu: ['#2f6fd0', '#4f8ddb', '#7db1e6', '#a9cfee', '#d7ebf3', '#eef6f8'], neblina: 0xcfe2ec, luzCeu: [0xfff6e5, 0x5a5040, 1.35], sol: [0xfff1d6, 2.2, 16, 40, 18], contra: 0.35, exp: 1.0, brilho: 0.35, astro: [-600, 1800, 300, 0xfffbe8, 300, 1.6, 0.25], lampada: 0, neon: 1.0, farol: 1, outdoor: 0.15 },
+    entardecer: { ceu: ['#3b2a7e', '#a03c8e', '#ef5b7f', '#ff8a5c', '#ffbf80', '#ffe8bd'], neblina: 0xf39a86, luzCeu: [0xffc9a8, 0x3b2350, 1.25], sol: [0xffa766, 2.3, -30, 18, 22], contra: 0.55, exp: 1.08, brilho: 0.6, astro: [-2300, 150, 800, 0xffffff, 520, 2.2, 1], lampada: 0.6, neon: 1.7, farol: 1.5, outdoor: 0.4 },
+  };
+  /** [fase A, fase B, mistura] para a hora (0–24). */
+  function fasesDaHora(h) {
+    const marcos = [[0, 'noite'], [5, 'noite'], [6.3, 'amanhecer'], [7.8, 'dia'], [16.3, 'dia'], [17.8, 'entardecer'], [19.2, 'noite'], [24, 'noite']];
+    for (let i = 1; i < marcos.length; i++) if (h <= marcos[i][0]) { const [h0, a] = marcos[i - 1], [h1, b] = marcos[i]; return [a, b, (h - h0) / (h1 - h0)]; }
+    return ['noite', 'noite', 0];
+  }
+  function cicloDoDia() {
+    if (!bairro?.ceu) return;
+    let escolha = 'auto';
+    try { escolha = localStorage.getItem('predio.ceu') || 'auto'; } catch { /* sem armazenamento */ }
+    let fa, fb, k;
+    if (escolha !== 'auto' && FASES[escolha]) { fa = fb = escolha; k = 0; }
+    else {
+      const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Sao_Paulo', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(new Date());
+      const h = Number(p.find(x => x.type === 'hour').value) + Number(p.find(x => x.type === 'minute').value) / 60;
+      [fa, fb, k] = fasesDaHora(h);
+    }
+    const A = FASES[fa], B = FASES[fb], n = (a, b) => a + (b - a) * k;
+    const c = (a, b) => new THREE.Color(a).lerp(new THREE.Color(b), k);
+    bairro.ceu.pintar({
+      paradas: A.ceu.map((x, i) => [i / 5, '#' + c(x, B.ceu[i]).getHexString()]),
+      neblina: c(A.neblina, B.neblina),
+      astro: { x: n(A.astro[0], B.astro[0]), y: n(A.astro[1], B.astro[1]), z: n(A.astro[2], B.astro[2]), cor: c(A.astro[3], B.astro[3]), tam: n(A.astro[4], B.astro[4]), forca: n(A.astro[5], B.astro[5]), halo: n(A.astro[6], B.astro[6]) },
+    });
+    ceuLuz.color.copy(c(A.luzCeu[0], B.luzCeu[0])); ceuLuz.groundColor.copy(c(A.luzCeu[1], B.luzCeu[1])); ceuLuz.intensity = n(A.luzCeu[2], B.luzCeu[2]);
+    sol.color.copy(c(A.sol[0], B.sol[0])); sol.intensity = n(A.sol[1], B.sol[1]);
+    sol.position.set(n(A.sol[2], B.sol[2]), n(A.sol[3], B.sol[3]), n(A.sol[4], B.sol[4]));
+    contraluz.intensity = n(A.contra, B.contra);
+    renderer.toneMappingExposure = n(A.exp, B.exp);
+    if (bloom) bloom.strength = n(A.brilho, B.brilho) * (celular ? 0.85 : 1);
+    const lamp = n(A.lampada, B.lampada);
+    bairro.luzes.lampada.color.set(lamp > 0.3 ? 0xffe2a8 : 0x8a8070).multiplyScalar(Math.max(1, lamp));
+    for (const m of bairro.luzes.outdoors) m.emissiveIntensity = n(A.outdoor, B.outdoor);
+    for (const m of neons) m.color.copy(m.userData.base).multiplyScalar(n(A.neon, B.neon));
+    if (luzesVeiculos) {
+      const f = n(A.farol, B.farol);
+      luzesVeiculos.farol.color.set(0xfff3c4).multiplyScalar(f);
+      luzesVeiculos.lanterna.color.set(0xd23a2a).multiplyScalar(Math.max(1, f * 0.8));
+    }
+  }
   const obstaculosDoAndar = new Map();
   import('./mundo.js').then(m => m.montarMundo(cena, { celular })).then(async v => {
     if (!v) return;
     bairro = v;
     for (const o of rua.genericos) o.visible = false;
     try { transito = (await import('./jogo.js')).criarTransito({ cena, dados: v.dados }); } catch (e) { console.warn('trânsito:', e); }
+    try { cidade = (await import('./cidade.js')).criarCidade({ cena, mundo: v, celular }); } catch (e) { console.warn('cidade:', e); }
+    try { luzesVeiculos = (await import('./jogo.js')).LUZES_VEICULOS; } catch { /* sem faróis */ }
+    cicloDoDia();
+    setInterval(cicloDoDia, 30000);
     container.dispatchEvent(new CustomEvent('bairro', { detail: { fonte: v.fonte, loja: v.loja } }));
   }).catch(e => console.warn('bairro:', e));
   const predio = grupo(0, 0, 0, cena);
@@ -211,10 +263,14 @@ export function criarEscritorio(container, camada) {
   montarVendas(andares[2], telas);
   montarTerraco(andares[3], telas);
   const cabine = montarElevador(predio);
+  const neons = [];
   // neon nas bordas de cada andar (rosa e azul-piscina, alternando) e nas quinas da fachada
   {
     const neon = (cor, w, h, d, x, y, z, pai) => {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ color: new THREE.Color(cor).multiplyScalar(1.7), fog: false }));
+      const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(cor).multiplyScalar(1.7), fog: false });
+      mat.userData.base = new THREE.Color(cor);
+      neons.push(mat);
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
       m.position.set(x, y, z); pai.add(m); return m;
     };
     andares.forEach((g, i) => {
@@ -962,11 +1018,12 @@ export function criarEscritorio(container, camada) {
     return cam;
   }
   // brilho (bloom) só no que é muito claro: neons, sol e luzes
-  let composer = null;
+  let composer = null, bloom = null;
   try {
     composer = new EffectComposer(renderer);
     composer.addPass(new RenderPass(cena, camera));
-    composer.addPass(new UnrealBloomPass(new THREE.Vector2(256, 256), celular ? 0.5 : 0.6, 0.55, 0.92));
+    bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), celular ? 0.5 : 0.6, 0.55, 0.92);
+    composer.addPass(bloom);
     composer.addPass(new OutputPass());
   } catch (e) { console.warn('sem brilho:', e); composer = null; }
   function redimensionar() {
@@ -1162,6 +1219,10 @@ export function criarEscritorio(container, camada) {
     if (jogo) jogo.atualizar(dt);
     // o mundo carrega em volta de onde você está (no jogo) ou de para onde a câmera olha
     if (bairro && t - ultimoMundo > 0.4) { ultimoMundo = t; bairro.atualizar(jogo ? jogo.foco() : controles.target); }
+    if (cidade) {
+      const foco = jogo ? jogo.foco() : controles.target;
+      cidade.atualizar(dt, foco, jogo ? jogo.obstaculos() : []);
+    }
     // porta automática da loja: abre quando alguém chega perto
     if (telas.portas) {
       const perto = entidades.some(e => e.ativo !== false && e.andar === 0 && !e.noElevador && Math.abs(e.raiz.position.x) < 2.2 && Math.abs(e.raiz.position.z - 7.85) < 2.0);
@@ -1459,6 +1520,7 @@ export function criarEscritorio(container, camada) {
         alturaTerreno: (x, z) => (bairro ? bairro.altura(x, z) : -0.62),
         casasPerto: (x, z) => (bairro ? bairro.casasPerto(x, z) : []),
         transito: () => transito,
+        cidade: () => cidade,
         chamarCao(id, quem) { const d = caes[id]; d.chamado = quem; d.acordar = true; },
         emitir(tipo, dados) { return tipo === 'pedido' ? eventos.aoPedir?.(dados) : undefined; },
         sair: () => api.sairDoJogo(),
@@ -1478,6 +1540,8 @@ export function criarEscritorio(container, camada) {
       irParaCamera('predio');
       j.aoSair?.();
     },
+    /** Céu: 'auto' (horário de Brasília), 'dia', 'amanhecer', 'entardecer' ou 'noite'. */
+    definirCeu(valor) { try { localStorage.setItem('predio.ceu', valor); } catch { /* sem armazenamento */ } cicloDoDia(); },
     /** Mensagem rápida na tela do jogo (ex.: a resposta de um chefe). */
     avisoJogo(texto, ms) { jogo?.aviso(texto, ms); },
     _jogo: () => jogo, // para testes

@@ -455,3 +455,6 @@ body.modo-jogo .credito-mapa { right: auto; left: 50%; transform: translateX(-50
 .arte-status:empty { display: none; }
 .previa-animacao { position: fixed; inset: 0; z-index: 50; background: rgba(0, 0, 0, .86); display: grid; place-items: center; gap: 12px; padding: 16px; align-content: center; }
 .previa-animacao canvas { max-height: 82dvh; max-width: 100%; border-radius: 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); }
+
+.campo-ceu { display: grid; gap: 6px; }
+.campo-ceu select { background: var(--painel-2); color: var(--texto); border: 1px solid var(--linha); border-radius: 10px; padding: 9px 10px; font-size: 15px; }

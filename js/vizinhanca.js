@@ -4,21 +4,16 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 export const COR = { asfalto: 0x34313b, terra: 0xb38a5e, rio: 0x2fb8c4, faixa: 0xffd60a, lote: 0x8e8790, vagas: 0x6f6f6b };
 
-/** Céu de fim de tarde em cidade tropical: índigo no alto, roxo, rosa e laranja no horizonte; neblina quente. */
+/** Céu com pôr do sol, dia e noite: degradê no fundo, neblina na cor do horizonte, sol (ou lua) com halo.
+ * Devolve { pintar({ paradas, neblina, sol }) } para o ciclo do dia mudar as cores. */
 export function ceu(cena) {
   const c = document.createElement('canvas');
   c.width = 4; c.height = 512;
   const g = c.getContext('2d');
-  const grad = g.createLinearGradient(0, 0, 0, 512);
-  // o chão cobre a metade de baixo da tela: o rosa e o laranja ficam na parte de cima, que aparece
-  grad.addColorStop(0, '#3b2a7e'); grad.addColorStop(0.18, '#8a3a92'); grad.addColorStop(0.34, '#e2508a');
-  grad.addColorStop(0.48, '#ff7a5c'); grad.addColorStop(0.62, '#ffab6e'); grad.addColorStop(0.8, '#ffd49a'); grad.addColorStop(1, '#ffe8bd');
-  g.fillStyle = grad; g.fillRect(0, 0, 4, 512);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   cena.background = t;
   cena.fog = new THREE.Fog(0xf39a86, 380, 2600);
-  // o sol baixo no horizonte (oeste), com halo
   const brilho = (tam, cores) => {
     const cv = document.createElement('canvas'); cv.width = cv.height = 256;
     const gg = cv.getContext('2d'), r = gg.createRadialGradient(128, 128, 0, 128, 128, 128);
@@ -32,9 +27,23 @@ export function ceu(cena) {
     cena.add(s);
     return s;
   };
-  brilho(2600, [[0, 'rgba(255,170,110,.55)'], [0.4, 'rgba(255,100,120,.18)'], [1, 'rgba(255,90,120,0)']]);
+  const halo = brilho(2600, [[0, 'rgba(255,170,110,.55)'], [0.4, 'rgba(255,100,120,.18)'], [1, 'rgba(255,90,120,0)']]);
   const sol = brilho(520, [[0, 'rgba(255,250,225,1)'], [0.45, 'rgba(255,215,140,1)'], [0.62, 'rgba(255,150,90,.6)'], [1, 'rgba(255,120,80,0)']]);
   sol.material.color.setScalar(2.2); // passa do branco: o brilho (bloom) acende o sol
+  function pintar({ paradas, neblina, astro }) {
+    const grad = g.createLinearGradient(0, 0, 0, 512);
+    paradas.forEach(([k, cor]) => grad.addColorStop(k, cor));
+    g.fillStyle = grad; g.fillRect(0, 0, 4, 512);
+    t.needsUpdate = true;
+    cena.fog.color.set(neblina);
+    // astro: { x, y, z, cor, tam, halo } (sol de dia e no fim da tarde, lua à noite)
+    sol.position.set(astro.x, astro.y, astro.z); halo.position.copy(sol.position);
+    sol.material.color.set(astro.cor).multiplyScalar(astro.forca ?? 2.2);
+    sol.scale.setScalar(astro.tam ?? 520); halo.material.opacity = astro.halo ?? 1;
+  }
+  // começo: fim de tarde (o ciclo do dia ajusta logo depois)
+  pintar({ paradas: [[0, '#3b2a7e'], [0.18, '#8a3a92'], [0.34, '#e2508a'], [0.48, '#ff7a5c'], [0.62, '#ffab6e'], [0.8, '#ffd49a'], [1, '#ffe8bd']], neblina: 0xf39a86, astro: { x: -2300, y: 150, z: 800, cor: 0xffffff } });
+  return { pintar };
 }
 
 /** Palmeira em blocos (tronco curvo, folhas caídas e cocos), numa geometria só para instanciar. */

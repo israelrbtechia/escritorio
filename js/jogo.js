@@ -13,6 +13,11 @@ const caixa = (w, h, d, cor, x, y, z, pai) => {
 const suave = (a, b, k) => a + (b - a) * k;
 const angulo = (a, b, k) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * k; };
 
+/** Faróis e lanternas de todos os veículos: o ciclo do dia acende à noite. */
+export const LUZES_VEICULOS = {
+  farol: new THREE.MeshBasicMaterial({ color: 0xfff3c4 }),
+  lanterna: new THREE.MeshBasicMaterial({ color: 0xd23a2a }),
+};
 /** Carro em blocos (a frente aponta para +z). */
 export function montarCarro(cor = 0x3b6fd6) {
   const g = new THREE.Group();
@@ -23,8 +28,8 @@ export function montarCarro(cor = 0x3b6fd6) {
   caixa(1.72, 0.4, 0.05, 0x1d2b36, 0, 1.2, -1.36, corpo);   // vidro de trás
   for (const l of [-1, 1]) caixa(0.05, 0.38, 1.9, 0x1d2b36, l * 0.86, 1.22, -0.25, corpo); // janelas
   for (const l of [-1, 1]) {
-    caixa(0.36, 0.16, 0.06, 0xfff3c4, l * 0.62, 0.72, 2.15, corpo);   // farol
-    caixa(0.36, 0.14, 0.06, 0xd23a2a, l * 0.62, 0.74, -2.15, corpo);  // lanterna
+    caixa(0.36, 0.16, 0.06, 0xfff3c4, l * 0.62, 0.72, 2.15, corpo).material = LUZES_VEICULOS.farol;      // farol
+    caixa(0.36, 0.14, 0.06, 0xd23a2a, l * 0.62, 0.74, -2.15, corpo).material = LUZES_VEICULOS.lanterna;  // lanterna
   }
   caixa(1.95, 0.18, 0.12, 0x222222, 0, 0.36, 2.17, corpo);
   caixa(1.95, 0.18, 0.12, 0x222222, 0, 0.36, -2.17, corpo);
@@ -32,6 +37,25 @@ export function montarCarro(cor = 0x3b6fd6) {
     const r = new THREE.Group(); r.position.set(x, 0.36, z); g.add(r);
     caixa(0.3, 0.72, 0.72, 0x161616, 0, 0, 0, r);
     caixa(0.32, 0.3, 0.3, 0x9a9a9a, 0, 0, 0, r);
+    return r;
+  });
+  return g;
+}
+
+/** Ônibus em blocos (a frente aponta para +z). */
+export function montarOnibus(cor = 0x1f6fd6) {
+  const g = new THREE.Group();
+  caixa(2.5, 2.6, 11.5, cor, 0, 1.75, 0, g);
+  caixa(2.52, 1.0, 10.6, 0x1d2b36, 0, 2.3, -0.2, g);   // janelas
+  caixa(2.3, 1.2, 0.06, 0x1d2b36, 0, 2.2, 5.76, g);    // para-brisa
+  caixa(2.54, 0.25, 11.52, 0xffffff, 0, 1.1, 0, g);    // faixa branca
+  for (const l of [-1, 1]) {
+    caixa(0.4, 0.2, 0.06, 0xfff3c4, l * 0.85, 0.8, 5.76, g).material = LUZES_VEICULOS.farol;
+    caixa(0.4, 0.3, 0.06, 0xd23a2a, l * 0.85, 0.9, -5.76, g).material = LUZES_VEICULOS.lanterna;
+  }
+  g.userData.rodas = [[-1.15, 3.8], [1.15, 3.8], [-1.15, -3.6], [1.15, -3.6]].map(([x, z]) => {
+    const r = new THREE.Group(); r.position.set(x, 0.5, z); g.add(r);
+    caixa(0.35, 1.0, 1.0, 0x161616, 0, 0, 0, r);
     return r;
   });
   return g;
@@ -97,6 +121,11 @@ export function criarTransito({ cena, dados }) {
     const g = montarCarro(CORES[i % CORES.length]);
     cena.add(g);
     carros.push({ g, sentido: i % 2 ? -1 : 1, d: ini() + ((fim() - ini()) / N) * i + 7, vel: 11, max: 10 + (i * 7) % 5, raio: 2.3 });
+  }
+  for (let i = 0; i < 2; i++) { // ônibus
+    const g = montarOnibus(i ? 0xffd60a : 0x1f6fd6);
+    cena.add(g);
+    carros.push({ g, sentido: i ? -1 : 1, d: ini() + (fim() - ini()) * (0.3 + i * 0.4), vel: 9, max: 9, raio: 4.5, onibus: true });
   }
   // dois carros parados no pátio da loja
   for (const [x, z, a, cor] of [[-16.5, 3.5, 0.15, 0xf2f2f2], [17, 1.5, -0.1, 0x1c1c1c]]) {
@@ -187,6 +216,7 @@ export function criarJogo(ctx) {
     const hit = raio.intersectObjects(ctx.chao(), false)[0];
     return hit ? Math.max(hit.point.y, terreno ?? -Infinity) : terreno ?? padrao;
   }
+  const colideVeiculo = (x, z, r) => !!(ctx.transito()?.colide(x, z, r) || ctx.cidade?.()?.colide(x, z, r));
   // casas e prédios do mundo aberto (só os quadrados carregados, perto de você)
   let casasCache = { x: Infinity, z: Infinity, lista: [] };
   function bateEmCasa(x, z, r) {
@@ -490,7 +520,7 @@ export function criarJogo(ctx) {
     const giro = -x * Math.min(1, Math.abs(c.v) / 5) * Math.sign(c.v || 1) * 1.6;
     c.h += giro * dt;
     const nx = c.x + Math.sin(c.h) * c.v * dt, nz = c.z + Math.cos(c.h) * c.v * dt;
-    const preso = (x, z) => bateEmCasa(x, z, 1.6) || naCasca(x, z, 1.5) || ctx.transito()?.colide(x, z, 1.9);
+    const preso = (x, z) => bateEmCasa(x, z, 1.6) || naCasca(x, z, 1.5) || colideVeiculo(x, z, 1.9);
     const bate = Math.hypot(nx, nz) > 12000 || (preso(nx, nz) && !preso(c.x, c.z));
     if (bate) { if (Math.abs(c.v) > 6) { aviso('💥 Opa! Bateu.', 1500); vibrar(Math.min(1, Math.abs(c.v) / 14), 260); } c.v = -c.v * 0.25; }
     else { c.x = nx; c.z = nz; }
@@ -525,7 +555,7 @@ export function criarJogo(ctx) {
           if (!naCasca(x, z)) return naPorta(x) && p.z > 6.8; // só sai pela porta
           return x > -11.7 && z > -7.7 && (x < 11.7 || corredorDoElevador(x, z)) && (z < 7.7 || naPorta(x)) && (!noMovel(x, z) || noMovel(p.x, p.z));
         }
-        const preso = (a, b) => bateEmCasa(a, b, 0.35) || Math.hypot(a - est.car.x, b - est.car.z) < 2.1 || ctx.transito()?.colide(a, b, 0.5);
+        const preso = (a, b) => bateEmCasa(a, b, 0.35) || Math.hypot(a - est.car.x, b - est.car.z) < 2.1 || colideVeiculo(a, b, 0.5);
         return Math.hypot(x, z) < 12000 && (!preso(x, z) || preso(p.x, p.z)) && (!naCasca(x, z) || (naPorta(x) && z > 6.8));
       };
       // anda; se bater, escorrega ao longo do obstáculo
@@ -613,6 +643,8 @@ export function criarJogo(ctx) {
   let andarVisto = -1, tempoCentro = 0;
   return {
     /** Andar que os balões mostram (fora do prédio: todos). */
+    /** Você e o seu carro (os carros do bairro freiam para vocês). */
+    obstaculos: () => [{ x: est.car.x, z: est.car.z }, ...(est.noCarro ? [] : [{ x: eu.raiz.position.x, z: eu.raiz.position.z }])],
     /** Onde você está (o mundo aberto carrega em volta). */
     foco: () => (est.noCarro ? { x: est.car.x, z: est.car.z } : { x: eu.raiz.position.x, z: eu.raiz.position.z }),
     focoAndar: () => (!est.noCarro && (eu.andar > 0 || naCasca(eu.raiz.position.x, eu.raiz.position.z)) ? eu.andar : null),

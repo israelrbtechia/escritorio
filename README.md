@@ -108,6 +108,11 @@ Variáveis na Vercel (projeto do prédio):
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
 
+## Cidade viva, dia e noite
+- **Dia e noite:** o céu, o sol (ou a lua), a neblina, a luz e o brilho seguem o horário de Brasília: amanhecer, dia, pôr do sol e noite. À noite acendem os postes, os faróis e as lanternas dos carros, os outdoors e o neon do prédio. Em **Ajustes → Céu do prédio** dá para fixar um horário.
+- **Ruas:** postes nas avenidas e ruas asfaltadas, outdoors da RB Tech ao longo da SC-281 e um ponto de ônibus na calçada perto da loja.
+- **Gente e trânsito:** pedestres (personagens 3D) andando nas calçadas, carros e motos nas ruas do bairro em volta de onde você está, e carros e ônibus na SC-281. Todos freiam para você no modo jogo.
+
 ## Personagens 3D
 As pessoas do prédio (equipe, clientes e você no modo jogo) são personagens 3D com proporção humana, cabelo, barba e roupa nas cores de cada um (camisa, paletó com gravata, cinto, calça e sapato), animados conforme o que estão fazendo: parados, conversando, andando (com andar social para quem usa terno), correndo, sentados e conversando sentados. Modelos e animações da Quaternius (CC0), em `assets/personagens/` (veja `LICENCA.txt`). Enquanto carregam, aparecem os bonecos de blocos.
 
