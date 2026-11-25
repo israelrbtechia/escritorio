@@ -173,6 +173,7 @@ Botão **🎮 Jogar** no topo. Você vira um boneco jogável (o Israel) e começ
 - **Elevador:** na porta do elevador aparecem os botões dos andares. Se outra pessoa estiver usando, você espera a vez.
 - **Conversar:** perto de alguém, **💬 Conversar**. Perto de um chefe ou de alguém do time dele, **📋 Pedir algo**: o pedido vai para o chat daquele chefe, igual a digitar lá. A resposta aparece na tela do jogo e fica completa no chat.
 - **Peter e Bibi:** **📣 Peter / 📣 Bibi** chama o cão até você (ele pega o elevador se precisar). Perto dele: **🐾 Carinho**, **🎾 Jogar bolinha** (ele busca e traz) e **🤸 Brincar**.
+- **Controle de PS4 (sem fio):** pareie o controle por Bluetooth com o celular ou o computador (no controle, segure **SHARE + PS** até a luz piscar) e aperte qualquer botão com o jogo aberto. Analógico esquerdo ou setas: andar e dirigir · **R2** acelera (a pé, corre) · **L2** freia e dá ré · analógico direito: câmera · **✕ ⬜ ◯**: as ações da tela (no carro, ◯ é o freio de mão) · **△** entra e sai do carro · **L1/R1** chamam o Peter e a Bibi · **R3** muda o zoom · **OPTIONS** sai do jogo. O controle vibra quando você bate o carro.
 - **Câmera:** fica atrás de você. Arraste para girar e use a rodinha ou a pinça para aproximar.
 
 O trânsito da SC-281 roda também fora do jogo (veja a câmera "Chegando pela SC-281").

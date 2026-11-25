@@ -212,7 +212,7 @@ export function criarJogo(ctx) {
   hud.innerHTML = `
     <div class="hud-topo"><strong>🎮 Prédio RBTech</strong><span class="hud-status"></span><span class="hud-caes"></span><button type="button" class="hud-sair">✕ Sair do jogo</button></div>
     <div class="hud-aviso" hidden></div>
-    <div class="hud-dica">${toque ? 'Joystick: andar ou dirigir · arraste a tela para girar e inclinar a câmera · pinça: zoom' : 'WASD ou setas: andar/dirigir · Shift: correr · E: entrar/sair do carro · Espaço ou 1–4: ações · arraste: girar e inclinar a câmera · rodinha: zoom'}</div>
+    <div class="hud-dica">${toque ? 'Joystick: andar ou dirigir · arraste a tela para girar e inclinar a câmera · pinça: zoom' : 'WASD ou setas: andar/dirigir · Shift: correr · E: entrar/sair do carro · Espaço ou 1–4: ações · arraste: girar e inclinar a câmera · rodinha: zoom · 🎮 controle de PS4: aperte qualquer botão'}</div>
     <div class="hud-acoes"></div>
     <div class="hud-joy"${toque ? '' : ' hidden'}><div class="hud-joy-bola"></div></div>
     <form class="hud-pedido" hidden><span></span><input type="text" maxlength="500" placeholder="O que você quer pedir?" autocomplete="off"><button type="submit">Enviar</button><button type="button" class="hud-cancelar">✕</button></form>`;
@@ -290,6 +290,60 @@ export function criarJogo(ctx) {
     form.querySelector('input').value = ''; form.hidden = true; est.falandoCom = null;
   });
   $h('.hud-cancelar').addEventListener('click', () => { form.hidden = true; est.falandoCom = null; });
+
+  // ---------- controle de PS4 (DualShock 4 sem fio, por Bluetooth) ou qualquer controle no padrão do navegador ----------
+  // analógico esquerdo ou setas: andar/dirigir · R2: acelerar (a pé: correr) · L2: frear e ré · analógico direito: câmera
+  // ✕ ação 1 · ⬜ ação 2 · ◯ ação 3 (no carro: freio de mão; com o pedido aberto: fechar) · △ entrar/sair do carro
+  // L1: chamar o Peter · R1: chamar a Bibi · R3 (apertar o analógico direito): zoom · OPTIONS: sair do jogo
+  const pad = { ativo: false, nome: '', x: 0, y: 0, rx: 0, ry: 0, acel: 0, freio: 0, correr: false, freioDeMao: false, antes: [] };
+  const zonaMorta = v => (Math.abs(v) < 0.16 ? 0 : (v - Math.sign(v) * 0.16) / 0.84);
+  const controleAtual = () => {
+    const lista = navigator.getGamepads ? [...navigator.getGamepads()].filter(Boolean) : [];
+    return lista.find(p => p.mapping === 'standard') || lista[0] || null;
+  };
+  function vibrar(forca = 0.6, ms = 200) {
+    try { controleAtual()?.vibrationActuator?.playEffect?.('dual-rumble', { duration: ms, strongMagnitude: forca, weakMagnitude: forca })?.catch?.(() => {}); } catch { /* sem vibração */ }
+  }
+  function lerControle(dt) {
+    const g = controleAtual();
+    if (!g) { if (pad.ativo) Object.assign(pad, { ativo: false, x: 0, y: 0, rx: 0, ry: 0, acel: 0, freio: 0, correr: false, freioDeMao: false, antes: [] }); return false; }
+    const b = i => g.buttons[i] || { pressed: false, value: 0 };
+    const ax = i => zonaMorta(g.axes[i] || 0);
+    pad.ativo = true; pad.nome = g.id;
+    pad.x = ax(0); pad.y = -ax(1);
+    if (b(14).pressed) pad.x = -1; if (b(15).pressed) pad.x = 1;
+    if (b(12).pressed) pad.y = 1; if (b(13).pressed) pad.y = -1;
+    pad.acel = b(7).value || (b(7).pressed ? 1 : 0);
+    pad.freio = b(6).value || (b(6).pressed ? 1 : 0);
+    pad.correr = pad.acel > 0.3 || b(10).pressed;
+    pad.rx = ax(2); pad.ry = ax(3);
+    pad.freioDeMao = est.noCarro && b(1).pressed;
+    const apertou = i => b(i).pressed && !pad.antes[i];
+    pad.saiu = false;
+    if (!form.hidden) {
+      if (apertou(1)) { form.hidden = true; est.falandoCom = null; }
+    } else {
+      if (apertou(3)) executar(est.acoes.find(a => a.tecla === 'e') || null);
+      if (!est.noCarro) {
+        if (apertou(0)) executar(est.acoes[0] || null);
+        if (apertou(2)) executar(est.acoes[1] || null);
+        if (apertou(1)) executar(est.acoes[2] || null);
+      }
+      if (apertou(4)) chamar('peter');
+      if (apertou(5)) chamar('bibi');
+      if (apertou(11)) est.camDist = est.camDist < 6 ? 9.5 : est.camDist < 13 ? 18 : 4.5;
+      if (apertou(9)) { pad.saiu = true; ctx.sair(); return true; }
+    }
+    pad.antes = g.buttons.map(x => x.pressed);
+    // câmera no analógico direito
+    est.camYaw -= pad.rx * dt * 2.4;
+    est.camPitch = THREE.MathUtils.clamp(est.camPitch + pad.ry * dt * 1.4, 0.05, 1.4);
+    return false;
+  }
+  const aoConectar = e => { aviso(`🎮 Controle conectado. Analógico esquerdo anda, R2 acelera, ✕ faz a ação, △ entra e sai do carro, OPTIONS sai do jogo.`, 7000); vibrar(0.4, 150); };
+  const aoDesconectar = () => aviso('🎮 Controle desconectado. O teclado e o toque continuam funcionando.', 4000);
+  addEventListener('gamepadconnected', aoConectar);
+  addEventListener('gamepaddisconnected', aoDesconectar);
 
   // ---------- ações ----------
   function executar(a) { if (a) a.fazer(); }
@@ -398,7 +452,7 @@ export function criarJogo(ctx) {
     return lista;
   }
   function desenharAcoes(lista) {
-    const chave = lista.map(a => a.id).join('|');
+    const chave = lista.map(a => a.id).join('|') + (pad.ativo ? '|pad' : '');
     est.acoes = lista;
     if (chave === est.chave) return;
     est.chave = chave;
@@ -407,7 +461,7 @@ export function criarJogo(ctx) {
     lista.forEach((a, i) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.textContent = toque ? a.rotulo : `${a.rotulo} ${a.tecla === 'e' ? '[E]' : i < 4 ? `[${i + 1}]` : ''}`;
+      b.textContent = pad.ativo ? `${a.rotulo} ${a.tecla === 'e' ? '△' : !est.noCarro && i < 3 ? ['✕', '⬜', '◯'][i] : ''}` : toque ? a.rotulo : `${a.rotulo} ${a.tecla === 'e' ? '[E]' : i < 4 ? `[${i + 1}]` : ''}`;
       b.addEventListener('click', () => a.fazer());
       box.appendChild(b);
     });
@@ -421,21 +475,26 @@ export function criarJogo(ctx) {
     if (t.has('s') || t.has('arrowdown')) y = -1;
     if (t.has('a') || t.has('arrowleft')) x = -1;
     if (t.has('d') || t.has('arrowright')) x = 1;
-    return { x, y, correr: t.has('shift') };
+    if (pad.ativo) {
+      if (Math.abs(pad.x) > Math.abs(x)) x = pad.x;
+      if (Math.abs(pad.y) > Math.abs(y)) y = pad.y;
+      if (est.noCarro && (pad.acel > 0.05 || pad.freio > 0.05)) y = pad.acel - pad.freio; // gatilhos: R2 acelera, L2 freia
+    }
+    return { x, y, correr: t.has('shift') || pad.correr };
   };
   function dirigir(dt) {
     const c = est.car, { x, y } = entrada();
     const acel = y > 0.15 ? y * 7 : y < -0.15 ? (c.v > 0.5 ? y * 12 : y * 4) : 0;
     c.v += acel * dt;
     if (!acel) c.v = suave(c.v, 0, Math.min(1, dt * 0.9));
-    if (est.teclas.has(' ')) c.v = suave(c.v, 0, Math.min(1, dt * 5)); // freio de mão
+    if (est.teclas.has(' ') || pad.freioDeMao) c.v = suave(c.v, 0, Math.min(1, dt * 5)); // freio de mão (Espaço ou ◯)
     c.v = THREE.MathUtils.clamp(c.v, -6, 19);
     const giro = -x * Math.min(1, Math.abs(c.v) / 5) * Math.sign(c.v || 1) * 1.6;
     c.h += giro * dt;
     const nx = c.x + Math.sin(c.h) * c.v * dt, nz = c.z + Math.cos(c.h) * c.v * dt;
     const preso = (x, z) => bateEmCasa(x, z, 1.6) || naCasca(x, z, 1.5) || ctx.transito()?.colide(x, z, 1.9);
     const bate = Math.hypot(nx, nz) > 460 || (preso(nx, nz) && !preso(c.x, c.z));
-    if (bate) { if (Math.abs(c.v) > 6) aviso('💥 Opa! Bateu.', 1500); c.v = -c.v * 0.25; }
+    if (bate) { if (Math.abs(c.v) > 6) { aviso('💥 Opa! Bateu.', 1500); vibrar(Math.min(1, Math.abs(c.v) / 14), 260); } c.v = -c.v * 0.25; }
     else { c.x = nx; c.z = nz; }
     c.y = suave(c.y, alturaDoChao(c.x, c.z, c.y), 0.5);
     carro.position.set(c.x, c.y, c.z);
@@ -559,6 +618,7 @@ export function criarJogo(ctx) {
     aviso,
     _teste: { est, eu, ctx }, // para testes automáticos
     atualizar(dt) {
+      if (lerControle(dt)) return; // OPTIONS: saiu do jogo
       if (est.noCarro) dirigir(dt); else andar(dt);
       cachorros(dt);
       // o trânsito freia para você
@@ -576,6 +636,7 @@ export function criarJogo(ctx) {
     },
     destruir() {
       removeEventListener('keydown', tecla); removeEventListener('keyup', tecla); removeEventListener('blur', soltarTeclas);
+      removeEventListener('gamepadconnected', aoConectar); removeEventListener('gamepaddisconnected', aoDesconectar);
       tela.removeEventListener('pointerdown', pd); tela.removeEventListener('pointermove', pm);
       tela.removeEventListener('pointerup', pu); tela.removeEventListener('pointercancel', pu);
       tela.removeEventListener('wheel', roda);
