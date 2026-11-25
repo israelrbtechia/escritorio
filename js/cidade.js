@@ -25,7 +25,7 @@ function montarMoto(cor) {
 }
 
 export function criarCidade({ cena, mundo, celular = false }) {
-  const NPED = celular ? 6 : 12, NCARROS = celular ? 5 : 9, NMOTOS = celular ? 2 : 4, RAIO = celular ? 260 : 360;
+  const NPED = celular ? 4 : 10, NCARROS = celular ? 4 : 8, NMOTOS = celular ? 2 : 3, RAIO = celular ? 240 : 340;
   const pedestres = [], veiculos = [];
   let criarPersonagem = null;
   import('./personagens.js').then(m => { criarPersonagem = m.criarPersonagem; }).catch(() => {});

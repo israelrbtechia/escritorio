@@ -1205,28 +1205,50 @@ export function criarEscritorio(container, camada) {
   // ---------- laço de animação ----------
   let ultimoDesenho = 0, ultimoMundo = 0;
   let aberturaPorta = 0;
+  // qualidade automática: se o aparelho não aguentar, tira o brilho, baixa a resolução e, por fim, as sombras
+  const desempenho = { soma: 0, n: 0, nivel: 0, desde: 0 };
+  function medirDesempenho(dtReal, t) {
+    if (mosaico || document.hidden) return;
+    desempenho.soma += dtReal; desempenho.n++;
+    if (t - desempenho.desde < 4 || desempenho.n < 30) return;
+    const medio = desempenho.soma / desempenho.n;
+    desempenho.soma = 0; desempenho.n = 0; desempenho.desde = t;
+    if (medio < 0.036 || desempenho.nivel >= 2) return; // ~28 quadros por segundo ou mais: tudo bem
+    desempenho.nivel++;
+    if (desempenho.nivel === 1) {
+      composer = null; // sem brilho
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 1));
+      redimensionar();
+    } else {
+      sol.castShadow = false; // sem sombras
+      renderer.shadowMap.enabled = false;
+      cena.traverse(o => { if (o.material) [].concat(o.material).forEach(m => { m.needsUpdate = true; }); });
+    }
+  }
   function quadro() {
-    const dt = Math.min(relogio.getDelta(), 0.05);
+    // o tempo do jogo acompanha o relógio mesmo com poucos quadros por segundo (em passos de no máximo 50 ms)
+    const dtReal = Math.min(relogio.getDelta(), 0.25);
     const t = relogio.elapsedTime;
-    // elevador
-    if (Math.abs(cabine.position.y - elevador.alvo) > 0.01) {
-      const passo = 9 * dt;
-      const d = elevador.alvo - cabine.position.y;
-      cabine.position.y += Math.sign(d) * Math.min(Math.abs(d), passo);
-    } else if (elevador.aoChegar) { cabine.position.y = elevador.alvo; const cb = elevador.aoChegar; elevador.aoChegar = null; cb(); }
-    for (const e of entidades) { e.raiz.visible = visivel(e); e.atualizar(dt, t); }
-    transito?.atualizar(dt);
-    if (jogo) jogo.atualizar(dt);
+    medirDesempenho(dtReal, t);
+    const passos = Math.max(1, Math.ceil(dtReal / 0.05)), dt = dtReal / passos;
+    for (let k = 0; k < passos; k++) {
+      // elevador
+      if (Math.abs(cabine.position.y - elevador.alvo) > 0.01) {
+        const passo = 9 * dt;
+        const d = elevador.alvo - cabine.position.y;
+        cabine.position.y += Math.sign(d) * Math.min(Math.abs(d), passo);
+      } else if (elevador.aoChegar) { cabine.position.y = elevador.alvo; const cb = elevador.aoChegar; elevador.aoChegar = null; cb(); }
+      for (const e of entidades) { e.raiz.visible = visivel(e); e.atualizar(dt, t); }
+      transito?.atualizar(dt);
+      if (jogo) jogo.atualizar(dt);
+      if (cidade) cidade.atualizar(dt, jogo ? jogo.foco() : controles.target, jogo ? jogo.obstaculos() : []);
+    }
     // o mundo carrega em volta de onde você está (no jogo) ou de para onde a câmera olha
     if (bairro && t - ultimoMundo > 0.4) { ultimoMundo = t; bairro.atualizar(jogo ? jogo.foco() : controles.target); }
-    if (cidade) {
-      const foco = jogo ? jogo.foco() : controles.target;
-      cidade.atualizar(dt, foco, jogo ? jogo.obstaculos() : []);
-    }
     // porta automática da loja: abre quando alguém chega perto
     if (telas.portas) {
       const perto = entidades.some(e => e.ativo !== false && e.andar === 0 && !e.noElevador && Math.abs(e.raiz.position.x) < 2.2 && Math.abs(e.raiz.position.z - 7.85) < 2.0);
-      aberturaPorta = suave(aberturaPorta, perto ? 1 : 0, Math.min(1, dt * 5));
+      aberturaPorta = suave(aberturaPorta, perto ? 1 : 0, Math.min(1, dtReal * 5));
       telas.portas[0].position.x = -0.63 - 1.2 * aberturaPorta;
       telas.portas[1].position.x = 0.63 + 1.2 * aberturaPorta;
     }
@@ -1235,7 +1257,7 @@ export function criarEscritorio(container, camada) {
     if (jogo) {
       // a câmera segue você (jogo.atualizar já posicionou)
     } else if (transicao) {
-      transicao.t = Math.min(1, transicao.t + dt / 1.3);
+      transicao.t = Math.min(1, transicao.t + dtReal / 1.3);
       const k = transicao.t < 0.5 ? 2 * transicao.t ** 2 : 1 - (-2 * transicao.t + 2) ** 2 / 2;
       camera.position.lerpVectors(transicao.de, transicao.para, k);
       controles.target.lerpVectors(transicao.deAlvo, transicao.paraAlvo, k);

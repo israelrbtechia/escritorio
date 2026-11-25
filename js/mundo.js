@@ -14,7 +14,7 @@ export async function montarMundo(cena, { celular = false } = {}) {
     ind = await r.json();
   } catch (e) { console.warn('mundo não carregou:', e); return null; }
   const ceuCtl = ceu(cena);
-  cena.fog.near = celular ? 260 : 340; cena.fog.far = celular ? 950 : 1350; // a neblina esconde a borda do que está carregado
+  cena.fog.near = celular ? 220 : 320; cena.fog.far = celular ? 780 : 1250; // a neblina esconde a borda do que está carregado
 
   // ---------- coordenadas: cena (x, z) ↔ longitude/latitude, e a altura do relevo ----------
   const c = ind.conversao, rel = ind.relevo;
@@ -99,7 +99,6 @@ export async function montarMundo(cena, { celular = false } = {}) {
       o.position.set(x, y, z); o.rotation.set(0, (x * 13.7 + z * 5.3) % (Math.PI * 2), 0); o.scale.set(s, s, s); o.updateMatrix();
       palm.setMatrixAt(i, o.matrix);
     });
-    palm.castShadow = true;
     grupo.add(palm);
   }
 
@@ -169,7 +168,6 @@ export async function montarMundo(cena, { celular = false } = {}) {
       const placa = new THREE.Mesh(new THREE.BoxGeometry(10.5, 4, 0.3), new THREE.MeshLambertMaterial({ color: 0x111111 })); placa.position.set(0, 8.5, 0); o.add(placa);
       const frente = new THREE.Mesh(new THREE.PlaneGeometry(10, 3.75), matTela); frente.position.set(0, 8.5, 0.16); o.add(frente);
       const verso = frente.clone(); verso.rotation.y = Math.PI; verso.position.z = -0.16; o.add(verso);
-      o.traverse(m => { if (m.isMesh) m.castShadow = true; });
       grupo.add(o);
     }
     // ponto de ônibus na calçada da SC-281, à direita da loja
@@ -185,7 +183,7 @@ export async function montarMundo(cena, { celular = false } = {}) {
 
   // ---------- quadrados de 500 m: carregar e descarregar conforme o foco ----------
   const TAM = ind.chunk, existe = new Set(ind.chunks);
-  const raio = celular ? 850 : 1250;
+  const raio = celular ? 650 : 1150;
   const carregados = new Map(); // chave → { grupo, casas } (ou { carregando: true })
   let fila = 0;
   const comY = (p, sobe) => { const out = []; for (let i = 0; i < p.length; i += 2) out.push(p[i], altura(p[i], p[i + 1]) + sobe, p[i + 1]); return out; };

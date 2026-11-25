@@ -146,7 +146,7 @@ export function casas(lista) {
       telhados.setMatrixAt(it, o.matrix); telhados.setColorAt(it++, c.set('#' + telhado));
     }
   });
-  for (const m of [paredes, telhados, lajes]) { m.castShadow = true; m.receiveShadow = true; grupo.add(m); }
+  for (const m of [paredes, telhados, lajes]) { m.receiveShadow = true; grupo.add(m); } // sem sombra própria: leve no celular
   return grupo;
 }
 
@@ -164,7 +164,6 @@ export function arvores(lista) {
     o.position.set(x, y + s * 0.38, z); o.scale.set(s, s * 0.8, s); o.updateMatrix(); copa.setMatrixAt(i, o.matrix);
     copa.setColorAt(i, c.set(verdes[(Math.abs(Math.round(x * 3 + z)) % verdes.length)]));
   }
-  copa.castShadow = true;
   const g = new THREE.Group();
   g.add(tronco, copa);
   return g;

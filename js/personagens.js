@@ -61,7 +61,7 @@ async function vestirPenteado(raiz, esqueleto, nome, corCabelo) {
     const m = o.material.clone();
     m.color = cor(corCabelo).multiplyScalar(2.0); m.roughness = 0.65; m.metalness = 0;
     const malha = new THREE.SkinnedMesh(o.geometry, m);
-    malha.castShadow = true; malha.frustumCulled = false;
+    malha.castShadow = true;
     raiz.add(malha);
     malha.bind(new THREE.Skeleton(ossos, o.skeleton.boneInverses), o.bindMatrix);
   });
@@ -133,7 +133,7 @@ export async function criarPersonagem(roupa) {
   const raiz = clonarComOssos(modelo.cena);
   raiz.traverse(o => {
     if (!o.isMesh) return;
-    o.castShadow = true; o.frustumCulled = false;
+    o.castShadow = true;
     const nome = (o.material?.name || '').toLowerCase();
     if (o.isSkinnedMesh && o.geometry.attributes.position.count === modelo.marcos.corpo.geometry.attributes.position.count && !nome.includes('hair') && !nome.includes('eye')) {
       o.material = materialDoCorpo(o.material, modelo.marcos, roupa);
