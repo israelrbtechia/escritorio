@@ -108,6 +108,9 @@ Variáveis na Vercel (projeto do prédio):
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
 
+## Personagens 3D
+As pessoas do prédio (equipe, clientes e você no modo jogo) são personagens 3D com proporção humana, cabelo, barba e roupa nas cores de cada um (camisa, paletó com gravata, cinto, calça e sapato), animados conforme o que estão fazendo: parados, conversando, andando (com andar social para quem usa terno), correndo, sentados e conversando sentados. Modelos e animações da Quaternius (CC0), em `assets/personagens/` (veja `LICENCA.txt`). Enquanto carregam, aparecem os bonecos de blocos.
+
 ## Mundo aberto: São José inteira
 Em volta do prédio está **São José (SC) inteira**: cerca de 106 mil casas e prédios nos lugares reais, 16 mil trechos de rua (com a BR-101, a SC-281 e as avenidas do Kobrasol), rios, o mar da baía, mata nos morros e o relevo de verdade. O mundo é cortado em quadrados de 500 m (`mundo/`), e o app carrega só os que estão perto da câmera (ou de você, no modo jogo): dá para sair da loja de carro e dirigir até o Kobrasol, a uns 9 km.
 

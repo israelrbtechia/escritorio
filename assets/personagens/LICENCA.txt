@@ -1,0 +1,8 @@
+Personagens do prédio RB Tech (todos CC0 1.0, domínio público: https://creativecommons.org/publicdomain/zero/1.0/)
+
+- homem.glb e mulher.glb: "Universal Base Characters" (Regular Male / Regular Female), de Quaternius (quaternius.com).
+  Convertidos para .glb com as texturas reduzidas (512 px) e as de cor em tons de cinza; o app pinta pele, cabelo e roupas.
+- animacoes.glb: "Universal Animation Library" (Standard), de Quaternius. Só os ossos e 15 animações usadas no prédio
+  (parado, conversando, andando, andar social, correndo, sentando, sentado, conversando sentado, levantando,
+  mexendo em algo, pegando na mesa, consertando ajoelhado, dirigindo, dançando).
+Malhas, ossos e animações são os originais.

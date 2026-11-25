@@ -505,6 +505,7 @@ export function criarJogo(ctx) {
     const mag = Math.min(1, Math.hypot(x, y));
     const r = eu.raiz, p = r.position;
     eu.andandoJogo = mag > 0.1;
+    eu.correndoJogo = eu.andandoJogo && correr;
     if (mag > 0.1) {
       const ang = est.camYaw + Math.atan2(-x, y);
       const vel = (correr ? 6.5 : 4.2) * mag;

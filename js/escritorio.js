@@ -383,7 +383,20 @@ export function criarEscritorio(container, camada) {
     }
     if (a.bone) { caixa(0.64, 0.17, 0.58, a.bone, 0, 0.64, 0, c); caixa(0.5, 0.04, 0.3, a.bone, 0, 0.6, -0.42, c); }
     if (a.fone) { caixa(0.68, 0.06, 0.1, 0x111111, 0, 0.75, 0, c); for (const l of [-1, 1]) caixa(0.08, 0.22, 0.22, 0x111111, l * 0.34, 0.38, 0, c); }
-    if (opcoes.sacola) { p.sacola = caixa(0.3, 0.32, 0.12, AMARELO, 0.42, 0.62, 0.08, p.corpo); p.sacola.visible = false; }
+    if (opcoes.sacola) { p.sacola = caixa(0.3, 0.32, 0.12, AMARELO, 0.42, 0.62, 0.08, p.raiz); p.sacola.visible = false; }
+    p.aparencia = a;
+    // personagem 3D com proporção humana (carrega depois; até lá fica o boneco de blocos)
+    p.vestir3d = async () => {
+      try {
+        const { criarPersonagem, roupaDe } = await import('./personagens.js');
+        const m = await criarPersonagem(roupaDe(a));
+        if (p.descartado) return;
+        p.corpo.visible = false;
+        p.raiz.add(m.raiz);
+        p.modelo = m;
+        p.terno = !!a.frente;
+      } catch (e) { console.warn('personagem 3D:', e); }
+    };
 
     p.sentado = () => p.emCasa && !p.posto.empe && !p.andando;
     p.sentarJa = () => {
@@ -446,6 +459,15 @@ export function criarEscritorio(container, camada) {
       }
       if (p.falandoVoz) p.cabeca.rotation.x = Math.sin(t * 14) * 0.06; // mexe a cabeça enquanto fala
       if (p.elHumor && p.elHumor.textContent !== (p.humor ? p.humor + ' ' : '')) p.elHumor.textContent = p.humor ? p.humor + ' ' : '';
+      if (p.modelo) { // animação do personagem 3D conforme o que está fazendo
+        let anim = 'Idle_Loop', ritmo = 1;
+        if (movendo || p.andandoJogo) { anim = p.correndoJogo ? 'Jog_Fwd_Loop' : p.terno ? 'Walk_Formal_Loop' : 'Walk_Loop'; ritmo = p.correndoJogo ? 1.1 : 1.5; }
+        else if (p.sentado()) { anim = p.digitando ? 'Sitting_Talking_Loop' : 'Sitting_Idle_Loop'; r.position.y = base; }
+        else if (p.falandoVoz || (p.fala && performance.now() < p.falaAte)) anim = 'Idle_Talking_Loop';
+        else if (p.bebendo || p.digitando) anim = 'Interact';
+        p.modelo.tocar(anim);
+        p.modelo.atualizar(dt * ritmo);
+      }
     };
   }
 
@@ -628,6 +650,8 @@ export function criarEscritorio(container, camada) {
   }
   pessoas.estagiario.ativo = false;
   const caes = { peter: new Cachorro('peter'), bibi: new Cachorro('bibi') };
+  // personagens 3D: carregam depois do prédio aparecer (um de cada vez, para não travar)
+  setTimeout(async () => { for (const pe of entidades) if (pe.vestir3d) await pe.vestir3d(); }, 1500);
 
   // clientes da loja entrando pela rua
   const CLIENTES = [
@@ -1403,8 +1427,9 @@ export function criarEscritorio(container, camada) {
       const ctx = {
         cena, camera, renderer, container, pessoas, caes, clientes, entidades,
         ALT, ELEVADOR, PESSOAS_3D, GESTOR_DE, CHEFES, NOMES,
-        criarPessoa(id, def, opcoes) { const p = new Pessoa(id, def, opcoes); criarEtiqueta(p); return p; },
+        criarPessoa(id, def, opcoes) { const p = new Pessoa(id, def, opcoes); criarEtiqueta(p); p.vestir3d?.(); return p; },
         removerPessoa(p) {
+          p.descartado = true;
           const i = entidades.indexOf(p);
           if (i >= 0) entidades.splice(i, 1);
           predio.remove(p.raiz);
