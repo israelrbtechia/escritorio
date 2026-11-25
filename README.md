@@ -108,19 +108,12 @@ Variáveis na Vercel (projeto do prédio):
 
 A chave secreta dá acesso total ao banco: deixe o login do prédio ligado (`AGENCIA_USUARIO` e `AGENCIA_SENHA`).
 
-## O bairro real em volta do prédio (Colônia Santana, São José/SC)
-O prédio fica no lugar da loja, na **Rodovia SC-281, 7955** (no mapa: Rodovia Eugênio Raulino Koerich), de frente para a rodovia. Em volta, no mesmo estilo de blocos, está o que existe de verdade:
-- **casas:** 669, nos lugares e tamanhos reais (contorno por satélite), com telhado de 4 águas e 1 ou 2 andares conforme o tamanho; galpões com telhado de metal;
-- **ruas e rios:** a SC-281 com faixa amarela, as ruas do bairro (asfalto ou terra), os rios e córregos;
-- **relevo e mata:** os morros reais em volta do vale, até 319 m, com Mata Atlântica, e céu de dia.
+## Mundo aberto: São José inteira
+Em volta do prédio está **São José (SC) inteira**: cerca de 106 mil casas e prédios nos lugares reais, 16 mil trechos de rua (com a BR-101, a SC-281 e as avenidas do Kobrasol), rios, o mar da baía, mata nos morros e o relevo de verdade. O mundo é cortado em quadrados de 500 m (`mundo/`), e o app carrega só os que estão perto da câmera (ou de você, no modo jogo): dá para sair da loja de carro e dirigir até o Kobrasol, a uns 9 km.
 
-Câmeras: **Prédio → Bairro (Colônia Santana)** e **Chegando pela SC-281**. Dá para afastar o zoom até ver o bairro inteiro.
-
-Sobre a posição: o número 7955 não está no mapa. Ele foi estimado pelo CEP (o trecho de Colônia Santana começa no 6001) e pelo comprimento da rodovia, do lado ímpar. Para usar o ponto exato do Google Maps:
-1. Troque `LOJA` em `scripts/gerar-vizinhanca.py`.
-2. Rode o script com os dados baixados (ele explica como).
-
-Dados: © OpenStreetMap contributors (ODbL) · Microsoft Global ML Building Footprints (ODbL) · relevo SRTM. O crédito aparece no canto da tela 3D.
+- **Fontes:** ruas, rios, mata e prédios com andares do OpenStreetMap (© OpenStreetMap contributors, ODbL); contorno das casas do Microsoft Global ML Building Footprints (ODbL); relevo SRTM 30 m.
+- **Gerar de novo:** baixe os ladrilhos do OSM (API v0.6, `map?bbox=`), o relevo (OpenTopoData `srtm30m`) e o arquivo da Microsoft numa pasta e rode `python3 scripts/gerar-mundo.py <pasta> mundo`. A posição da loja está em `LOJA`, no começo do script.
+- **Desempenho:** no celular o raio carregado é menor (850 m) e a neblina esconde a borda.
 
 ## Ações no ReparoSimples depois do seu ok (igual ao RB Central)
 A equipe da loja **lê à vontade** o mesmo que o RB Central:

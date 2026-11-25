@@ -90,11 +90,13 @@ export function criarTransito({ cena, dados }) {
   if (!rota || rota.total < 120) return null;
   const CORES = [0xff4fa0, 0xf6f2ea, 0x18d1e0, 0x1c1c1c, 0xff9f43, 0x8b5cf6, 0xd7263d, 0x3dd598]; // cores de carro de cidade tropical
   const carros = [];
-  const N = 8;
+  const N = 14, JANELA = 1400; // os carros rodam num trecho de 2,8 km em volta da loja (ou de você, no jogo)
+  let centro = rota.projetar(0, 16.6).d;
+  const ini = () => Math.max(0, centro - JANELA), fim = () => Math.min(rota.total, centro + JANELA);
   for (let i = 0; i < N; i++) {
     const g = montarCarro(CORES[i % CORES.length]);
     cena.add(g);
-    carros.push({ g, sentido: i % 2 ? -1 : 1, d: (rota.total / N) * i + 7, vel: 11, max: 10 + (i * 7) % 5, raio: 2.3 });
+    carros.push({ g, sentido: i % 2 ? -1 : 1, d: ini() + ((fim() - ini()) / N) * i + 7, vel: 11, max: 10 + (i * 7) % 5, raio: 2.3 });
   }
   // dois carros parados no pátio da loja
   for (const [x, z, a, cor] of [[-16.5, 3.5, 0.15, 0xf2f2f2], [17, 1.5, -0.1, 0x1c1c1c]]) {
@@ -105,6 +107,8 @@ export function criarTransito({ cena, dados }) {
     rota,
     carros,
     definirObstaculos(lista) { alvos = lista; },
+    /** Leva o trecho do trânsito para perto de (x, z). */
+    definirCentro(x, z) { const p = rota.projetar(x, z); if (Math.abs(p.lat) < 600) centro = p.d; },
     /** Algum carro do trânsito encosta neste círculo? */
     colide(x, z, r) { return carros.some(c => c.g.visible && Math.hypot(c.g.position.x - x, c.g.position.z - z) < r + c.raio); },
     atualizar(dt) {
@@ -125,12 +129,12 @@ export function criarTransito({ cena, dados }) {
         const alvoVel = livre < 9 ? 0 : livre < 22 ? c.max * (livre - 9) / 13 : c.max;
         c.vel = suave(c.vel, alvoVel, Math.min(1, dt * (alvoVel < c.vel ? 3 : 0.8)));
         c.d += c.vel * c.sentido * dt;
-        if (c.d > rota.total) c.d -= rota.total; else if (c.d < 0) c.d += rota.total;
+        if (c.d > fim()) c.d = ini() + 2; else if (c.d < ini()) c.d = fim() - 2; // saiu do trecho: volta pela outra ponta
         const p = rota.ponto(c.d, 2.4 * c.sentido);
         c.g.position.set(p.x, p.y - 0.05, p.z);
         c.g.rotation.y = Math.atan2(p.fx * c.sentido, p.fz * c.sentido);
         for (const r of c.g.userData.rodas) r.rotation.x += c.vel * dt / 0.36;
-        c.g.visible = c.d > 3 && c.d < rota.total - 3;
+        c.g.visible = c.d > ini() + 3 && c.d < fim() - 3;
       }
     },
   };
@@ -176,30 +180,24 @@ export function criarJogo(ctx) {
   // ---------- chão, casas e prédio (colisão) ----------
   const origem = new THREE.Vector3();
   function alturaDoChao(x, z, padrao = 0) {
+    const terreno = ctx.alturaTerreno ? ctx.alturaTerreno(x, z) + 0.06 : null;
+    if (terreno != null && !(Math.abs(x) < 30 && z > -20 && z < 14)) return terreno; // longe da loja: só o relevo (rápido)
     raio.set(origem.set(x, 400, z), baixo);
     raio.far = 800;
     const hit = raio.intersectObjects(ctx.chao(), false)[0];
-    return hit ? hit.point.y : padrao;
+    return hit ? Math.max(hit.point.y, terreno ?? -Infinity) : terreno ?? padrao;
   }
-  let casas = [], grade = null;
-  function prepararCasas() {
-    const dados = ctx.dados();
-    if (grade || !dados) return;
-    casas = dados.casas || [];
-    grade = new Map();
-    casas.forEach((c, i) => { const k = `${Math.floor(c[0] / 20)},${Math.floor(c[1] / 20)}`; if (!grade.has(k)) grade.set(k, []); grade.get(k).push(i); });
-  }
+  // casas e prédios do mundo aberto (só os quadrados carregados, perto de você)
+  let casasCache = { x: Infinity, z: Infinity, lista: [] };
   function bateEmCasa(x, z, r) {
-    prepararCasas();
-    if (!grade) return false;
-    const gx = Math.floor(x / 20), gz = Math.floor(z / 20);
-    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
-      for (const k of grade.get(`${gx + i},${gz + j}`) || []) {
-        const [cx, cz, ang, w, d] = casas[k];
-        const dx = x - cx, dz = z - cz, c = Math.cos(ang), s = Math.sin(ang);
-        const lx = dx * c - dz * s, lz = dx * s + dz * c;
-        if (Math.abs(lx) < w / 2 + r && Math.abs(lz) < d / 2 + r) return true;
-      }
+    if (!ctx.casasPerto) return false;
+    if (Math.hypot(x - casasCache.x, z - casasCache.z) > 15) casasCache = { x, z, lista: ctx.casasPerto(x, z) };
+    for (const [cx, cz, ang, w, d] of casasCache.lista) {
+      const dx = x - cx, dz = z - cz;
+      if (Math.abs(dx) > w + d + r || Math.abs(dz) > w + d + r) continue;
+      const c = Math.cos(ang), s = Math.sin(ang);
+      const lx = dx * c - dz * s, lz = dx * s + dz * c;
+      if (Math.abs(lx) < w / 2 + r && Math.abs(lz) < d / 2 + r) return true;
     }
     return false;
   }
@@ -493,7 +491,7 @@ export function criarJogo(ctx) {
     c.h += giro * dt;
     const nx = c.x + Math.sin(c.h) * c.v * dt, nz = c.z + Math.cos(c.h) * c.v * dt;
     const preso = (x, z) => bateEmCasa(x, z, 1.6) || naCasca(x, z, 1.5) || ctx.transito()?.colide(x, z, 1.9);
-    const bate = Math.hypot(nx, nz) > 460 || (preso(nx, nz) && !preso(c.x, c.z));
+    const bate = Math.hypot(nx, nz) > 12000 || (preso(nx, nz) && !preso(c.x, c.z));
     if (bate) { if (Math.abs(c.v) > 6) { aviso('💥 Opa! Bateu.', 1500); vibrar(Math.min(1, Math.abs(c.v) / 14), 260); } c.v = -c.v * 0.25; }
     else { c.x = nx; c.z = nz; }
     c.y = suave(c.y, alturaDoChao(c.x, c.z, c.y), 0.5);
@@ -527,7 +525,7 @@ export function criarJogo(ctx) {
           return x > -11.7 && z > -7.7 && (x < 11.7 || corredorDoElevador(x, z)) && (z < 7.7 || naPorta(x)) && (!noMovel(x, z) || noMovel(p.x, p.z));
         }
         const preso = (a, b) => bateEmCasa(a, b, 0.35) || Math.hypot(a - est.car.x, b - est.car.z) < 2.1 || ctx.transito()?.colide(a, b, 0.5);
-        return Math.hypot(x, z) < 460 && (!preso(x, z) || preso(p.x, p.z)) && (!naCasca(x, z) || (naPorta(x) && z > 6.8));
+        return Math.hypot(x, z) < 12000 && (!preso(x, z) || preso(p.x, p.z)) && (!naCasca(x, z) || (naPorta(x) && z > 6.8));
       };
       // anda; se bater, escorrega ao longo do obstáculo
       if (pode(nx, nz)) { p.x = nx; p.z = nz; }
@@ -611,9 +609,11 @@ export function criarJogo(ctx) {
   }
 
   const estado = $h('.hud-status');
-  let andarVisto = -1;
+  let andarVisto = -1, tempoCentro = 0;
   return {
     /** Andar que os balões mostram (fora do prédio: todos). */
+    /** Onde você está (o mundo aberto carrega em volta). */
+    foco: () => (est.noCarro ? { x: est.car.x, z: est.car.z } : { x: eu.raiz.position.x, z: eu.raiz.position.z }),
     focoAndar: () => (!est.noCarro && (eu.andar > 0 || naCasca(eu.raiz.position.x, eu.raiz.position.z)) ? eu.andar : null),
     aviso,
     _teste: { est, eu, ctx }, // para testes automáticos
@@ -625,6 +625,7 @@ export function criarJogo(ctx) {
       const obst = [{ x: est.car.x, z: est.car.z }];
       if (!est.noCarro && eu.andar === 0) obst.push({ x: eu.raiz.position.x, z: eu.raiz.position.z });
       ctx.transito()?.definirObstaculos(obst);
+      if ((tempoCentro += dt) > 2) { tempoCentro = 0; const f = est.noCarro ? est.car : eu.raiz.position; ctx.transito()?.definirCentro?.(f.x, f.z); }
       // andares visíveis: dentro do prédio, só até o seu andar
       const dentro = !est.noCarro && (eu.andar > 0 || naCasca(eu.raiz.position.x, eu.raiz.position.z));
       const lim = dentro ? (eu.noElevador ? 3 : eu.andar) : 3;

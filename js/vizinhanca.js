@@ -1,13 +1,11 @@
-// O bairro real em volta da loja (Colônia Santana, São José/SC): terreno com os morros, a SC-281 e as ruas,
-// rios, 670 casas nos lugares reais e a mata. Tudo em blocos, no estilo do prédio. 1 unidade = 1 metro.
-// Dados em js/vizinhanca-dados.js (gerado por scripts/gerar-vizinhanca.py): © OpenStreetMap, Microsoft Building Footprints, SRTM.
+// Peças usadas pelo mundo aberto (js/mundo.js): céu, ruas, casas, árvores e palmeiras. Dados: © OpenStreetMap, Microsoft Building Footprints, SRTM.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
-const COR = { asfalto: 0x34313b, terra: 0xb38a5e, rio: 0x2fb8c4, faixa: 0xffd60a, lote: 0x8e8790, vagas: 0x6f6f6b };
+export const COR = { asfalto: 0x34313b, terra: 0xb38a5e, rio: 0x2fb8c4, faixa: 0xffd60a, lote: 0x8e8790, vagas: 0x6f6f6b };
 
 /** Céu de fim de tarde em cidade tropical: índigo no alto, roxo, rosa e laranja no horizonte; neblina quente. */
-function ceu(cena) {
+export function ceu(cena) {
   const c = document.createElement('canvas');
   c.width = 4; c.height = 512;
   const g = c.getContext('2d');
@@ -40,7 +38,7 @@ function ceu(cena) {
 }
 
 /** Palmeira em blocos (tronco curvo, folhas caídas e cocos), numa geometria só para instanciar. */
-function geometriaPalmeira() {
+export function geometriaPalmeira() {
   const partes = [], cor = (geo, hex) => {
     const c = new THREE.Color(hex), n = geo.attributes.position.count, a = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
@@ -70,66 +68,10 @@ function geometriaPalmeira() {
   }
   return mergeGeometries(partes);
 }
-/** Palmeiras ao longo da SC-281 (dos dois lados) e em volta do pátio da loja. */
-function palmeiras(v) {
-  const lugares = [];
-  const livre = (x, z) => !(Math.abs(x) < 24 && z > -16 && z < 24) && !v.casas.some(c => Math.hypot(c[0] - x, c[1] - z) < Math.max(c[3], c[4]) * 0.7 + 3);
-  for (const via of v.vias.filter(x => x.faixa)) {
-    const p = via.p;
-    let andado = 0;
-    for (let i = 3; i < p.length; i += 3) {
-      const dx = p[i] - p[i - 3], dz = p[i + 2] - p[i - 1], l = Math.hypot(dx, dz) || 1;
-      andado += l;
-      if (andado < 26) continue;
-      andado = 0;
-      if (Math.hypot(p[i], p[i + 2]) > 520) continue;
-      for (const lado of [-1, 1]) {
-        const x = p[i] - (dz / l) * 9 * lado, z = p[i + 2] + (dx / l) * 9 * lado;
-        if (livre(x, z)) lugares.push([x, p[i + 1] - 0.4, z]);
-      }
-    }
-  }
-  for (const [x, z] of [[-19.5, -11], [-19.5, -2], [-19.5, 7], [19.5, -11], [19.5, -2], [19.5, 7], [-9, -13], [9, -13]]) lugares.push([x, -0.55, z]);
-  const geo = geometriaPalmeira();
-  const mesh = new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true }), lugares.length);
-  const o = new THREE.Object3D();
-  lugares.forEach(([x, y, z], i) => {
-    const s = 0.85 + ((Math.abs(Math.round(x * 7 + z * 3)) % 40) / 100);
-    o.position.set(x, y, z); o.rotation.set(0, (x * 13.7 + z * 5.3) % (Math.PI * 2), 0); o.scale.set(s, s, s); o.updateMatrix();
-    mesh.setMatrixAt(i, o.matrix);
-  });
-  mesh.castShadow = true;
-  return mesh;
-}
-const PASTEL = [0xffc4d6, 0xa8e6cf, 0xffd3a5, 0xd7c4f2, 0xfff1c9, 0x9fe3ec, 0xffffff];
-
-function terreno(v) {
-  const n = v.n, pos = new Float32Array(v.p);
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const idx = [];
-  for (let j = 0; j < n - 1; j++) for (let i = 0; i < n - 1; i++) {
-    const a = j * n + i, b = a + 1, c = a + n, d = c + 1;
-    idx.push(a, c, b, b, c, d);
-  }
-  geo.setIndex(idx);
-  geo.computeVertexNormals();
-  if (geo.attributes.normal.array[1] < 0) { geo.setIndex(idx.map((_, k) => idx[k - (k % 3) + [0, 2, 1][k % 3]])); geo.computeVertexNormals(); }
-  // cor pela altura: pasto no vale, mato mais escuro nos morros
-  const cores = new Float32Array(pos.length), c = new THREE.Color();
-  for (let k = 0; k < pos.length; k += 3) {
-    const h = pos[k + 1];
-    c.set(h < 4 ? 0x9cb45a : h < 25 ? 0x7f9f4c : h < 80 ? 0x5e8a42 : 0x4b743a);
-    cores[k] = c.r; cores[k + 1] = c.g; cores[k + 2] = c.b;
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(cores, 3));
-  const m = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }));
-  m.receiveShadow = true;
-  return m;
-}
+export const PASTEL = [0xffc4d6, 0xa8e6cf, 0xffd3a5, 0xd7c4f2, 0xfff1c9, 0x9fe3ec, 0xffffff];
 
 /** Faixas (ruas e rios) seguindo o terreno: uma malha só por tipo. */
-function fitas(lista, cor) {
+export function fitas(lista, cor) {
   const pos = [], idx = [];
   for (const { l, p } of lista) {
     const n = p.length / 3;
@@ -154,7 +96,7 @@ function fitas(lista, cor) {
 }
 
 /** Faixa amarela tracejada no meio da SC-281. */
-function faixaCentral(vias) {
+export function faixaCentral(vias) {
   const marcas = [];
   for (const v of vias) {
     if (!v.faixa) continue;
@@ -171,7 +113,7 @@ function faixaCentral(vias) {
 }
 
 /** Casas: paredes, telhado de 4 águas (cerâmica ou fibrocimento) e galpões com telhado plano de metal. */
-function casas(lista) {
+export function casas(lista) {
   const grupo = new THREE.Group();
   const cubo = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
   const piramide = new THREE.ConeGeometry(Math.SQRT1_2, 1, 4).rotateY(Math.PI / 4).translate(0, 0.5, 0);
@@ -200,7 +142,7 @@ function casas(lista) {
 }
 
 /** Árvores da mata e dos morros (tronco e copa em blocos, verdes variados). */
-function arvores(lista) {
+export function arvores(lista) {
   const n = lista.length / 4;
   const tronco = new THREE.InstancedMesh(new THREE.BoxGeometry(0.7, 1, 0.7).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: 0x5b3f26 }), n);
   const copa = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: 0xffffff }), n);
@@ -217,39 +159,4 @@ function arvores(lista) {
   const g = new THREE.Group();
   g.add(tronco, copa);
   return g;
-}
-
-/** Monta o bairro em volta do prédio. Devolve o grupo (ou null se não deu para carregar os dados). */
-export async function montarVizinhanca(cena) {
-  let v;
-  try { ({ VIZINHANCA: v } = await import('./vizinhanca-dados.js')); } catch (e) { console.warn('bairro real não carregou:', e); return null; }
-  ceu(cena);
-  const g = new THREE.Group();
-  g.name = 'vizinhanca';
-  const solo = terreno(v.terreno);
-  // o relevo é uma malha grossa: onde ele passa por cima da rua, a rua sobe junto (senão some debaixo da grama)
-  const raio = new THREE.Raycaster(), baixo = new THREE.Vector3(0, -1, 0), o = new THREE.Vector3();
-  solo.updateMatrixWorld(true);
-  for (const lista of [v.vias, v.rios]) for (const via of lista) {
-    for (let i = 0; i < via.p.length; i += 3) {
-      raio.set(o.set(via.p[i], 2000, via.p[i + 2]), baixo);
-      const hit = raio.intersectObject(solo, false)[0];
-      if (hit && hit.point.y + 0.06 > via.p[i + 1]) via.p[i + 1] = hit.point.y + 0.06;
-    }
-  }
-  const chao = [solo, fitas(v.vias.filter(x => !x.t), COR.asfalto), fitas(v.vias.filter(x => x.t), COR.terra)];
-  g.add(...chao);
-  g.add(fitas(v.rios, COR.rio));
-  g.add(faixaCentral(v.vias));
-  g.add(casas(v.casas));
-  g.add(arvores(v.arvores));
-  try { g.add(palmeiras(v)); } catch (e) { console.warn('palmeiras:', e); }
-  // pátio da loja (estacionamento na frente e nos lados)
-  const lote = new THREE.Mesh(new THREE.BoxGeometry(40, 0.2, 26), new THREE.MeshLambertMaterial({ color: COR.lote }));
-  lote.position.set(0, -0.62, -0.5); lote.receiveShadow = true;
-  g.add(lote);
-  chao.push(lote);
-  cena.add(g);
-  // chao: malhas onde dá para pisar (o modo jogo mede a altura do terreno nelas); dados: casas e ruas (colisão e trânsito)
-  return { grupo: g, fonte: v.fonte, loja: v.loja, chao, dados: v };
 }

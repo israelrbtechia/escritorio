@@ -193,10 +193,10 @@ export function criarEscritorio(container, camada) {
 
   // ---------- prédio ----------
   const rua = montarRua(cena);
-  // o bairro real em volta da loja (SC-281, Colônia Santana): carrega depois, sem travar o prédio
+  // mundo aberto: São José inteira em volta da loja (carrega por quadrados perto da câmera ou de você no jogo)
   let bairro = null, transito = null, jogo = null;
   const obstaculosDoAndar = new Map();
-  import('./vizinhanca.js').then(m => m.montarVizinhanca(cena)).then(async v => {
+  import('./mundo.js').then(m => m.montarMundo(cena, { celular })).then(async v => {
     if (!v) return;
     bairro = v;
     for (const o of rua.genericos) o.visible = false;
@@ -1122,7 +1122,7 @@ export function criarEscritorio(container, camada) {
     }
   }, 2500);
   // ---------- laço de animação ----------
-  let ultimoDesenho = 0;
+  let ultimoDesenho = 0, ultimoMundo = 0;
   let aberturaPorta = 0;
   function quadro() {
     const dt = Math.min(relogio.getDelta(), 0.05);
@@ -1136,6 +1136,8 @@ export function criarEscritorio(container, camada) {
     for (const e of entidades) { e.raiz.visible = visivel(e); e.atualizar(dt, t); }
     transito?.atualizar(dt);
     if (jogo) jogo.atualizar(dt);
+    // o mundo carrega em volta de onde você está (no jogo) ou de para onde a câmera olha
+    if (bairro && t - ultimoMundo > 0.4) { ultimoMundo = t; bairro.atualizar(jogo ? jogo.foco() : controles.target); }
     // porta automática da loja: abre quando alguém chega perto
     if (telas.portas) {
       const perto = entidades.some(e => e.ativo !== false && e.andar === 0 && !e.noElevador && Math.abs(e.raiz.position.x) < 2.2 && Math.abs(e.raiz.position.z - 7.85) < 2.0);
@@ -1429,6 +1431,8 @@ export function criarEscritorio(container, camada) {
         },
         chao: () => (bairro ? bairro.chao : [rua.chao]).concat(rua.calcada),
         dados: () => bairro?.dados || null,
+        alturaTerreno: (x, z) => (bairro ? bairro.altura(x, z) : -0.62),
+        casasPerto: (x, z) => (bairro ? bairro.casasPerto(x, z) : []),
         transito: () => transito,
         chamarCao(id, quem) { const d = caes[id]; d.chamado = quem; d.acordar = true; },
         emitir(tipo, dados) { return tipo === 'pedido' ? eventos.aoPedir?.(dados) : undefined; },
